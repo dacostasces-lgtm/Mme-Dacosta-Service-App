@@ -1,3 +1,5 @@
+import { Link } from "@/i18n/routing";
+
 export function Footer() {
   return (
     <footer className="border-t border-border mt-auto bg-surface/50">
@@ -11,25 +13,43 @@ export function Footer() {
           </div>
           <div>
             <h4 className="font-semibold mb-4">Liens Rapides</h4>
+            {/* next-intl's Link, not a raw <a>: a bare href drops the locale
+                prefix and every one of these ends on a 404. */}
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li><a href="/candidats" className="hover:text-primary transition-colors">Rechercher un profil</a></li>
-              <li><a href="/offres" className="hover:text-primary transition-colors">Déposer une offre</a></li>
-              <li><a href="/pricing" className="hover:text-primary transition-colors">Tarifs Premium</a></li>
+              <li><Link href="/candidats" className="hover:text-primary transition-colors">Rechercher un profil</Link></li>
+              <li><Link href="/offres" className="hover:text-primary transition-colors">Déposer une offre</Link></li>
+              <li><Link href="/pricing" className="hover:text-primary transition-colors">Tarifs Premium</Link></li>
             </ul>
           </div>
           <div>
             <h4 className="font-semibold mb-4">Légal</h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li><a href="/cgu" className="hover:text-primary transition-colors">CGU</a></li>
-              <li><a href="/privacy" className="hover:text-primary transition-colors">Confidentialité</a></li>
-              <li><a href="/legal" className="hover:text-primary transition-colors">Mentions Légales</a></li>
+              <li><Link href="/cgu" className="hover:text-primary transition-colors">CGU</Link></li>
+              <li><Link href="/privacy" className="hover:text-primary transition-colors">Confidentialité</Link></li>
+              <li><Link href="/legal" className="hover:text-primary transition-colors">Mentions Légales</Link></li>
             </ul>
           </div>
           <div>
             <h4 className="font-semibold mb-4">Contact & Support</h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li><a href="https://wa.me/1234567890" target="_blank" rel="noopener noreferrer" className="hover:text-[#25D366] transition-colors flex items-center gap-2">WhatsApp Support</a></li>
-              <li><a href="mailto:contact@madamedacosta.com" className="hover:text-primary transition-colors">contact@madamedacosta.com</a></li>
+              <li>
+                {/* wa.me wants the international number without "+" or spaces.
+                    Congo-Brazzaville mobiles keep their leading 0 after the
+                    242 country code. */}
+                <a
+                  href="https://wa.me/242067173030"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#25D366] transition-colors flex items-center gap-2"
+                >
+                  WhatsApp · +242 06 717 30 30
+                </a>
+              </li>
+              <li>
+                <a href="mailto:contact@madamedacosta.com" className="hover:text-primary transition-colors">
+                  contact@madamedacosta.com
+                </a>
+              </li>
             </ul>
           </div>
         </div>
