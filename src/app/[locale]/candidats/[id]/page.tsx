@@ -78,25 +78,50 @@ export default async function CandidateProfilePage({
     { label: "Entretien passé", at: profile.interview_passed_at },
   ];
 
+  const initials = profile.full_name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
   return (
-    <div className="min-h-screen bg-background py-8">
+    <div className="flex-1 bg-surface bg-grain py-10 sm:py-14">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Header Section */}
-        <div className="bg-card rounded-3xl p-8 border border-border shadow-sm mb-8 relative overflow-hidden">
+        <div className="bg-card rounded-3xl border border-border shadow-soft mb-8 relative overflow-hidden">
           {profile.is_premium && (
-            <div className="absolute top-0 right-0 bg-secondary text-secondary-foreground px-4 py-1 rounded-bl-xl text-sm font-semibold flex items-center gap-1">
+            <div className="absolute top-0 right-0 bg-secondary text-secondary-foreground px-4 py-1 rounded-bl-xl text-sm font-semibold flex items-center gap-1 z-10">
               <BadgeCheck className="h-4 w-4" /> Profil Premium
             </div>
           )}
 
-          <div className="flex flex-col md:flex-row gap-8 items-start">
-            <div className="h-32 w-32 rounded-full bg-surface border-4 border-background shadow-lg overflow-hidden flex-shrink-0">
-              <img
-                src={profile.avatar_url ?? `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(profile.full_name)}`}
-                alt={profile.full_name}
-                className="w-full h-full object-cover"
-              />
+          {/* Tinted band, matching the ProfileCard the visitor just came from. */}
+          <div
+            aria-hidden
+            className={`h-24 ${
+              profile.is_premium
+                ? "bg-gradient-to-r from-secondary/25 via-secondary/10 to-transparent"
+                : "bg-gradient-to-r from-primary/12 via-primary/5 to-transparent"
+            }`}
+          />
+
+          <div className="p-8 flex flex-col md:flex-row gap-8 items-start">
+            {/* -mt-20 lifts the avatar into the band above without dragging the
+                text column up with it. */}
+            <div className="-mt-20 h-32 w-32 rounded-3xl ring-4 ring-card shadow-soft overflow-hidden flex-shrink-0 grid place-items-center bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-display text-4xl font-bold">
+              {profile.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profile.avatar_url}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                initials
+              )}
             </div>
 
             <div className="flex-1">
@@ -151,7 +176,7 @@ export default async function CandidateProfilePage({
         {/* Details Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="md:col-span-2 space-y-8">
-            <section className="bg-card rounded-3xl p-8 border border-border shadow-sm">
+            <section className="bg-card rounded-3xl p-8 border border-border shadow-soft">
               <h2 className="text-xl font-bold mb-4">À propos</h2>
               <p className="text-muted-foreground leading-relaxed">
                 {profile.description ?? "Ce candidat n'a pas encore rédigé sa présentation."}
@@ -159,7 +184,7 @@ export default async function CandidateProfilePage({
             </section>
 
             {skills.length > 0 && (
-              <section className="bg-card rounded-3xl p-8 border border-border shadow-sm">
+              <section className="bg-card rounded-3xl p-8 border border-border shadow-soft">
                 <h2 className="text-xl font-bold mb-4">Compétences</h2>
                 <div className="flex flex-wrap gap-2">
                   {skills.map((skill) => (
@@ -172,7 +197,7 @@ export default async function CandidateProfilePage({
             )}
 
             {languages.length > 0 && (
-              <section className="bg-card rounded-3xl p-8 border border-border shadow-sm">
+              <section className="bg-card rounded-3xl p-8 border border-border shadow-soft">
                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                   <Languages className="h-5 w-5 text-primary" />
                   Langues parlées
@@ -221,7 +246,7 @@ export default async function CandidateProfilePage({
               </ul>
             </section>
 
-            <section className="bg-card rounded-3xl p-6 border border-border shadow-sm">
+            <section className="bg-card rounded-3xl p-6 border border-border shadow-soft">
               <h3 className="text-sm font-semibold text-muted-foreground mb-1">Disponibilité</h3>
               <p className="font-medium text-lg mb-4">
                 {AVAILABILITY_LABELS[profile.availability ?? ""] ?? "À préciser"}

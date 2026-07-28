@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "../globals.css";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
@@ -12,6 +12,14 @@ import { Footer } from '@/components/shared/Footer';
 const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
+});
+
+// Headings run on a serif so the brand reads as a service house rather than a
+// generic SaaS. Body copy stays on Inter for legibility on small phones.
+const playfair = Playfair_Display({
+  variable: "--font-display",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -43,7 +51,7 @@ export default async function RootLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className={`${inter.variable} h-full antialiased`}>
+    <html lang={locale} className={`${inter.variable} ${playfair.variable} h-full antialiased`}>
       {/* pt-16 clears the fixed Navbar; the pb reserves the mobile tab bar's
           row (plus the safe-area inset) so the Footer stays reachable. */}
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground pt-16 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">

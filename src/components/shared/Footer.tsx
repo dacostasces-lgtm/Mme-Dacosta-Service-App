@@ -2,11 +2,13 @@ import { Link } from "@/i18n/routing";
 
 export function Footer() {
   return (
-    <footer className="border-t border-border mt-auto bg-surface/50">
+    <footer className="border-t border-border mt-auto bg-surface bg-grain">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <h3 className="font-bold text-xl mb-4 text-primary tracking-tight">Madame Dacosta</h3>
+            <h3 className="font-display font-bold text-2xl mb-4 text-primary tracking-tight">
+              Madame Dacosta
+            </h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
               La plateforme Premium de référence pour le recrutement de personnel de maison qualifié en Afrique.
             </p>

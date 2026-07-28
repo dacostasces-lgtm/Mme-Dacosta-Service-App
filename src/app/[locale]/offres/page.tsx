@@ -1,9 +1,11 @@
-import { Briefcase, MapPin, Clock, Plus } from "lucide-react";
+import { Briefcase, MapPin, Clock, Plus, Wallet } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import famille from "@/assets/images/famille-cuisine.jpg";
 
 type Job = {
   id: string;
@@ -46,24 +48,29 @@ export default async function JobsPage() {
   const canPost = user?.role === "employer" || user?.role === "admin";
 
   return (
-    <div className="min-h-screen bg-background py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-1">Offres d&apos;emploi ({jobs.length})</h1>
-            <p className="text-muted-foreground">
-              Les postes proposés par les familles et employeurs de la plateforme.
-            </p>
-          </div>
+    <>
+      <PageHeader
+        eyebrow="Offres d'emploi"
+        title={`${jobs.length} poste${jobs.length > 1 ? "s" : ""} à pourvoir`}
+        description="Les postes proposés par les familles et employeurs de la plateforme. Candidatez directement depuis votre espace."
+        image={famille}
+      >
+        {canPost && (
+          <Link
+            href="/offres/creer"
+            className={buttonVariants({
+              size: "lg",
+              className: "h-12 px-6 rounded-full gap-2",
+            })}
+          >
+            <Plus className="h-4 w-4" />
+            Publier une offre
+          </Link>
+        )}
+      </PageHeader>
 
-          {canPost && (
-            <Link href="/offres/creer" className={buttonVariants({ className: "rounded-full gap-2" })}>
-              <Plus className="h-4 w-4" />
-              Publier une offre
-            </Link>
-          )}
-        </div>
-
+      <div className="bg-surface bg-grain py-10 sm:py-14 flex-1">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {error && (
           <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3 mb-6">
             Erreur de chargement : {error.message}
@@ -90,33 +97,43 @@ export default async function JobsPage() {
               return (
                 <article
                   key={job.id}
-                  className="bg-card border border-border rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow"
+                  className="group relative bg-card border border-border rounded-3xl p-6 sm:p-7 shadow-soft hover:shadow-lift hover:-translate-y-0.5 transition-all duration-300"
                 >
+                  {/* Gold rail on premium listings, so they read at a glance. */}
+                  {job.profiles?.is_premium && (
+                    <span
+                      aria-hidden
+                      className="absolute left-0 top-6 bottom-6 w-1 rounded-r-full bg-secondary"
+                    />
+                  )}
+
                   <div className="flex items-start justify-between gap-4 mb-2">
-                    <h2 className="text-lg font-bold">{job.title}</h2>
+                    <h2 className="text-xl font-bold leading-snug">{job.title}</h2>
                     {job.profiles?.is_premium && (
-                      <Badge className="bg-secondary text-secondary-foreground font-normal shrink-0">
+                      <Badge className="bg-secondary text-secondary-foreground font-semibold shrink-0">
                         Premium
                       </Badge>
                     )}
                   </div>
 
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-3 whitespace-pre-line">
+                  <p className="text-sm text-muted-foreground mb-5 line-clamp-3 whitespace-pre-line leading-relaxed">
                     {job.description}
                   </p>
 
-                  <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1 text-primary font-medium">
-                      {formatSalary(job.salary_range_min, job.salary_range_max)}
-                    </span>
+                  <p className="inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-primary">
+                    <Wallet className="h-4 w-4" aria-hidden />
+                    {formatSalary(job.salary_range_min, job.salary_range_max)}
+                  </p>
+
+                  <div className="mt-5 pt-4 border-t border-border flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
                     {place && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
+                      <span className="flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5" aria-hidden />
                         {place}
                       </span>
                     )}
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5" aria-hidden />
                       Publiée le {formatDate(job.created_at)}
                     </span>
                     {/* Employers awaiting moderation are invisible under the
@@ -128,7 +145,8 @@ export default async function JobsPage() {
             })}
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

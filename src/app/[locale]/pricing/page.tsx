@@ -2,6 +2,7 @@ import { Check, Minus } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth/dal";
+import { cn } from "@/lib/utils";
 
 // Placeholder amounts in XAF, gathered here so they can be changed in one place
 // once the commercial terms are settled. `subscriptions.currency` defaults to
@@ -58,11 +59,12 @@ export default async function PricingPage() {
   const user = await getCurrentUser();
 
   return (
-    <div className="min-h-screen bg-surface py-16">
+    <div className="flex-1 bg-surface bg-mesh bg-grain py-16 sm:py-24">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-14">
-          <h1 className="text-4xl font-bold mb-3">Des tarifs simples</h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
+        <div className="text-center mb-14 max-w-2xl mx-auto">
+          <span className="eyebrow">Tarifs</span>
+          <h1 className="mt-4 text-4xl sm:text-5xl font-bold">Des tarifs simples</h1>
+          <p className="mt-4 text-lg text-muted-foreground">
             Créer un compte et consulter les profils est gratuit. Le premium sert à être vu en
             priorité, que vous cherchiez un emploi ou du personnel de maison.
           </p>
@@ -72,12 +74,18 @@ export default async function PricingPage() {
           {PLANS.map((plan) => (
             <div
               key={plan.name}
-              className={`bg-card rounded-3xl p-8 border shadow-sm flex flex-col h-full ${
+              className={`relative bg-card rounded-3xl p-8 border flex flex-col h-full ${
                 plan.highlighted
-                  ? "border-secondary ring-1 ring-secondary shadow-secondary/10 md:-translate-y-3"
-                  : "border-border"
+                  ? "border-secondary/60 ring-1 ring-secondary/40 shadow-lift md:-translate-y-4"
+                  : "border-border shadow-soft"
               }`}
             >
+              {plan.highlighted && (
+                <span
+                  aria-hidden
+                  className="absolute inset-x-0 -top-px h-1 rounded-t-3xl bg-gradient-to-r from-transparent via-secondary to-transparent"
+                />
+              )}
               {plan.highlighted && (
                 <span className="self-start text-xs font-semibold px-3 py-1 rounded-full bg-secondary text-secondary-foreground mb-4">
                   Le plus choisi
@@ -89,7 +97,9 @@ export default async function PricingPage() {
               <p className="text-xs text-muted-foreground mb-6">{plan.audience}</p>
 
               <div className="mb-8">
-                <span className="text-4xl font-bold">{formatPrice(plan.price)}</span>
+                <span className="font-display text-4xl font-bold text-primary">
+                  {formatPrice(plan.price)}
+                </span>
                 {plan.price > 0 && <span className="text-muted-foreground"> / mois</span>}
               </div>
 
@@ -113,10 +123,14 @@ export default async function PricingPage() {
 
               <Link
                 href={user ? "/dashboard/employer" : "/register"}
-                className={buttonVariants({
-                  variant: plan.highlighted ? "default" : "outline",
-                  className: "w-full h-11 rounded-full",
-                })}
+                // cn() rather than buttonVariants({ className }) so the border
+                // override actually replaces the variant's own border colour.
+                className={cn(
+                  buttonVariants({ variant: plan.highlighted ? "default" : "outline" }),
+                  "w-full h-11 rounded-full",
+                  !plan.highlighted &&
+                    "border-2 border-primary/30 text-primary hover:bg-accent hover:text-primary"
+                )}
               >
                 {plan.price === 0 ? "Créer un compte" : "Choisir cette offre"}
               </Link>

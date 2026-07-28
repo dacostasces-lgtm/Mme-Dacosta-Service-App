@@ -12,7 +12,7 @@ export async function Navbar() {
     <header className="fixed top-0 w-full z-50 border-b border-border/40 bg-background/80 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link href="/" className="font-bold text-2xl text-primary tracking-tight">
+          <Link href="/" className="font-display font-bold text-2xl text-primary tracking-tight">
             Madame Dacosta
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">

@@ -16,7 +16,7 @@ function StatCard({
   tone?: "primary" | "secondary";
 }) {
   return (
-    <div className="bg-card p-6 rounded-2xl border border-border shadow-sm flex items-center gap-4">
+    <div className="bg-card p-6 rounded-3xl border border-border shadow-soft flex items-center gap-4">
       <div
         className={`h-12 w-12 rounded-xl flex items-center justify-center ${
           tone === "primary" ? "bg-primary/10 text-primary" : "bg-secondary/10 text-secondary"
@@ -61,7 +61,7 @@ export default async function CandidateDashboard() {
   const published = profile.data?.is_validated ?? false;
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="flex-1 bg-surface bg-grain">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold mb-1">Mon Espace Candidat</h1>
         <p className="text-muted-foreground mb-8">Bonjour {user.fullName}</p>
@@ -106,7 +106,7 @@ export default async function CandidateDashboard() {
           />
         </div>
 
-        <div className="bg-card rounded-2xl border border-border p-6">
+        <div className="bg-card rounded-3xl border border-border shadow-soft p-6 sm:p-7">
           <h2 className="font-semibold mb-2">Trouvez votre prochain emploi</h2>
           <p className="text-sm text-muted-foreground mb-4">
             Consultez les offres publiées par les familles et employeurs près de chez vous.

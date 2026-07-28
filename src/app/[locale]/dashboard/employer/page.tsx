@@ -16,7 +16,7 @@ function StatCard({
   tone?: "primary" | "secondary";
 }) {
   return (
-    <div className="bg-card p-6 rounded-2xl border border-border shadow-sm flex items-center gap-4">
+    <div className="bg-card p-6 rounded-3xl border border-border shadow-soft flex items-center gap-4">
       <div
         className={`h-12 w-12 rounded-xl flex items-center justify-center ${
           tone === "primary" ? "bg-primary/10 text-primary" : "bg-secondary/10 text-secondary"
@@ -49,7 +49,7 @@ export default async function EmployerDashboard() {
   ]);
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="flex-1 bg-surface bg-grain">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
           <div>
@@ -84,7 +84,7 @@ export default async function EmployerDashboard() {
           />
         </div>
 
-        <div className="bg-card rounded-2xl border border-border p-6">
+        <div className="bg-card rounded-3xl border border-border shadow-soft p-6 sm:p-7">
           <h2 className="font-semibold mb-2">Prochaine étape</h2>
           <p className="text-sm text-muted-foreground">
             {(jobs.count ?? 0) === 0
