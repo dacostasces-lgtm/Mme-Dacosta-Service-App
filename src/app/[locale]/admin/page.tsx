@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { setProfileValidation, setCandidateCheck, type CandidateCheck } from "@/lib/admin/actions";
+import { PaymentQueue, type DeclaredPayment } from "@/components/features/admin/PaymentQueue";
 
 type CandidateDetails = {
   job_title: string | null;
@@ -142,7 +143,7 @@ export default async function AdminPage() {
   await requireUser({ role: "admin" });
 
   const supabase = await createClient();
-  const [pending, validated] = await Promise.all([
+  const [pending, validated, declared] = await Promise.all([
     supabase.from("profiles").select(SELECT).eq("is_validated", false).order("created_at"),
     supabase
       .from("profiles")
@@ -150,11 +151,28 @@ export default async function AdminPage() {
       .eq("is_validated", true)
       .order("created_at", { ascending: false })
       .limit(20),
+    // "Awaiting confirmation" is an unpaid booking whose employer has declared a
+    // transaction — there is no dedicated status for it, see the migration.
+    supabase
+      .from("bookings")
+      .select(
+        "id, amount, currency, payment_method, payment_reference, payment_declared_at, " +
+          "employer:profiles!bookings_employer_id_fkey(full_name), " +
+          "candidate:profiles!bookings_candidate_id_fkey(full_name)"
+      )
+      .eq("status", "pending_payment")
+      .not("payment_declared_at", "is", null)
+      .order("payment_declared_at"),
   ]);
 
   const error = pending.error ?? validated.error;
   const pendingProfiles = (pending.data ?? []) as unknown as ModerationProfile[];
   const validatedProfiles = (validated.data ?? []) as unknown as ModerationProfile[];
+  const declaredPayments = (declared.data ?? []) as unknown as DeclaredPayment[];
+  // Kept apart from `error`: until 20260728000000_manual_mobile_money.sql is
+  // applied the payment columns don't exist, and folding this in would hide the
+  // whole moderation queue behind an error banner about an unrelated feature.
+  const paymentsUnavailable = declared.error?.message ?? null;
 
   return (
     <div className="min-h-screen bg-surface">
@@ -171,6 +189,8 @@ export default async function AdminPage() {
             Erreur de chargement : {error.message}
           </p>
         )}
+
+        <PaymentQueue payments={declaredPayments} unavailable={paymentsUnavailable} />
 
         <section className="mb-12">
           <h2 className="text-lg font-semibold mb-4">

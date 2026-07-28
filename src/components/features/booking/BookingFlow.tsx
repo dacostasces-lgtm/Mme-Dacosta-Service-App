@@ -1,11 +1,12 @@
 "use client";
 import { useActionState, useState } from "react";
-import { CreditCard, Calendar, Clock, MapPin, CheckCircle2, Loader2, Info } from "lucide-react";
+import { CreditCard, Calendar, Clock, MapPin, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "@/i18n/routing";
 import { createBooking, type BookingState } from "@/lib/bookings/actions";
 import { formatFee } from "@/lib/bookings/constants";
+import { PaymentInstructions } from "@/components/features/booking/PaymentInstructions";
 
 const FEE_LABEL = formatFee();
 
@@ -68,14 +69,16 @@ export function BookingFlow({
                 Votre demande de réservation pour {candidateName} est enregistrée sous la référence{" "}
                 <span className="font-mono text-foreground">{state.bookingId?.slice(0, 8)}</span>.
               </p>
-              {/* No payment provider is connected yet, so the screen says so
-                  rather than announcing a transaction that never happened. */}
-              <div className="bg-surface border border-border rounded-2xl p-4 text-sm text-muted-foreground max-w-md mx-auto mb-8 flex gap-3 text-left">
-                <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                <p>
-                  Le paiement de {FEE_LABEL} reste à effectuer : notre équipe vous contacte pour le
-                  finaliser et vous mettre en relation. Aucun montant n&apos;a été débité.
-                </p>
+              {/* Settlement is manual Mobile Money: the employer transfers to
+                  the platform's number and declares the transaction id, which
+                  an admin reconciles. Nothing is debited automatically. */}
+              <div className="mb-8">
+                {state.bookingId && (
+                  <PaymentInstructions
+                    bookingId={state.bookingId}
+                    amountLabel={FEE_LABEL}
+                  />
+                )}
               </div>
 
               <div className="flex justify-center gap-4">

@@ -80,3 +80,51 @@ export async function createBooking(
   revalidatePath("/", "layout");
   return { bookingId: data.id };
 }
+
+const declareSchema = z.object({
+  bookingId: z.string().uuid("Réservation inconnue."),
+  reference: z
+    .string()
+    .trim()
+    .min(4, "Saisissez l'identifiant de transaction reçu par SMS.")
+    .max(64, "Cet identifiant est trop long."),
+});
+
+export type DeclareState = { error?: string; ok?: boolean };
+
+/**
+ * Records the Mobile Money transaction id the employer read off their
+ * confirmation SMS. This does **not** mark the booking paid: an admin still has
+ * to match it against the MoMo statement, because nothing here proves the money
+ * actually arrived.
+ */
+export async function declareBookingPayment(
+  _prev: DeclareState,
+  formData: FormData
+): Promise<DeclareState> {
+  await requireUser({ role: "employer" });
+
+  const parsed = declareSchema.safeParse({
+    bookingId: formData.get("bookingId"),
+    reference: formData.get("reference"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Saisie invalide." };
+  }
+
+  const supabase = await createClient();
+  // The RPC re-checks ownership and state; it is the only path allowed to write
+  // the payment columns, which the table's trigger otherwise reverts.
+  const { error } = await supabase.rpc("declare_booking_payment", {
+    p_booking_id: parsed.data.bookingId,
+    p_reference: parsed.data.reference,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

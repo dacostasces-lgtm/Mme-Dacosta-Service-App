@@ -57,3 +57,42 @@ export async function setCandidateCheck(
 
   revalidatePath("/", "layout");
 }
+
+/**
+ * Settles — or rejects — a Mobile Money payment the employer declared.
+ *
+ * `confirmed` is the admin asserting they saw the amount land on the platform's
+ * MoMo account. Rejecting clears the declaration so the employer can submit a
+ * corrected reference rather than being stuck.
+ */
+export async function settleBookingPayment(bookingId: string, confirmed: boolean) {
+  const admin = await requireUser({ role: "admin" });
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("bookings")
+    .update(
+      confirmed
+        ? {
+            status: "paid",
+            payment_confirmed_at: new Date().toISOString(),
+            payment_confirmed_by: admin.profileId,
+          }
+        : {
+            payment_reference: null,
+            payment_declared_at: null,
+            payment_confirmed_at: null,
+            payment_confirmed_by: null,
+          }
+    )
+    .eq("id", bookingId)
+    // Never re-settle something already paid: without this an admin could
+    // stamp a second confirmation over a closed booking.
+    .eq("status", "pending_payment");
+
+  if (error) {
+    throw new Error(`Impossible de mettre à jour le paiement : ${error.message}`);
+  }
+
+  revalidatePath("/", "layout");
+}
