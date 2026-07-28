@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimit, tooManyRequestsMessage } from "@/lib/rate-limit";
 
 export type MessageState = { error?: string };
 
@@ -12,6 +13,14 @@ export async function sendMessage(
   formData: FormData
 ): Promise<MessageState> {
   const user = await requireUser();
+
+  // Nothing else stands between a signed-in account and the messages table:
+  // the INSERT policy only checks that the sender is who they claim to be, so
+  // one script could flood every candidate on the platform.
+  const limit = rateLimit(`message:${user.id}`, { limit: 20, windowSeconds: 60 });
+  if (!limit.ok) {
+    return { error: tooManyRequestsMessage(limit.retryAfterSeconds) };
+  }
 
   const content = String(formData.get("content") ?? "").trim();
   if (!content) return { error: "Écrivez un message avant d'envoyer." };

@@ -12,7 +12,10 @@ import { Link, useRouter } from "@/i18n/routing";
 
 const schema = z.object({
   email: z.string().email("Email invalide"),
-  password: z.string().min(6, "Au moins 6 caractères"),
+  // No length rule on sign-in: the minimum belongs at signup, and enforcing the
+  // current one here would lock out accounts created under the old 6-character
+  // rule with a validation error instead of letting them log in and change it.
+  password: z.string().min(1, "Saisissez votre mot de passe"),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -68,7 +71,15 @@ export function LoginForm({ initialError }: { initialError?: string }) {
         </div>
 
         <div>
-          <label className="text-sm font-medium mb-1 block">Mot de passe</label>
+          <div className="flex items-baseline justify-between mb-1">
+            <label className="text-sm font-medium">Mot de passe</label>
+            <Link
+              href="/mot-de-passe-oublie"
+              className="text-xs text-primary font-medium hover:underline"
+            >
+              Mot de passe oublié ?
+            </Link>
+          </div>
           <Input type="password" placeholder="••••••••" {...form.register("password")} />
           {form.formState.errors.password && <p className="text-xs text-destructive mt-1">{form.formState.errors.password.message}</p>}
         </div>

@@ -14,7 +14,7 @@ import { Link, useRouter } from "@/i18n/routing";
 const schema = z.object({
   fullName: z.string().min(2, "Requis"),
   email: z.string().email("Email invalide"),
-  password: z.string().min(6, "Au moins 6 caractères"),
+  password: z.string().min(8, "Au moins 8 caractères"),
   role: z.enum(["employer", "candidate"]),
   country: z.string().min(1, "Requis"),
   city: z.string().min(1, "Requis"),

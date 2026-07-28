@@ -35,6 +35,13 @@ const OUTCOMES: Record<
     tone: "text-muted-foreground bg-muted",
     icon: CircleSlash,
   },
+  // Two unpaid bookings share the reference, so the SMS cannot say which one
+  // was paid. Nothing is settled: an admin decides.
+  ambiguous: {
+    label: "Référence ambiguë",
+    tone: "text-amber-700 dark:text-amber-500 bg-amber-500/10",
+    icon: AlertTriangle,
+  },
   duplicate: {
     label: "Doublon ignoré",
     tone: "text-muted-foreground bg-muted",
@@ -65,7 +72,10 @@ export default async function MomoLogPage() {
 
   const events = (data ?? []) as SmsEvent[];
   const needsAttention = events.filter(
-    (event) => event.outcome === "unmatched" || event.outcome === "amount_mismatch"
+    (event) =>
+      event.outcome === "unmatched" ||
+      event.outcome === "amount_mismatch" ||
+      event.outcome === "ambiguous"
   ).length;
 
   return (

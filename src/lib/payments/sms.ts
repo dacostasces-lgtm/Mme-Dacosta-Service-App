@@ -48,7 +48,15 @@ export function looksLikeCredit(body: string) {
 }
 
 export function parseAmount(body: string): number | null {
-  const match = body.match(AMOUNT);
+  // Read from the credit wording onwards rather than from the start of the
+  // message. Several operators open with the previous balance ("Solde precedent
+  // 1 000 F. Vous avez recu 5 000 FCFA"), and taking the first amount in the
+  // text picked up that balance instead — settlement then failed as an
+  // amount_mismatch and a perfectly good payment fell back to the manual queue.
+  const credit = body.match(CREDIT);
+  const fromCredit = credit?.index !== undefined ? body.slice(credit.index) : body;
+
+  const match = fromCredit.match(AMOUNT) ?? body.match(AMOUNT);
   if (!match) return null;
   const digits = match[1].replace(/[\s .,]/g, "");
   if (!digits) return null;
@@ -74,23 +82,39 @@ export function parseSms(body: string): ParsedSms {
   };
 }
 
+/** Case, spaces and a leading `+` carry no meaning in a sender id, and vary
+ *  between handsets: "+242 06…" and "24206…" are the same sender. */
+function normaliseSender(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, "").replace(/^\+/, "");
+}
+
 /**
  * Senders whose messages are trusted, from `MOMO_SMS_SENDERS`.
  *
- * An SMS sender id is trivially spoofable by anyone who can reach the endpoint,
- * so this is a second filter behind the shared secret, not a security boundary
- * on its own. Empty means "accept any sender" — convenient while tuning, and
- * flagged as such in the admin log.
+ * This is the *only* thing standing between the settlement and a forged SMS.
+ * The shared secret guards the HTTP endpoint, but it does not guard the SMS:
+ * the merchant number is printed on the payment screen for every employer to
+ * see, so anyone can text that SIM, and the relay forwards whatever arrives.
+ * A message reading "Vous avez recu 15000 FCFA MD-A1B2C3" from an ordinary
+ * handset would otherwise settle a booking that was never paid.
+ *
+ * Two changes follow from that:
+ *   - an empty list is rejected by the caller rather than meaning "allow all";
+ *   - entries match the whole sender id, not a substring. `includes` meant an
+ *     allow-list of "242" accepted every Congolese number, and "MTN" accepted
+ *     a sender calling itself "FAKEMTN".
  */
 export function isTrustedSender(sender: string | null, allowList: string) {
   const allowed = allowList
     .split(",")
-    .map((entry) => entry.trim().toLowerCase())
+    .map((entry) => normaliseSender(entry))
     .filter(Boolean);
 
-  if (allowed.length === 0) return true;
+  // Fail closed. The caller refuses the request outright in this case; the
+  // guard is repeated here so the function is not a trap on its own.
+  if (allowed.length === 0) return false;
   if (!sender) return false;
 
-  const normalised = sender.trim().toLowerCase();
-  return allowed.some((entry) => normalised.includes(entry));
+  const normalised = normaliseSender(sender);
+  return allowed.some((entry) => normalised === entry);
 }

@@ -4,6 +4,7 @@ import "../globals.css";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 import { routing } from '@/i18n/routing';
 import { Navbar } from '@/components/shared/Navbar';
 import { themeBootScript } from '@/components/shared/ThemeToggle';
@@ -102,6 +103,11 @@ export default async function RootLayout({
 
   const messages = await getMessages();
 
+  // Set by `proxy.ts` alongside the CSP it generates for this request.
+  // Null on any route the proxy's matcher skips, where no policy is sent
+  // either — so an unstamped script there is not blocked.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html
       lang={locale}
@@ -110,8 +116,12 @@ export default async function RootLayout({
     >
       <head>
         {/* Applies the stored theme before first paint. Must run synchronously
-            in <head>, otherwise dark-mode users get a white flash. */}
-        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+            in <head>, otherwise dark-mode users get a white flash.
+
+            The nonce is required, not decorative: this is the one inline script
+            the app writes itself, so Next.js does not stamp it automatically
+            and the CSP in `proxy.ts` would refuse to run it. */}
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
       {/* pt-16 clears the fixed Navbar; the pb reserves the mobile tab bar's
           row (plus the safe-area inset) so the Footer stays reachable. */}

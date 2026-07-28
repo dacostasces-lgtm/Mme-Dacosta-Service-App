@@ -23,8 +23,11 @@ type ModerationProfile = {
   candidate_details: CandidateDetails | null;
 };
 
+// `email` is deliberately absent: 20260728010000_restrict_profile_pii.sql
+// revoked it from the `authenticated` role, so selecting it here would fail the
+// whole query. Addresses come from admin_profile_emails() below instead.
 const SELECT =
-  "id, full_name, email, role, created_at, " +
+  "id, full_name, role, created_at, " +
   "neighborhoods(name, cities(name, country)), " +
   "candidate_details(job_title, experience, identity_checked_at, " +
   "criminal_record_checked_at, interview_passed_at)";
@@ -168,6 +171,22 @@ export default async function AdminPage() {
   const error = pending.error ?? validated.error;
   const pendingProfiles = (pending.data ?? []) as unknown as ModerationProfile[];
   const validatedProfiles = (validated.data ?? []) as unknown as ModerationProfile[];
+
+  // One guarded call for both lists rather than an embed per row. The function
+  // raises for non-admins, so a failure here means the email column simply goes
+  // unshown — the queue itself must keep working.
+  const emails = new Map<string, string | null>();
+  const ids = [...pendingProfiles, ...validatedProfiles].map((profile) => profile.id);
+  if (ids.length > 0) {
+    const { data } = await supabase.rpc("admin_profile_emails", { p_ids: ids });
+    for (const row of (data ?? []) as { profile_id: string; email: string | null }[]) {
+      emails.set(row.profile_id, row.email);
+    }
+  }
+  const withEmail = (profile: ModerationProfile): ModerationProfile => ({
+    ...profile,
+    email: emails.get(profile.id) ?? null,
+  });
   const declaredPayments = (declared.data ?? []) as unknown as DeclaredPayment[];
   // Kept apart from `error`: until 20260728000000_manual_mobile_money.sql is
   // applied the payment columns don't exist, and folding this in would hide the
@@ -205,7 +224,7 @@ export default async function AdminPage() {
           ) : (
             <div className="space-y-3">
               {pendingProfiles.map((profile) => (
-                <ProfileRow key={profile.id} profile={profile} validated={false} />
+                <ProfileRow key={profile.id} profile={withEmail(profile)} validated={false} />
               ))}
             </div>
           )}
@@ -224,7 +243,7 @@ export default async function AdminPage() {
           ) : (
             <div className="space-y-3">
               {validatedProfiles.map((profile) => (
-                <ProfileRow key={profile.id} profile={profile} validated />
+                <ProfileRow key={profile.id} profile={withEmail(profile)} validated />
               ))}
             </div>
           )}

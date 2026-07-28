@@ -1,4 +1,4 @@
-import { MessageSquare, Send, Star, ShieldCheck, Clock, Briefcase } from "lucide-react";
+import { MessageSquare, Send, Star, ShieldCheck, Clock, Briefcase, UserPen } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/dal";
@@ -37,7 +37,7 @@ export default async function CandidateDashboard() {
   const supabase = await createClient();
 
   // RLS scopes these to the candidate: their own applications, their own inbox.
-  const [applications, unread, reviews, profile] = await Promise.all([
+  const [applications, unread, reviews, profile, details] = await Promise.all([
     supabase.from("applications").select("id", { count: "exact", head: true }),
     supabase
       .from("messages")
@@ -50,6 +50,11 @@ export default async function CandidateDashboard() {
       .select("is_validated")
       .eq("id", user.profileId ?? "")
       .maybeSingle(),
+    supabase
+      .from("candidate_details")
+      .select("job_title, description")
+      .eq("profile_id", user.profileId ?? "")
+      .maybeSingle(),
   ]);
 
   const ratings = (reviews.data ?? []) as { rating: number }[];
@@ -59,6 +64,9 @@ export default async function CandidateDashboard() {
       : "—";
 
   const published = profile.data?.is_validated ?? false;
+  // The signup trigger inserts an empty candidate_details row, so "has a row"
+  // proves nothing — a profile is only usable once it says what the person does.
+  const profileComplete = Boolean(details.data?.job_title && details.data?.description);
 
   return (
     <div className="flex-1 bg-surface bg-grain">
@@ -104,6 +112,32 @@ export default async function CandidateDashboard() {
             label={ratings.length > 0 ? `Note moyenne (${ratings.length} avis)` : "Pas encore d'avis"}
             tone="secondary"
           />
+        </div>
+
+        <div
+          className={`rounded-3xl border p-6 sm:p-7 mb-6 ${
+            profileComplete ? "bg-card border-border shadow-soft" : "bg-primary/5 border-primary/30"
+          }`}
+        >
+          <h2 className="font-semibold mb-2 flex items-center gap-2">
+            <UserPen className="h-5 w-5 text-primary" />
+            {profileComplete ? "Mon profil" : "Complétez votre profil"}
+          </h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            {profileComplete
+              ? "Métier, compétences, présentation : tenez vos informations à jour."
+              : "Votre fiche est encore vide. Sans métier ni présentation, les familles ne peuvent pas vous choisir — c'est l'étape la plus importante."}
+          </p>
+          <Link
+            href="/profil"
+            className={buttonVariants({
+              variant: profileComplete ? "outline" : "default",
+              className: "rounded-full gap-2",
+            })}
+          >
+            <UserPen className="h-4 w-4" />
+            {profileComplete ? "Modifier mon profil" : "Remplir mon profil"}
+          </Link>
         </div>
 
         <div className="bg-card rounded-3xl border border-border shadow-soft p-6 sm:p-7">

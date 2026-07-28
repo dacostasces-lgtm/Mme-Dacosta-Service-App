@@ -6,6 +6,7 @@ import { getLocale } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimit, tooManyRequestsMessage } from "@/lib/rate-limit";
 
 const schema = z
   .object({
@@ -34,6 +35,13 @@ export async function createJob(
 ): Promise<JobFormState> {
   const user = await requireUser({ role: "employer" });
   const locale = await getLocale();
+
+  // Job postings are the public face of the platform; a loop here would fill
+  // the listing with spam faster than moderation could clear it.
+  const limit = rateLimit(`job:${user.id}`, { limit: 10, windowSeconds: 3600 });
+  if (!limit.ok) {
+    return { error: tooManyRequestsMessage(limit.retryAfterSeconds) };
+  }
 
   const parsed = schema.safeParse({
     title: formData.get("title"),

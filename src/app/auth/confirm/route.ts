@@ -56,6 +56,22 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  // A recovery link signs the user in, but only so they can choose a new
+  // password — sending them to their dashboard would leave the old one in
+  // place. `next` is matched against a fixed list rather than followed as
+  // given: it arrives from the URL, and an unchecked value here is an open
+  // redirect signed with a valid session.
+  const NEXT_ROUTES: Record<string, '/mot-de-passe'> = {
+    '/mot-de-passe': '/mot-de-passe',
+  }
+  const requestedNext = searchParams.get('next')
+  const next = requestedNext ? NEXT_ROUTES[requestedNext] : undefined
+
+  if (type === 'recovery' || next) {
+    const target = getPathname({ href: next ?? '/mot-de-passe', locale })
+    return NextResponse.redirect(new URL(target, request.url))
+  }
+
   const { data } = await supabase.auth.getUser()
   const role = (data.user?.user_metadata?.role ?? 'candidate') as UserRole
   const destination = getPathname({ href: dashboardPathFor(role), locale })

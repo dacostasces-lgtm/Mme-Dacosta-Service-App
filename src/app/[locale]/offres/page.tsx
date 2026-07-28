@@ -1,8 +1,9 @@
-import { Briefcase, MapPin, Clock, Plus, Wallet } from "lucide-react";
+import { Briefcase, MapPin, Clock, Plus, Wallet, Check, Send } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { ApplyButton } from "@/components/features/jobs/ApplyButton";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import famille from "@/assets/images/famille-cuisine.jpg";
@@ -53,6 +54,18 @@ export default async function JobsPage() {
 
   const jobs = (data ?? []) as unknown as Job[];
   const canPost = user?.role === "employer" || user?.role === "admin";
+  const canApply = user?.role === "candidate";
+
+  // Which of these the candidate already answered, so the card says so instead
+  // of offering a button that can only fail on the UNIQUE constraint.
+  let appliedTo = new Set<string>();
+  if (canApply && user.profileId) {
+    const { data: mine } = await (await createClient())
+      .from("applications")
+      .select("job_id")
+      .eq("candidate_id", user.profileId);
+    appliedTo = new Set((mine ?? []).map((row) => row.job_id as string));
+  }
 
   return (
     <>
@@ -147,6 +160,29 @@ export default async function JobsPage() {
                         profiles policy, so the embed can legitimately be null. */}
                     <span>{job.profiles?.full_name ?? "Employeur particulier"}</span>
                   </div>
+
+                  {canApply &&
+                    (appliedTo.has(job.id) ? (
+                      <p className="mt-5 text-sm font-medium text-muted-foreground flex items-center gap-2">
+                        <Check className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+                        Vous avez déjà postulé à cette offre.
+                      </p>
+                    ) : (
+                      <ApplyButton jobId={job.id} jobTitle={job.title} />
+                    ))}
+
+                  {!user && (
+                    <Link
+                      href="/login"
+                      className={buttonVariants({
+                        variant: "outline",
+                        className: "rounded-full gap-2 mt-5",
+                      })}
+                    >
+                      <Send className="h-4 w-4" />
+                      Se connecter pour postuler
+                    </Link>
+                  )}
                 </article>
               );
             })}
