@@ -29,6 +29,17 @@ const SITE_URL =
 const DESCRIPTION =
   "Nounous, ménagères, cuisiniers et chauffeurs au dossier vérifié, près de chez vous à Brazzaville et Pointe-Noire. Recherche par quartier, mise en relation directe, sans commission sur le salaire.";
 
+// Served from public/ and declared by hand rather than via the
+// `opengraph-image` file convention: that convention nested inside the dynamic
+// `[locale]` segment builds fine locally but fails on Vercel with
+// "Invariant: failed to find source route /[locale]/opengraph-image.jpg".
+const OG_IMAGE = {
+  url: "/og-image.jpg",
+  width: 1200,
+  height: 630,
+  alt: "Madame Dacosta Services — le personnel de maison vérifié à Brazzaville et Pointe-Noire",
+};
+
 export const metadata: Metadata = {
   // Required for the opengraph-image/twitter-image file conventions to resolve
   // to absolute URLs — WhatsApp and Facebook reject relative ones outright.
@@ -57,11 +68,13 @@ export const metadata: Metadata = {
     url: SITE_URL,
     title: "Madame Dacosta Services — Personnel de maison vérifié",
     description: DESCRIPTION,
+    images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
     title: "Madame Dacosta Services — Personnel de maison vérifié",
     description: DESCRIPTION,
+    images: [OG_IMAGE],
   },
   robots: { index: true, follow: true },
 };
