@@ -16,7 +16,9 @@ export function CtaBanner() {
             className="object-cover -z-10"
             fill
           />
-          <div className="absolute inset-0 -z-10 bg-gradient-to-r from-overlay/90 via-overlay/75 to-overlay/40" />
+          {/* Vertical on phones — a horizontal fade over a narrow card leaves
+              the photo almost entirely covered. */}
+          <div className="absolute inset-0 -z-10 bg-gradient-to-t from-overlay/95 via-overlay/70 to-overlay/25 sm:bg-gradient-to-r sm:from-overlay/90 sm:via-overlay/75 sm:to-overlay/40" />
 
           <div className="px-6 sm:px-12 lg:px-16 py-16 sm:py-24 max-w-2xl">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight">
