@@ -33,5 +33,7 @@ export default async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/(fr|en)/:path*'],
+  // Keep in step with routing.locales — a locale listed here but absent there
+  // gets matched by the middleware and then has nowhere to route to.
+  matcher: ['/', '/(fr)/:path*'],
 };

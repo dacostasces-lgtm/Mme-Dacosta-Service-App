@@ -6,6 +6,7 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { Navbar } from '@/components/shared/Navbar';
+import { themeBootScript } from '@/components/shared/ThemeToggle';
 import { BottomNav } from '@/components/shared/BottomNav';
 import { Footer } from '@/components/shared/Footer';
 
@@ -22,9 +23,47 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://mme-dacosta-service-app.vercel.app";
+
+const DESCRIPTION =
+  "Nounous, ménagères, cuisiniers et chauffeurs au dossier vérifié, près de chez vous à Brazzaville et Pointe-Noire. Recherche par quartier, mise en relation directe, sans commission sur le salaire.";
+
 export const metadata: Metadata = {
-  title: "Madame Dacosta Services - Personnel de Maison",
-  description: "Trouvez le personnel de maison idéal près de chez vous (Nounous, Chauffeurs, Cuisiniers...)",
+  // Required for the opengraph-image/twitter-image file conventions to resolve
+  // to absolute URLs — WhatsApp and Facebook reject relative ones outright.
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Madame Dacosta Services — Personnel de maison vérifié",
+    template: "%s · Madame Dacosta Services",
+  },
+  description: DESCRIPTION,
+  applicationName: "Madame Dacosta Services",
+  keywords: [
+    "personnel de maison",
+    "nounou",
+    "ménagère",
+    "cuisinier",
+    "chauffeur",
+    "gouvernante",
+    "Brazzaville",
+    "Pointe-Noire",
+    "Congo",
+  ],
+  openGraph: {
+    type: "website",
+    siteName: "Madame Dacosta Services",
+    locale: "fr_FR",
+    url: SITE_URL,
+    title: "Madame Dacosta Services — Personnel de maison vérifié",
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Madame Dacosta Services — Personnel de maison vérifié",
+    description: DESCRIPTION,
+  },
+  robots: { index: true, follow: true },
 };
 
 // viewportFit: 'cover' is what makes env(safe-area-inset-*) resolve to real
@@ -51,7 +90,16 @@ export default async function RootLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className={`${inter.variable} ${playfair.variable} h-full antialiased`}>
+    <html
+      lang={locale}
+      className={`${inter.variable} ${playfair.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
+      <head>
+        {/* Applies the stored theme before first paint. Must run synchronously
+            in <head>, otherwise dark-mode users get a white flash. */}
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
       {/* pt-16 clears the fixed Navbar; the pb reserves the mobile tab bar's
           row (plus the safe-area inset) so the Footer stays reachable. */}
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground pt-16 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">

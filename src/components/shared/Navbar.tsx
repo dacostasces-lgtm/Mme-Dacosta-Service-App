@@ -4,6 +4,7 @@ import { Link } from '@/i18n/routing';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { getCurrentUser, dashboardPathFor } from '@/lib/auth/dal';
 import { signOut } from '@/lib/auth/actions';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
 export async function Navbar() {
   const [user, locale] = await Promise.all([getCurrentUser(), getLocale()]);
@@ -24,6 +25,7 @@ export async function Navbar() {
 
         {user ? (
           <div className="flex items-center gap-2 sm:gap-4">
+            <ThemeToggle />
             {user.role === 'admin' && (
               <Link
                 href="/admin"
@@ -56,7 +58,8 @@ export async function Navbar() {
             </form>
           </div>
         ) : (
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <ThemeToggle />
             <Link href="/login" className={buttonVariants({ variant: "ghost", className: "hidden sm:inline-flex rounded-full" })}>
               Connexion
             </Link>

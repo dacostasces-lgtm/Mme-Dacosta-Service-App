@@ -6,7 +6,14 @@ const withNextIntl = createNextIntlPlugin(
 );
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  async redirects() {
+    return [
+      // `en` was removed from routing.locales, so /en/* would 404. Anything
+      // already shared or indexed lands on the French equivalent instead.
+      { source: '/en', destination: '/fr', permanent: false },
+      { source: '/en/:path*', destination: '/fr/:path*', permanent: false },
+    ];
+  },
 };
 
 export default withNextIntl(nextConfig);
