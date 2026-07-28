@@ -2,7 +2,7 @@ import { SearchX } from "lucide-react";
 import { SearchFilters } from "@/components/features/search/SearchFilters";
 import { ProfileCard } from "@/components/features/search/ProfileCard";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import banniere from "@/assets/images/banniere-candidats.jpg";
 
 type Candidate = {
@@ -25,6 +25,10 @@ const AVAILABILITY_LABELS: Record<string, string> = {
   external: "Externe",
 };
 
+/** Shown instead of a 500 when a deploy is missing its Supabase credentials. */
+const MISCONFIGURED =
+  "Service temporairement indisponible : la connexion à la base de données n'est pas configurée sur ce déploiement.";
+
 function toNumber(value: string | undefined) {
   if (!value) return undefined;
   const parsed = Number(value);
@@ -37,17 +41,20 @@ export default async function CandidatesPage({
   searchParams: Promise<{ q?: string; rayon?: string; dispo?: string; lat?: string; lng?: string }>;
 }) {
   const params = await searchParams;
-  const supabase = await createClient();
 
   // Only validated profiles come back: search_candidates runs as SECURITY
   // INVOKER, so the RLS policy on `profiles` filters the rows, not this page.
-  const { data, error } = await supabase.rpc("search_candidates", {
-    origin_lat: toNumber(params.lat) ?? null,
-    origin_lng: toNumber(params.lng) ?? null,
-    max_km: toNumber(params.rayon) ?? null,
-    search: params.q ?? null,
-    availability_filter: params.dispo ?? null,
-  });
+  const { data, error } = isSupabaseConfigured()
+    ? await (
+        await createClient()
+      ).rpc("search_candidates", {
+        origin_lat: toNumber(params.lat) ?? null,
+        origin_lng: toNumber(params.lng) ?? null,
+        max_km: toNumber(params.rayon) ?? null,
+        search: params.q ?? null,
+        availability_filter: params.dispo ?? null,
+      })
+    : { data: null, error: { message: MISCONFIGURED } };
 
   const candidates = (data ?? []) as Candidate[];
 

@@ -4,7 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { getCurrentUser } from "@/lib/auth/dal";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import famille from "@/assets/images/famille-cuisine.jpg";
 
 type Job = {
@@ -30,19 +30,26 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
 }
 
+/** Shown instead of a 500 when a deploy is missing its Supabase credentials. */
+const MISCONFIGURED =
+  "Service temporairement indisponible : la connexion à la base de données n'est pas configurée sur ce déploiement.";
+
 export default async function JobsPage() {
-  const supabase = await createClient();
   const user = await getCurrentUser();
 
   // The "Active jobs are viewable by everyone" policy already restricts this to
   // active postings (plus an employer's own), so no status filter is needed here.
-  const { data, error } = await supabase
-    .from("jobs")
-    .select(
-      "id, title, description, salary_range_min, salary_range_max, created_at, " +
-        "profiles(full_name, is_premium), neighborhoods(name, cities(name))"
-    )
-    .order("created_at", { ascending: false });
+  const { data, error } = isSupabaseConfigured()
+    ? await (
+        await createClient()
+      )
+        .from("jobs")
+        .select(
+          "id, title, description, salary_range_min, salary_range_max, created_at, " +
+            "profiles(full_name, is_premium), neighborhoods(name, cities(name))"
+        )
+        .order("created_at", { ascending: false })
+    : { data: null, error: { message: MISCONFIGURED } };
 
   const jobs = (data ?? []) as unknown as Job[];
   const canPost = user?.role === "employer" || user?.role === "admin";
