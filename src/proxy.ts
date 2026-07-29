@@ -52,11 +52,22 @@ function localeOf(pathname: string) {
     : routing.defaultLocale;
 }
 
-const supabaseHost = (() => {
+/**
+ * Origine complète de l'API Supabase, port compris.
+ *
+ * Reconstruire `https://${hostname}` perdait le port : l'API locale, servie sur
+ * http://127.0.0.1:54321, n'était donc jamais autorisée par connect-src, et
+ * chaque appel — inscription, connexion — échouait silencieusement.
+ */
+const supabase = (() => {
   try {
-    return process.env.NEXT_PUBLIC_SUPABASE_URL
-      ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
-      : null;
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return null;
+    const url = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL);
+    return {
+      origin: url.origin,
+      socket: `${url.protocol === 'https:' ? 'wss' : 'ws'}://${url.host}`,
+      secure: url.protocol === 'https:',
+    };
   } catch {
     return null;
   }
@@ -88,11 +99,16 @@ function contentSecurityPolicy(nonce: string) {
     // every animation on the site. Inline styles are not an XSS vector in the
     // way inline scripts are, so this is the trade worth making.
     "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob:${supabaseHost ? ` https://${supabaseHost}` : ' https:'}`,
+    `img-src 'self' data: blob:${supabase ? ` ${supabase.origin}` : ' https:'}`,
     "font-src 'self' data:",
+    // `ws:` uniquement en développement, pour la WebSocket de rechargement à
+    // chaud. Sans elle la politique cassait `next dev` entièrement : le client
+    // HMR de Turbopack échoue, l'hydratation ne se termine jamais, et plus
+    // aucun formulaire ni bouton ne répond — en local seulement, la production
+    // restant interactive. Rien dans la console ne reliait le symptôme à la CSP.
     `connect-src 'self'${
-      supabaseHost ? ` https://${supabaseHost} wss://${supabaseHost}` : ' https:'
-    } https://nominatim.openstreetmap.org`,
+      supabase ? ` ${supabase.origin} ${supabase.socket}` : ' https:'
+    } https://nominatim.openstreetmap.org${isDev ? ' ws: wss:' : ''}`,
     // Stated explicitly rather than left to the fallback chain: worker-src
     // falls back to script-src, which carries 'strict-dynamic' and a nonce —
     // neither of which a `serviceWorker.register('/sw.js')` call can satisfy.
@@ -102,7 +118,13 @@ function contentSecurityPolicy(nonce: string) {
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",
-    'upgrade-insecure-requests',
+    // Omis dès qu'une dépendance est servie en clair. La directive réécrit tout
+    // http:// en https://, donc y compris l'API Supabase locale : chaque appel
+    // échouait en ERR_SSL_PROTOCOL_ERROR — plus d'inscription, plus de connexion
+    // — sans rien d'explicite dans la console. La condition porte sur l'URL et
+    // non sur NODE_ENV, car un build de production peut viser une base locale,
+    // ce que fait précisément la suite de tests.
+    ...(supabase && !supabase.secure ? [] : ['upgrade-insecure-requests']),
   ].join('; ');
 }
 
