@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
 /**
@@ -11,6 +12,22 @@ import { cookies } from 'next/headers'
 export function isSupabaseConfigured() {
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  )
+}
+
+/**
+ * Anonymous client, with no cookies attached.
+ *
+ * For the places that must see exactly what a signed-out visitor sees — the
+ * sitemap above all. Reading cookies there would both tie the output to
+ * whoever requested it and force the route to be rendered on every hit, since
+ * `cookies()` is a request-time API and opts the route out of caching.
+ */
+export function createAnonClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } }
   )
 }
 

@@ -4,6 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ApplyButton } from "@/components/features/jobs/ApplyButton";
+import { formatSalary, formatShortDate } from "@/lib/jobs/format";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import famille from "@/assets/images/famille-cuisine.jpg";
@@ -18,18 +19,6 @@ type Job = {
   profiles: { full_name: string; is_premium: boolean } | null;
   neighborhoods: { name: string; cities: { name: string } | null } | null;
 };
-
-function formatSalary(min: number | null, max: number | null) {
-  const format = (value: number) => new Intl.NumberFormat("fr-FR").format(value);
-  if (min && max) return `${format(min)} – ${format(max)} FCFA / mois`;
-  if (min) return `À partir de ${format(min)} FCFA / mois`;
-  if (max) return `Jusqu'à ${format(max)} FCFA / mois`;
-  return "Salaire à négocier";
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
-}
 
 /** Shown instead of a 500 when a deploy is missing its Supabase credentials. */
 const MISCONFIGURED =
@@ -128,7 +117,17 @@ export default async function JobsPage() {
                   )}
 
                   <div className="flex items-start justify-between gap-4 mb-2">
-                    <h2 className="text-xl font-bold leading-snug">{job.title}</h2>
+                    <h2 className="text-xl font-bold leading-snug">
+                      {/* Deliberately not a stretched link: the card also holds
+                          the apply form, and an `after:inset-0` overlay would
+                          paint over it and swallow the button's clicks. */}
+                      <Link
+                        href={`/offres/${job.id}`}
+                        className="hover:text-primary transition-colors"
+                      >
+                        {job.title}
+                      </Link>
+                    </h2>
                     {job.profiles?.is_premium && (
                       <Badge className="bg-secondary text-secondary-foreground font-semibold shrink-0">
                         Premium
@@ -154,11 +153,17 @@ export default async function JobsPage() {
                     )}
                     <span className="flex items-center gap-1.5">
                       <Clock className="h-3.5 w-3.5" aria-hidden />
-                      Publiée le {formatDate(job.created_at)}
+                      Publiée le {formatShortDate(job.created_at)}
                     </span>
                     {/* Employers awaiting moderation are invisible under the
                         profiles policy, so the embed can legitimately be null. */}
                     <span>{job.profiles?.full_name ?? "Employeur particulier"}</span>
+                    <Link
+                      href={`/offres/${job.id}`}
+                      className="ml-auto font-medium text-primary hover:underline"
+                    >
+                      Voir l&apos;offre
+                    </Link>
                   </div>
 
                   {canApply &&
