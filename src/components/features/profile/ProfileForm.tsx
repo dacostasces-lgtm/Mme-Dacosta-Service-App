@@ -5,6 +5,7 @@ import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { updateProfile, type ProfileFormState } from "@/lib/profile/actions";
+import { PHONE_HINT } from "@/lib/phone";
 import type { NeighborhoodOption } from "@/components/features/jobs/JobForm";
 
 const FIELD =
@@ -94,7 +95,7 @@ export function ProfileForm({
 
         {contactEditable ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Téléphone" htmlFor="phone">
+            <Field label="Téléphone" htmlFor="phone" hint={PHONE_HINT}>
               <Input
                 id="phone"
                 name="phone"

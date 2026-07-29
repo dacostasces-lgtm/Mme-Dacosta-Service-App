@@ -4,17 +4,39 @@ import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import { normalisePhone } from "@/lib/phone";
 
 export type ProfileFormState = { error?: string; ok?: boolean };
 
-/** Digits, spaces and the usual separators. Deliberately loose: Congolese
- *  numbers get written +242 06 717 30 30, 06.717.30.30 or 0671 73030. */
+/**
+ * Validated *and* rewritten to one canonical shape.
+ *
+ * The old rule only checked which characters were allowed, so "06" and
+ * "0000000000000" both passed. A wrong number is worse than a missing one here:
+ * it is the single channel an employer has to reach a candidate, and the typo
+ * only surfaces when a placement fails.
+ *
+ * `transform` runs after validation, so what reaches the database is always
+ * `+242 06 717 30 30` — two spellings of one number could not be compared, which
+ * is how duplicate accounts and failed lookups start.
+ */
 const phone = z
   .string()
   .trim()
-  .max(32, "Numéro trop long.")
-  .regex(/^[0-9+\s().-]*$/, "Ce numéro contient des caractères inattendus.")
-  .optional();
+  .transform((value) => (value === "" ? undefined : value))
+  .optional()
+  .superRefine((value, ctx) => {
+    if (value === undefined) return;
+    const result = normalisePhone(value);
+    if (!result.ok) {
+      ctx.addIssue({ code: "custom", message: result.reason });
+    }
+  })
+  .transform((value) => {
+    if (value === undefined) return undefined;
+    const result = normalisePhone(value);
+    return result.ok ? result.value : value;
+  });
 
 const baseSchema = z.object({
   fullName: z.string().trim().min(2, "Indiquez votre nom complet."),

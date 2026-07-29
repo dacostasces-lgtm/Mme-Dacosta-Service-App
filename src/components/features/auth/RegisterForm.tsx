@@ -10,22 +10,32 @@ import { Input } from "@/components/ui/input";
 import { useLocale } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { Link, useRouter } from "@/i18n/routing";
+import { normalisePhone, PHONE_HINT } from "@/lib/phone";
+import type { CityRef } from "@/lib/geo/locations";
 
 const schema = z.object({
   fullName: z.string().min(2, "Requis"),
   email: z.string().email("Email invalide"),
   password: z.string().min(8, "Au moins 8 caractères"),
   role: z.enum(["employer", "candidate"]),
-  country: z.string().min(1, "Requis"),
-  city: z.string().min(1, "Requis"),
-  neighborhood: z.string().min(1, "Requis"),
+  phone: z
+    .string()
+    .trim()
+    .min(1, "Requis")
+    .refine((value) => normalisePhone(value).ok, {
+      message: "Numéro invalide. Format attendu : 06 717 30 30.",
+    }),
+  // Ids from the seeded reference list, not free text. Typed quartiers are what
+  // produced two Brazzaville rows in production, each with its own Bacongo.
+  cityId: z.string().uuid("Choisissez une ville"),
+  neighborhoodId: z.string().uuid("Choisissez un quartier"),
   lat: z.number().optional(),
   lng: z.number().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
 
-export function RegisterForm() {
+export function RegisterForm({ cities }: { cities: CityRef[] }) {
   const router = useRouter();
   const locale = useLocale();
   const [gpsLoading, setGpsLoading] = useState(false);
@@ -38,11 +48,15 @@ export function RegisterForm() {
     defaultValues: {
       role: "employer",
       fullName: "",
-      country: "",
-      city: "",
-      neighborhood: "",
+      phone: "",
+      // Brazzaville first: it is the launch city and carries most of the traffic.
+      cityId: cities[0]?.id ?? "",
+      neighborhoodId: "",
     },
   });
+
+  const selectedCityId = form.watch("cityId");
+  const selectedCity = cities.find((city) => city.id === selectedCityId) ?? cities[0];
 
   const requestGPS = () => {
     setGpsLoading(true);
@@ -61,18 +75,41 @@ export function RegisterForm() {
         form.setValue("lng", longitude);
         
         try {
-          // Simulation of Reverse Geocoding (e.g. OpenStreetMap Nominatim)
-          // In a real implementation, call an API Route to keep keys secret.
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          );
           const data = await res.json();
-          
-          if (data && data.address) {
-            form.setValue("country", data.address.country || "Congo-Brazzaville");
-            form.setValue("city", data.address.city || data.address.town || data.address.village || "Brazzaville");
-            form.setValue("neighborhood", data.address.suburb || data.address.neighbourhood || "");
+          const address = data?.address ?? {};
+
+          // GPS now *preselects* from the reference list instead of writing text
+          // into it. Nominatim returns names we do not control ("Congo",
+          // "Bacongo Sud"…), so an unrecognised answer leaves the menus for the
+          // user rather than inventing an entry — the coordinates are kept
+          // either way, and they are what proximity search actually uses.
+          const cityName = address.city || address.town || address.village || "";
+          const matchedCity =
+            cities.find((city) => city.name.toLowerCase() === cityName.toLowerCase()) ??
+            selectedCity;
+
+          if (matchedCity) {
+            form.setValue("cityId", matchedCity.id);
+
+            const quartierName = (address.suburb || address.neighbourhood || "")
+              .toLowerCase();
+            const matched = matchedCity.neighborhoods.find((quartier) =>
+              quartierName.includes(quartier.name.toLowerCase())
+            );
+
+            if (matched) {
+              form.setValue("neighborhoodId", matched.id);
+            } else if (quartierName) {
+              setGpsError(
+                "Position enregistrée, mais votre quartier n'a pas été reconnu : choisissez-le dans la liste."
+              );
+            }
           }
         } catch {
-          setGpsError("Erreur lors de la récupération de l'adresse.");
+          setGpsError("Position enregistrée, mais l'adresse n'a pas pu être lue.");
         } finally {
           setGpsLoading(false);
         }
@@ -92,6 +129,11 @@ export function RegisterForm() {
       return;
     }
 
+    // Computed once: calling normalisePhone twice would not narrow its union,
+    // and the schema has already guaranteed this parses.
+    const parsedPhone = normalisePhone(data.phone);
+    const normalisedPhone = parsedPhone.ok ? parsedPhone.value : data.phone;
+
     const supabase = createClient();
     const { data: signUpData, error } = await supabase.auth.signUp({
       email: data.email,
@@ -103,9 +145,17 @@ export function RegisterForm() {
         data: {
           role: data.role,
           full_name: data.fullName,
-          country: data.country,
-          city: data.city,
-          neighborhood: data.neighborhood,
+          // Normalised before it leaves the browser, so the trigger stores one
+          // canonical shape whatever the user typed.
+          phone: normalisedPhone,
+          // The id is what the trigger uses; the names ride along for the
+          // fallback path and cost nothing.
+          neighborhood_id: data.neighborhoodId,
+          city: selectedCity?.name,
+          neighborhood: selectedCity?.neighborhoods.find(
+            (quartier) => quartier.id === data.neighborhoodId
+          )?.name,
+          country: selectedCity?.country,
           lat: data.lat,
           lng: data.lng,
         },
@@ -194,22 +244,85 @@ export function RegisterForm() {
           {form.formState.errors.password && <p className="text-xs text-destructive mt-1">{form.formState.errors.password.message}</p>}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium mb-1 block">Pays</label>
-            <Input placeholder="Congo-Brazzaville" {...form.register("country")} />
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">Ville</label>
-            <Input placeholder="Brazzaville" {...form.register("city")} />
-          </div>
-        </div>
-        
         <div>
-          <label className="text-sm font-medium mb-1 block">Quartier</label>
-          <Input placeholder="Bacongo" {...form.register("neighborhood")} />
-          {form.formState.errors.neighborhood && <p className="text-xs text-destructive mt-1">{form.formState.errors.neighborhood.message}</p>}
+          <label htmlFor="phone" className="text-sm font-medium mb-1 block">
+            Téléphone
+          </label>
+          <Input
+            id="phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="06 717 30 30"
+            {...form.register("phone")}
+          />
+          {form.formState.errors.phone ? (
+            <p className="text-xs text-destructive mt-1">{form.formState.errors.phone.message}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground mt-1">{PHONE_HINT}</p>
+          )}
         </div>
+
+        {/* Menus rather than text inputs: a typed quartier is what created two
+            Brazzaville rows in production, and every misspelling silently
+            excludes a profile from the proximity search. */}
+        {cities.length === 0 ? (
+          <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">
+            La liste des quartiers n&apos;a pas pu être chargée. Rechargez la page ou
+            réessayez dans un instant.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="cityId" className="text-sm font-medium mb-1 block">
+                Ville
+              </label>
+              <select
+                id="cityId"
+                className="w-full h-12 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                {...form.register("cityId", {
+                  // Changing city invalidates the quartier chosen under the old
+                  // one, which would otherwise be submitted as a mismatched pair.
+                  onChange: () => form.setValue("neighborhoodId", ""),
+                })}
+              >
+                {cities.map((city) => (
+                  <option key={city.id} value={city.id}>
+                    {city.name}
+                  </option>
+                ))}
+              </select>
+              {form.formState.errors.cityId && (
+                <p className="text-xs text-destructive mt-1">
+                  {form.formState.errors.cityId.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="neighborhoodId" className="text-sm font-medium mb-1 block">
+                Quartier
+              </label>
+              <select
+                id="neighborhoodId"
+                className="w-full h-12 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                {...form.register("neighborhoodId")}
+              >
+                <option value="">Choisir…</option>
+                {(selectedCity?.neighborhoods ?? []).map((quartier) => (
+                  <option key={quartier.id} value={quartier.id}>
+                    {quartier.name}
+                  </option>
+                ))}
+              </select>
+              {form.formState.errors.neighborhoodId && (
+                <p className="text-xs text-destructive mt-1">
+                  {form.formState.errors.neighborhoodId.message}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {submitError && (
           <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">{submitError}</p>

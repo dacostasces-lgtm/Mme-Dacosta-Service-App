@@ -3,10 +3,15 @@ import { RegisterForm } from "@/components/features/auth/RegisterForm";
 import { AuthShell } from "@/components/shared/AuthShell";
 import { redirect } from "@/i18n/routing";
 import { getCurrentUser, dashboardPathFor } from "@/lib/auth/dal";
+import { getLocations } from "@/lib/geo/locations";
 import illustration from "@/assets/images/metier-nounou.jpg";
 
 export default async function RegisterPage() {
-  const [user, locale] = await Promise.all([getCurrentUser(), getLocale()]);
+  const [user, locale, cities] = await Promise.all([
+    getCurrentUser(),
+    getLocale(),
+    getLocations(),
+  ]);
 
   if (user) {
     redirect({ href: dashboardPathFor(user.role), locale });
@@ -19,7 +24,7 @@ export default async function RegisterPage() {
       quote="Employeurs et candidats sur la même plateforme, sans commission sur le salaire."
       author="Madame Dacosta Services"
     >
-      <RegisterForm />
+      <RegisterForm cities={cities} />
     </AuthShell>
   );
 }
