@@ -1,13 +1,21 @@
 /**
- * Segment-level fallback. Every route here is server-rendered on demand and
- * most of them wait on Supabase, so without this the browser sits on the
- * previous page with no feedback — which on a slow mobile connection reads as
- * a frozen app rather than a loading one.
+ * Loading placeholder for the list-shaped pages.
  *
- * A skeleton rather than a spinner: it holds the page's shape, so the content
- * does not jump when it arrives.
+ * Every route here is server-rendered on demand and waits on Supabase, so
+ * without a fallback the browser sits on the previous page with no feedback —
+ * on a slow mobile connection that reads as a frozen app. A skeleton rather
+ * than a spinner: it holds the page's shape, so nothing jumps on arrival.
+ *
+ * Exported as a component, not written as `[locale]/loading.tsx`. A route-level
+ * `loading.tsx` wraps its whole subtree in a Suspense boundary, and the shell is
+ * then flushed before the page runs — after which `notFound()` can no longer set
+ * the status code. A global one turned every missing offer and every stale
+ * profile URL into a soft 404: HTTP 200 carrying "cette page n'existe pas",
+ * which search engines treat as thin content rather than as a removal.
+ *
+ * So it is used only in segments with no dynamic child that can 404.
  */
-export default function Loading() {
+export function ListSkeleton() {
   return (
     <div className="flex-1 bg-surface bg-grain" aria-busy="true" aria-live="polite">
       <span className="sr-only">Chargement en cours…</span>
