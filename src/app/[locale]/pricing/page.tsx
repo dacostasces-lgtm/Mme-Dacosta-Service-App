@@ -2,6 +2,8 @@ import { Check, Minus } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth/dal";
+import { ChoosePlanButton } from "@/components/features/subscriptions/ChoosePlanButton";
+import type { PlanId } from "@/lib/subscriptions/plans";
 import { cn } from "@/lib/utils";
 
 // Placeholder amounts in XAF, gathered here so they can be changed in one place
@@ -23,6 +25,9 @@ const PLANS = [
   },
   {
     name: "Premium Candidat",
+    // Ties the card to lib/subscriptions/plans.ts, which is where the price
+    // that actually gets charged lives.
+    id: "premium_candidate" as PlanId,
     price: 5000,
     tagline: "Pour être vu en premier",
     audience: "Candidats",
@@ -37,6 +42,7 @@ const PLANS = [
   },
   {
     name: "Premium Employeur",
+    id: "premium_employer" as PlanId,
     price: 25000,
     tagline: "Pour recruter sans attendre",
     audience: "Employeurs et agences",
@@ -121,19 +127,25 @@ export default async function PricingPage() {
                 ))}
               </ul>
 
-              <Link
-                href={user ? "/dashboard/employer" : "/register"}
-                // cn() rather than buttonVariants({ className }) so the border
-                // override actually replaces the variant's own border colour.
-                className={cn(
-                  buttonVariants({ variant: plan.highlighted ? "default" : "outline" }),
-                  "w-full h-11 rounded-full",
-                  !plan.highlighted &&
-                    "border-2 border-primary/30 text-primary hover:bg-accent hover:text-primary"
-                )}
-              >
-                {plan.price === 0 ? "Créer un compte" : "Choisir cette offre"}
-              </Link>
+              {plan.id && user ? (
+                <ChoosePlanButton planId={plan.id} highlighted={plan.highlighted} />
+              ) : (
+                <Link
+                  // Signed-out visitors register first: a subscription is tied
+                  // to a profile, so there is nothing to attach one to yet.
+                  href={plan.id ? "/register" : user ? "/profil" : "/register"}
+                  // cn() rather than buttonVariants({ className }) so the border
+                  // override actually replaces the variant's own border colour.
+                  className={cn(
+                    buttonVariants({ variant: plan.highlighted ? "default" : "outline" }),
+                    "w-full h-11 rounded-full",
+                    !plan.highlighted &&
+                      "border-2 border-primary/30 text-primary hover:bg-accent hover:text-primary"
+                  )}
+                >
+                  {plan.price === 0 ? "Créer un compte" : "Choisir cette offre"}
+                </Link>
+              )}
             </div>
           ))}
         </div>

@@ -4,6 +4,10 @@ import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { setProfileValidation, setCandidateCheck, type CandidateCheck } from "@/lib/admin/actions";
 import { PaymentQueue, type DeclaredPayment } from "@/components/features/admin/PaymentQueue";
+import {
+  SubscriptionQueue,
+  type DeclaredSubscription,
+} from "@/components/features/admin/SubscriptionQueue";
 
 type CandidateDetails = {
   job_title: string | null;
@@ -146,7 +150,7 @@ export default async function AdminPage() {
   await requireUser({ role: "admin" });
 
   const supabase = await createClient();
-  const [pending, validated, declared] = await Promise.all([
+  const [pending, validated, declared, subscriptions] = await Promise.all([
     supabase.from("profiles").select(SELECT).eq("is_validated", false).order("created_at"),
     supabase
       .from("profiles")
@@ -162,6 +166,15 @@ export default async function AdminPage() {
         "id, amount, currency, payment_method, payment_reference, payment_declared_at, " +
           "employer:profiles!bookings_employer_id_fkey(full_name), " +
           "candidate:profiles!bookings_candidate_id_fkey(full_name)"
+      )
+      .eq("status", "pending_payment")
+      .not("payment_declared_at", "is", null)
+      .order("payment_declared_at"),
+    // Premium requests whose buyer has sent a transaction id.
+    supabase
+      .from("subscriptions")
+      .select(
+        "id, plan_name, price, payment_reference, payment_declared_at, profiles(full_name, role)"
       )
       .eq("status", "pending_payment")
       .not("payment_declared_at", "is", null)
@@ -192,6 +205,11 @@ export default async function AdminPage() {
   // applied the payment columns don't exist, and folding this in would hide the
   // whole moderation queue behind an error banner about an unrelated feature.
   const paymentsUnavailable = declared.error?.message ?? null;
+  // Same reasoning: until 20260728050000_subscriptions_manual.sql is applied the
+  // status column does not exist, and that must not hide the moderation queue.
+  const declaredSubscriptions = subscriptions.error
+    ? []
+    : ((subscriptions.data ?? []) as unknown as DeclaredSubscription[]);
 
   return (
     <div className="min-h-screen bg-surface">
@@ -210,6 +228,8 @@ export default async function AdminPage() {
         )}
 
         <PaymentQueue payments={declaredPayments} unavailable={paymentsUnavailable} />
+
+        <SubscriptionQueue subscriptions={declaredSubscriptions} />
 
         <section className="mb-12">
           <h2 className="text-lg font-semibold mb-4">
