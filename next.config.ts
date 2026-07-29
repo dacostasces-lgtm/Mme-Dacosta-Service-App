@@ -55,7 +55,20 @@ const nextConfig: NextConfig = {
       : [],
   },
   async headers() {
-    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+    return [
+      { source: "/:path*", headers: SECURITY_HEADERS },
+      {
+        // A cached service worker is a bug that outlives the deploy meant to
+        // fix it: the browser would keep running the old one, still serving the
+        // assets it cached, until its own heuristics expired the file.
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
+        ],
+      },
+    ];
   },
   async redirects() {
     return [

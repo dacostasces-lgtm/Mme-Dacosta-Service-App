@@ -5,10 +5,15 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
+// Shared with robots.ts and sitemap.ts, which must resolve to the same origin
+// as `metadataBase` below or the sitemap contradicts the canonical tags.
+import { SITE_URL } from "@/lib/site";
+
 import { routing } from '@/i18n/routing';
 import { Navbar } from '@/components/shared/Navbar';
 import { themeBootScript } from '@/components/shared/ThemeToggle';
 import { BottomNav } from '@/components/shared/BottomNav';
+import { ServiceWorker } from '@/components/shared/ServiceWorker';
 import { Footer } from '@/components/shared/Footer';
 
 const inter = Inter({
@@ -24,8 +29,6 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://mme-dacosta-service-app.vercel.app";
 
 const DESCRIPTION =
   "Nounous, ménagères, cuisiniers et chauffeurs au dossier vérifié, près de chez vous à Brazzaville et Pointe-Noire. Recherche par quartier, mise en relation directe, sans commission sur le salaire.";
@@ -133,6 +136,7 @@ export default async function RootLayout({
           </main>
           <Footer />
           <BottomNav />
+          <ServiceWorker />
         </NextIntlClientProvider>
       </body>
     </html>

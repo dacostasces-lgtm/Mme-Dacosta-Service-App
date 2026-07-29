@@ -93,6 +93,11 @@ function contentSecurityPolicy(nonce: string) {
     `connect-src 'self'${
       supabaseHost ? ` https://${supabaseHost} wss://${supabaseHost}` : ' https:'
     } https://nominatim.openstreetmap.org`,
+    // Stated explicitly rather than left to the fallback chain: worker-src
+    // falls back to script-src, which carries 'strict-dynamic' and a nonce —
+    // neither of which a `serviceWorker.register('/sw.js')` call can satisfy.
+    "worker-src 'self'",
+    "manifest-src 'self'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Hors connexion — Madame Dacosta Services</title>
+    <!--
+      Served by the service worker when a navigation fails. Standalone by
+      necessity: it has to render with no network at all, so nothing here may
+      reference the app's stylesheet or fonts.
+    -->
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: 24px;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        background: #f8f9fa; color: #222;
+      }
+      @media (prefers-color-scheme: dark) { body { background: #121212; color: #f8f9fa; } }
+      .card { max-width: 26rem; text-align: center; }
+      .brand { color: #b83a9c; font-weight: 700; font-size: 1.25rem; margin: 0 0 2rem; }
+      h1 { font-size: 1.375rem; margin: 0 0 0.75rem; }
+      p { line-height: 1.6; opacity: 0.75; margin: 0 0 1.75rem; }
+      button {
+        background: #b83a9c; color: #fff; border: 0; border-radius: 999px;
+        padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600; cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <p class="brand">Madame Dacosta Services</p>
+      <h1>Vous êtes hors connexion</h1>
+      <p>
+        Cette page a besoin d'internet pour s'afficher. Vérifiez votre connexion,
+        puis réessayez.
+      </p>
+      <button onclick="location.reload()">Réessayer</button>
+    </div>
+  </body>
+</html>

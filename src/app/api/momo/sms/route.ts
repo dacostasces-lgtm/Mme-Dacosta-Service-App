@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isTrustedSender, looksLikeCredit, parseSms } from "@/lib/payments/sms";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * Receives Mobile Money confirmation SMS relayed from the phone holding the
@@ -28,6 +29,7 @@ function secretMatches(provided: string | null, expected: string) {
 
 export async function POST(request: Request) {
   const expectedSecret = process.env.MOMO_RELAY_SECRET;
+  const senders = process.env.MOMO_SMS_SENDERS ?? "";
 
   // Without a configured secret the endpoint would be an open door onto the
   // bookings table, so it stays shut rather than defaulting to permissive.
@@ -35,6 +37,28 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Relais non configuré (MOMO_RELAY_SECRET absent)." },
       { status: 503 }
+    );
+  }
+
+  // Same reasoning for the sender list. It used to mean "accept any sender"
+  // when empty, which turns a forgotten environment variable into free
+  // bookings: the merchant number is public, so anyone can text that SIM and
+  // the relay forwards it. Refusing is the only safe reading of "unset".
+  if (!senders.trim()) {
+    return NextResponse.json(
+      { error: "Relais non configuré (MOMO_SMS_SENDERS absent)." },
+      { status: 503 }
+    );
+  }
+
+  // The secret is compared in constant time, but nothing capped the number of
+  // guesses. One bucket for the whole endpoint rather than per IP: the relay is
+  // a single phone, so a legitimate caller never comes close to this.
+  const throttle = rateLimit("momo-sms", { limit: 60, windowSeconds: 60 });
+  if (!throttle.ok) {
+    return NextResponse.json(
+      { error: "Trop de requêtes." },
+      { status: 429, headers: { "Retry-After": String(throttle.retryAfterSeconds) } }
     );
   }
 
@@ -56,7 +80,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "SMS vide." }, { status: 400 });
   }
 
-  if (!isTrustedSender(sender, process.env.MOMO_SMS_SENDERS ?? "")) {
+  if (!isTrustedSender(sender, senders)) {
     return NextResponse.json({ outcome: "ignored", reason: "sender" });
   }
 
