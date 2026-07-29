@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import { notifyProfileValidated } from "@/lib/email/send";
+import { absoluteUrl, DEFAULT_LOCALE } from "@/lib/site";
 
 /**
  * Publishes a profile, or takes it back off the listing.
@@ -23,6 +25,16 @@ export async function setProfileValidation(profileId: string, validated: boolean
 
   if (error) {
     throw new Error(`Impossible de mettre à jour le profil : ${error.message}`);
+  }
+
+  // Only on publication, and only once the write succeeded. Being told your
+  // profile is live is the moment the platform becomes useful to a candidate,
+  // and nothing else in the app tells them.
+  if (validated) {
+    await notifyProfileValidated({
+      profileId,
+      url: absoluteUrl(`/${DEFAULT_LOCALE}/dashboard/candidate`),
+    });
   }
 
   // The moderation queue and the public listing both change; revalidating the
