@@ -154,6 +154,15 @@ max_indexes = 5
 
 [auth]
 enabled = true
+# ATTENTION — ces deux réglages ne valent QUE pour la pile locale.
+#
+# Les URL de la production se règlent dans le tableau de bord Supabase
+# (Authentication > URL Configuration) et ne sont pas lues depuis ce fichier.
+# En revanche `supabase config push` les écraserait AVEC les valeurs ci-dessous :
+# le Site URL de production repasserait sur 127.0.0.1 et tous les liens de
+# confirmation d'email repartiraient vers localhost. Ne pas lancer cette
+# commande sans avoir d'abord aligné ce bloc sur le domaine réel.
+#
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
 site_url = "http://127.0.0.1:3000"
