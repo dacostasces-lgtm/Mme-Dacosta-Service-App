@@ -40,7 +40,12 @@ export async function setAvatar(objectPath: string): Promise<FileState> {
 
   if (error) return { error: `Enregistrement impossible : ${error.message}` };
 
-  revalidatePath("/", "layout");
+  // La page de profil seulement, pas le layout entier. Une révalidation de
+  // layout remonte FileUploads, ce qui efface l'aperçu local juste posé — et
+  // si le nouveau avatar_url n'est pas encore redescendu, l'écran retombe sur
+  // les initiales sans jamais réafficher la photo. Les autres pages qui
+  // montrent l'avatar sont rendues à la demande, elles la verront d'elles-mêmes.
+  revalidatePath("/[locale]/profil", "page");
   return { ok: true };
 }
 
@@ -61,7 +66,7 @@ export async function setCv(objectPath: string): Promise<FileState> {
 
   if (error) return { error: `Enregistrement impossible : ${error.message}` };
 
-  revalidatePath("/", "layout");
+  revalidatePath("/[locale]/profil", "page");
   return { ok: true };
 }
 

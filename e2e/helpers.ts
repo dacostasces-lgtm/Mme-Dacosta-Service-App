@@ -30,13 +30,13 @@ export async function register(
 ) {
   await page.goto("/fr/register");
 
-  await page.locator("select").selectOption(role);
+  await page.locator('select[name="role"]').selectOption(role);
   await page.getByPlaceholder("Awa Dacosta").fill(fullName);
   await page.getByPlaceholder("email@exemple.com").fill(email);
   await page.getByPlaceholder("••••••••").fill(PASSWORD);
-  await page.getByPlaceholder("Congo-Brazzaville").fill("Congo-Brazzaville");
-  await page.getByPlaceholder("Brazzaville", { exact: true }).fill("Brazzaville");
-  await page.getByPlaceholder("Bacongo").fill("Bacongo");
+  await page.getByLabel("Téléphone").fill("067173030");
+  await page.getByLabel("Ville").selectOption({ label: "Brazzaville" });
+  await page.getByLabel("Quartier").selectOption({ label: "Bacongo" });
 
   await page.getByRole("button", { name: "Créer mon compte" }).click();
 
@@ -60,3 +60,31 @@ export const PNG_1x1 = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
   "base64"
 );
+
+/**
+ * Dépose un fichier en passant par le bouton visible, pas par l'input caché.
+ *
+ * `setInputFiles` sur un input `sr-only` écrit dans le DOM et émet `change` —
+ * même si React n'a pas encore hydraté la page, auquel cas aucun gestionnaire
+ * n'écoute et l'envoi n'a simplement pas lieu, en silence. C'est ce qui rendait
+ * le test instable après un `reload()`.
+ *
+ * Passer par le bouton oblige le gestionnaire à exister : c'est son onClick qui
+ * ouvre le sélecteur de fichier, donc l'événement `filechooser` ne survient
+ * qu'une fois la page réellement interactive.
+ */
+export async function uploadVia(
+  page: Page,
+  buttonName: string | RegExp,
+  file: { name: string; mimeType: string; buffer: Buffer }
+) {
+  const trigger = page.getByRole("button", { name: buttonName });
+  await expect(trigger).toBeEnabled();
+
+  const [chooser] = await Promise.all([
+    page.waitForEvent("filechooser", { timeout: 20_000 }),
+    trigger.click(),
+  ]);
+
+  await chooser.setFiles(file);
+}

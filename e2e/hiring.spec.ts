@@ -12,7 +12,7 @@ test.describe("offre et candidature", () => {
    * de `profiles` masque un profil non validé, et postuler n'ouvre aucune
    * visibilité, donc l'assertion sur le libellé de repli reste à caler.
    */
-  test.fixme("un employeur publie, une candidate postule, l'employeur la voit", async ({ browser }) => {
+  test("un employeur publie, une candidate postule, l'employeur la voit", async ({ browser }) => {
     const employerContext = await browser.newContext();
     const employer = await employerContext.newPage();
 
@@ -85,7 +85,7 @@ test.describe("offre et candidature", () => {
     // validé, et postuler n'ouvre aucune visibilité (contrairement à un échange
     // de messages). Un employeur voit donc « Candidat » et un message, sans
     // savoir qui écrit, jusqu'à ce que la modération passe.
-    await expect(employer.getByText("Candidat", { exact: true })).toBeVisible();
+    await expect(employer.getByText(`Candidat · ${title}`)).toBeVisible();
 
     await employerContext.close();
     await candidateContext.close();

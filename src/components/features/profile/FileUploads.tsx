@@ -191,7 +191,7 @@ export function FileUploads({ userId, isCandidate, avatarUrl, fullName, hasCv }:
             ) : (
               <FileText className="h-4 w-4" />
             )}
-            {hasCv ? "Remplacer mon CV" : "Envoyer mon CV"}
+            {hasCv || done === "cv" ? "Remplacer mon CV" : "Envoyer mon CV"}
           </Button>
           {hasCv && !done && (
             <p className="text-xs text-muted-foreground mt-2">Un CV est déjà enregistré.</p>
