@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { setProfileValidation, setCandidateCheck, type CandidateCheck } from "@/lib/admin/actions";
 import { PaymentQueue, type DeclaredPayment } from "@/components/features/admin/PaymentQueue";
+import { AdminOverview } from "@/components/features/admin/AdminOverview";
 import {
   SubscriptionQueue,
   type DeclaredSubscription,
@@ -214,11 +215,11 @@ export default async function AdminPage() {
   return (
     <div className="min-h-screen bg-surface">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold mb-2">Modération des profils</h1>
+        <h1 className="text-3xl font-bold mb-2">Espace de modération</h1>
         <p className="text-muted-foreground mb-8">
-          Un profil n&apos;apparaît dans la recherche qu&apos;une fois publié. Les vérifications que
-          vous cochez ici s&apos;affichent sur la fiche publique : ne confirmez que ce que vous avez
-          réellement constaté.
+          Vous validez ici les paiements et les profils. Un profil n&apos;apparaît dans la
+          recherche qu&apos;une fois publié, et les vérifications que vous cochez s&apos;affichent
+          sur la fiche publique : ne confirmez que ce que vous avez réellement constaté.
         </p>
 
         {error && (
@@ -227,11 +228,23 @@ export default async function AdminPage() {
           </p>
         )}
 
-        <PaymentQueue payments={declaredPayments} unavailable={paymentsUnavailable} />
+        <AdminOverview
+          // null, not 0: an unapplied migration must not read as "nothing to do".
+          payments={paymentsUnavailable ? null : declaredPayments.length}
+          subscriptions={subscriptions.error ? null : declaredSubscriptions.length}
+          profiles={pendingProfiles.length}
+        />
 
-        <SubscriptionQueue subscriptions={declaredSubscriptions} />
+        {/* scroll-mt clears the fixed navbar when the overview jumps here. */}
+        <div id="paiements" className="scroll-mt-24">
+          <PaymentQueue payments={declaredPayments} unavailable={paymentsUnavailable} />
+        </div>
 
-        <section className="mb-12">
+        <div id="abonnements" className="scroll-mt-24">
+          <SubscriptionQueue subscriptions={declaredSubscriptions} />
+        </div>
+
+        <section id="profils" className="mb-12 scroll-mt-24">
           <h2 className="text-lg font-semibold mb-4">
             En attente{" "}
             <span className="text-muted-foreground font-normal">({pendingProfiles.length})</span>
