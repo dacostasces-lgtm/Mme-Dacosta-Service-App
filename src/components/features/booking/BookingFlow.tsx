@@ -1,14 +1,22 @@
 "use client";
 import { useActionState, useState } from "react";
-import { CreditCard, Calendar, Clock, MapPin, CheckCircle2, Loader2 } from "lucide-react";
+import { Calendar, Clock, MapPin, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "@/i18n/routing";
 import { createBooking, type BookingState } from "@/lib/bookings/actions";
 import { formatFee } from "@/lib/bookings/constants";
+import { MOMO_OPERATORS } from "@/lib/payments/manual";
 import { PaymentInstructions } from "@/components/features/booking/PaymentInstructions";
 
 const FEE_LABEL = formatFee();
+
+/** Names the operators that are actually configured, so the screen never
+ *  advertises one the platform has no number for. */
+const operatorLabel =
+  MOMO_OPERATORS.filter((operator) => operator.number)
+    .map((operator) => operator.label)
+    .join(", ") || "MTN MoMo";
 
 export function BookingFlow({
   candidateId,
@@ -20,7 +28,9 @@ export function BookingFlow({
   const action = createBooking.bind(null, candidateId);
   const [state, formAction, pending] = useActionState<BookingState, FormData>(action, {});
   const [step, setStep] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState("");
+  // Preselected: it is the only method, so making the employer click it would
+  // be a step with no choice in it.
+  const [paymentMethod, setPaymentMethod] = useState("mobile_money");
 
   // The server decides when the booking exists; the final step is driven by its
   // answer, never by the click that submitted the form.
@@ -171,16 +181,15 @@ export function BookingFlow({
                   </div>
                 </div>
 
-                <fieldset className="space-y-4">
-                  <legend className="text-sm font-medium mb-2">Moyen de paiement souhaité</legend>
+                {/* Mobile Money only. The card option shown here accepted Visa
+                    and Mastercard on screen while nothing anywhere could take a
+                    card payment — no gateway, and the SMS settlement only reads
+                    Mobile Money credits. A booking created that way stayed
+                    unpaid for ever, with the customer believing otherwise. */}
+                <fieldset>
+                  <legend className="text-sm font-medium mb-2">Moyen de paiement</legend>
 
-                  <label
-                    className={`block p-4 border rounded-xl cursor-pointer transition-all ${
-                      paymentMethod === "mobile_money"
-                        ? "border-primary bg-primary/5 ring-1 ring-primary"
-                        : "border-border hover:border-primary/50"
-                    }`}
-                  >
+                  <label className="block p-4 border rounded-xl cursor-pointer transition-all border-primary bg-primary/5 ring-1 ring-primary">
                     <input
                       type="radio"
                       name="paymentMethod"
@@ -195,41 +204,15 @@ export function BookingFlow({
                       </div>
                       <div>
                         <p className="font-bold">Mobile Money</p>
-                        <p className="text-xs text-muted-foreground">MTN MoMo, Airtel Money</p>
-                      </div>
-                    </div>
-                  </label>
-
-                  <label
-                    className={`block p-4 border rounded-xl cursor-pointer transition-all ${
-                      paymentMethod === "card"
-                        ? "border-primary bg-primary/5 ring-1 ring-primary"
-                        : "border-border hover:border-primary/50"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="card"
-                      className="sr-only"
-                      checked={paymentMethod === "card"}
-                      onChange={() => setPaymentMethod("card")}
-                    />
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
-                        <CreditCard className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="font-bold">Carte Bancaire</p>
-                        <p className="text-xs text-muted-foreground">Visa, Mastercard</p>
+                        <p className="text-xs text-muted-foreground">{operatorLabel}</p>
                       </div>
                     </div>
                   </label>
                 </fieldset>
 
                 <p className="text-xs text-muted-foreground">
-                  Le paiement en ligne n&apos;est pas encore actif. Votre demande est enregistrée et
-                  notre équipe vous contacte pour finaliser le règlement.
+                  Le paiement s&apos;effectue par transfert Mobile Money vers notre numéro, avec la
+                  référence qui vous sera indiquée à l&apos;étape suivante.
                 </p>
 
                 {state.error && (

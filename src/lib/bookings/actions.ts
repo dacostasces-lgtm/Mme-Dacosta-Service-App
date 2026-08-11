@@ -11,8 +11,12 @@ const schema = z.object({
   startDate: z.string().optional(),
   schedule: z.string().trim().max(120).optional(),
   address: z.string().trim().min(3, "Indiquez le lieu de la mission."),
-  paymentMethod: z.enum(["mobile_money", "card"], {
-    message: "Choisissez un moyen de paiement.",
+  // Mobile Money only. Accepting "card" here let a crafted request record a
+  // booking against a payment channel that does not exist — no gateway, and the
+  // SMS settlement reads Mobile Money credits alone — so it could never be
+  // reconciled and would sit unpaid indefinitely.
+  paymentMethod: z.literal("mobile_money", {
+    message: "Le paiement se fait par Mobile Money.",
   }),
 });
 
