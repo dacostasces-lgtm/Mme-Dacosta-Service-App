@@ -4,8 +4,13 @@ import { cache } from "react";
 import { getLocale } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
 import { createClient } from "@/lib/supabase/server";
+import { dashboardPathFor, type UserRole } from "@/lib/auth/roles";
 
-export type UserRole = "admin" | "employer" | "candidate";
+// Re-exported so the existing call sites keep importing from the DAL, while the
+// login form — which cannot touch a `server-only` module — shares the same
+// definition rather than reimplementing it.
+export { dashboardPathFor };
+export type { UserRole };
 
 export type SessionUser = {
   /** `auth.users.id` */
@@ -17,10 +22,6 @@ export type SessionUser = {
   fullName: string;
   isPremium: boolean;
 };
-
-export function dashboardPathFor(role: UserRole) {
-  return role === "employer" ? "/dashboard/employer" : "/dashboard/candidate";
-}
 
 /**
  * Reads the signed-in user and their profile. Memoized per render pass so a

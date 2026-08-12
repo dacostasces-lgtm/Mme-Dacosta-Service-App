@@ -73,7 +73,17 @@ export async function GET(request: NextRequest) {
   }
 
   const { data } = await supabase.auth.getUser()
-  const role = (data.user?.user_metadata?.role ?? 'candidate') as UserRole
+
+  // Same authority as everywhere else: the profile row, which the signup
+  // trigger has already written by the time a confirmation link is followed.
+  // Metadata stays as the fallback for the rare case where it hasn't.
+  const { data: profile } = data.user
+    ? await supabase.from('profiles').select('role').eq('user_id', data.user.id).maybeSingle()
+    : { data: null }
+
+  const role = (profile?.role ??
+    data.user?.user_metadata?.role ??
+    'candidate') as UserRole
   const destination = getPathname({ href: dashboardPathFor(role), locale })
   return NextResponse.redirect(new URL(destination, request.url))
 }

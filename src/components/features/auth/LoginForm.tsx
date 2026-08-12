@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
+import { dashboardPathFor, type UserRole } from "@/lib/auth/roles";
 import { Link, useRouter } from "@/i18n/routing";
 
 const schema = z.object({
@@ -54,8 +55,21 @@ export function LoginForm({ initialError }: { initialError?: string }) {
       return;
     }
 
-    const role = signInData.user?.user_metadata?.role;
-    router.push(role === "employer" ? "/dashboard/employer" : "/dashboard/candidate");
+    // `profiles.role` is the authority everywhere else in the app; signup
+    // metadata is only a fallback for the moment before the trigger has written
+    // the row. Reading metadata here is what sent admins — whose role is set in
+    // the table, never at signup — to the employer dashboard.
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("user_id", signInData.user.id)
+      .maybeSingle();
+
+    const role = (profile?.role ??
+      signInData.user?.user_metadata?.role ??
+      "candidate") as UserRole;
+
+    router.push(dashboardPathFor(role));
     router.refresh();
   };
 
