@@ -25,6 +25,23 @@ production. **Sans cette variable**, `metadataBase`, `robots.txt` et le sitemap
 retombent sur l'adresse `vercel.app` et Google voit deux sites concurrents —
 voir `src/lib/site.ts`.
 
+### Les URL d'authentification Supabase suivent aussi le domaine
+
+Réglées le 8 septembre 2026, elles étaient restées sur l'adresse `vercel.app`
+après la mise en service :
+
+| Réglage | Valeur |
+|---|---|
+| Site URL | `https://madamedacostaservices.com` |
+| Redirect URLs | `https://madamedacostaservices.com/**`, `https://mme-dacosta-service-app.vercel.app/**` |
+
+Elles vivent dans le tableau de bord Supabase (Authentication > URL
+Configuration), pas dans ce dépôt — d'où cette trace. Supabase n'honore une
+redirection que si elle figure dans la liste ; sinon il retombe silencieusement
+sur le Site URL. Une inscription depuis le nouveau domaine renvoyait donc son
+lien de confirmation vers `vercel.app`. L'entrée `vercel.app` est conservée pour
+les déploiements de prévisualisation.
+
 ### Pas encore de courrier
 
 La zone ne contient **ni MX, ni SPF, ni DMARC**. `contact@madamedacostaservices.com`,
