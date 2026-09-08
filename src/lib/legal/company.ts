@@ -21,7 +21,7 @@ export const COMPANY = {
   address: "18 rue Ampère, la Glacière, Bacongo",
   city: "Brazzaville",
   country: "République du Congo",
-  email: "contact@madamedacosta.com",
+  email: "contact@madamedacostaservices.com",
   phone: "+242 06 717 30 30",
   whatsapp: "242067173030",
   /** Responsable de la publication du site. */

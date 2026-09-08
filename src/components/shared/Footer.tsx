@@ -1,3 +1,4 @@
+import { COMPANY } from "@/lib/legal/company";
 import { Link } from "@/i18n/routing";
 
 export function Footer() {
@@ -39,17 +40,23 @@ export function Footer() {
                     Congo-Brazzaville mobiles keep their leading 0 after the
                     242 country code. */}
                 <a
-                  href="https://wa.me/242067173030"
+                  href={`https://wa.me/${COMPANY.whatsapp}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-[#25D366] transition-colors flex items-center gap-2"
                 >
-                  WhatsApp · +242 06 717 30 30
+                  WhatsApp · {COMPANY.phone}
                 </a>
               </li>
               <li>
-                <a href="mailto:contact@madamedacosta.com" className="hover:text-primary transition-colors">
-                  contact@madamedacosta.com
+                {/* Une seule source : l'adresse figure aussi sur les pages
+                    légales, et la redupliquer ici est ce qui l'avait laissée
+                    sur l'ancien domaine. */}
+                <a
+                  href={`mailto:${COMPANY.email}`}
+                  className="hover:text-primary transition-colors"
+                >
+                  {COMPANY.email}
                 </a>
               </li>
             </ul>

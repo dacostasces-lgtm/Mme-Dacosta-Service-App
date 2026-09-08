@@ -1,6 +1,42 @@
-# DNS de madamedacosta.com
+# Domaines
 
-Relevé le 12 août 2026, **pendant que le site Wix fonctionne**. Sert de filet
+## madamedacostaservices.com — domaine de production
+
+Mis en service le 8 septembre 2026. C'est l'adresse publique du site.
+
+Acheté chez Hostinger, DNS géré chez Hostinger (`byte.dns-parking.com`,
+`pixel.dns-parking.com`).
+
+| Nom | Type | Valeur | TTL |
+|---|---|---|---|
+| `@` | A | `216.198.79.1` | 300 |
+| `www` | CNAME | `4d3f64804323daf7.vercel-dns-017.com.` | 300 |
+
+Le CNAME est **propre à ce projet Vercel** : ne pas le remplacer par une valeur
+trouvée ailleurs. Les replis génériques sont `76.76.21.21` et
+`cname.vercel-dns.com.`.
+
+Côté Vercel : les deux noms sont attachés au projet `mme-dacosta-service-app`,
+`www` redirige en 308 vers la racine, certificat Let's Encrypt à renouvellement
+automatique.
+
+`NEXT_PUBLIC_SITE_URL=https://madamedacostaservices.com` est défini en
+production. **Sans cette variable**, `metadataBase`, `robots.txt` et le sitemap
+retombent sur l'adresse `vercel.app` et Google voit deux sites concurrents —
+voir `src/lib/site.ts`.
+
+### Pas encore de courrier
+
+La zone ne contient **ni MX, ni SPF, ni DMARC**. `contact@madamedacostaservices.com`,
+affiché dans le pied de page et sur les pages légales, **ne reçoit donc rien**.
+Il faut choisir un fournisseur d'emails, puis ajouter ses MX et son SPF ici.
+
+## madamedacosta.com — ancien domaine, toujours sur Wix
+
+Relevé le 12 août 2026, **pendant que le site Wix fonctionne**. Ce domaine
+n'a pas été touché par la mise en service ci-dessus : il sert encore l'ancien
+site Wix. Tant qu'il reste en ligne, deux sites se font concurrence aux yeux
+des moteurs de recherche — à trancher : redirection vers le nouveau, ou arrêt. Sert de filet
 avant de déplacer la gestion du DNS : tout ce qui existe aujourd'hui est ici, et
 doit être recréé à l'identique chez le nouveau fournisseur **avant** de basculer
 les serveurs de noms.
