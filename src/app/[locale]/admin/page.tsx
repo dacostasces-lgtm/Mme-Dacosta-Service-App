@@ -31,11 +31,16 @@ type ModerationProfile = {
 // `email` is deliberately absent: 20260728010000_restrict_profile_pii.sql
 // revoked it from the `authenticated` role, so selecting it here would fail the
 // whole query. Addresses come from admin_profile_emails() below instead.
+// La clé étrangère est nommée explicitement, sans quoi PostgREST refuse la
+// requête entière : depuis 20260727210000, `candidate_details` référence
+// `profiles` quatre fois — une par colonne `*_checked_by` en plus de
+// `profile_id` — et l'embed devient ambigu. Toute la file de modération
+// tombait sur « Could not embed because more than one relationship was found ».
 const SELECT =
   "id, full_name, role, created_at, " +
   "neighborhoods(name, cities(name, country)), " +
-  "candidate_details(job_title, experience, identity_checked_at, " +
-  "criminal_record_checked_at, interview_passed_at)";
+  "candidate_details!candidate_details_profile_id_fkey(job_title, experience, " +
+  "identity_checked_at, criminal_record_checked_at, interview_passed_at)";
 
 const CHECKS: { key: CandidateCheck; label: string; field: keyof CandidateDetails }[] = [
   { key: "identity", label: "Identité", field: "identity_checked_at" },
@@ -175,7 +180,10 @@ export default async function AdminPage() {
     supabase
       .from("subscriptions")
       .select(
-        "id, plan_name, price, payment_reference, payment_declared_at, profiles(full_name, role)"
+        // Même ambiguïté : `payment_confirmed_by`, ajouté par
+        // 20260728050000, est un second lien vers `profiles`.
+        "id, plan_name, price, payment_reference, payment_declared_at, " +
+          "profiles!subscriptions_profile_id_fkey(full_name, role)"
       )
       .eq("status", "pending_payment")
       .not("payment_declared_at", "is", null)
