@@ -42,11 +42,40 @@ sur le Site URL. Une inscription depuis le nouveau domaine renvoyait donc son
 lien de confirmation vers `vercel.app`. L'entrée `vercel.app` est conservée pour
 les déploiements de prévisualisation.
 
-### Pas encore de courrier
+### Envoi d'emails — opérationnel depuis le 10 septembre 2026
 
-La zone ne contient **ni MX, ni SPF, ni DMARC**. `contact@madamedacostaservices.com`,
-affiché dans le pied de page et sur les pages légales, **ne reçoit donc rien**.
-Il faut choisir un fournisseur d'emails, puis ajouter ses MX et son SPF ici.
+Le domaine est vérifié chez **Resend** (région `eu-west-1`). Trois
+enregistrements ajoutés par l'API Hostinger, en mode sans écrasement pour ne pas
+toucher au `A` et au `CNAME` qui servent le site :
+
+| Type | Nom | Valeur |
+|---|---|---|
+| TXT | `resend._domainkey` | clé DKIM (propre au compte Resend) |
+| CNAME | `rsend` | `rsend-euw1.forge.rmta.net.` |
+| CNAME | `send` | `send.forge.rmta.net.` |
+
+Le point final sur les CNAME est délibéré : sans lui, un fournisseur peut
+suffixer la zone et produire `send.forge.rmta.net.madamedacostaservices.com`.
+
+**Supabase envoie par ce SMTP** — `smtp.resend.com:465`, utilisateur `resend`,
+mot de passe = la clé API Resend. Réglé dans le tableau de bord (Authentication >
+SMTP Settings), donc invisible du dépôt, d'où cette trace. La limite d'envoi est
+passée de 2 à 100 par heure : les 2 par heure du service intégré rendaient toute
+ouverture aux inscriptions impossible.
+
+Les gabarits d'emails ont été traduits en français et repris à la charte
+(confirmation, réinitialisation, lien de connexion, changement d'adresse). Ils
+partaient en anglais, sur un site entièrement francophone. **Compter environ dix
+minutes de propagation** après modification : la configuration est enregistrée
+immédiatement mais GoTrue continue d'envoyer l'ancienne version entre-temps.
+
+### Toujours pas de courrier entrant
+
+La zone n'a **ni MX, ni SPF, ni DMARC** pour la réception.
+`contact@madamedacostaservices.com`, affiché dans le pied de page et sur les
+pages légales, peut désormais **envoyer** mais **ne reçoit rien**. Il faut une
+boîte aux lettres — Hostinger en propose, ou un renvoi vers une adresse
+existante.
 
 ## madamedacosta.com — ancien domaine, toujours sur Wix
 
