@@ -84,13 +84,23 @@ aura la certitude que tout ce qui part est bien signé.
 |---|---|---|
 | MX | `@` | `10 mx1.improvmx.com.` |
 | MX | `@` | `20 mx2.improvmx.com.` |
+| TXT | `@` | `v=spf1 include:spf.improvmx.com ~all` |
 
 Redirection plutôt que boîte aux lettres : le compte Hostinger ne contient que
 le domaine, sans hébergement, donc aucun service email inclus — et une boîte de
 plus à relever n'aide personne quand tout arrive déjà sur Gmail.
 
-**Il reste à créer le compte gratuit sur improvmx.com** et à y déclarer l'alias
-`contact@` vers l'adresse de destination. Les MX seuls ne redirigent rien.
+Le compte ImprovMX est créé et l'alias `contact@` redirige vers
+`dacosta.sces@gmail.com`. Vérifié de bout en bout : un message envoyé à
+`contact@` ressort en `DELIVERED` dans le journal ImprovMX.
+
+Un **SPF racine** a été ajouté pour cela : `v=spf1 include:spf.improvmx.com ~all`.
+Sans lui ImprovMX laisse le domaine inactif, MX valides ou non.
+
+Il ne couvre volontairement pas Resend : celui-ci expédie avec une adresse de
+retour sur `send.madamedacostaservices.com`, sous-domaine dont le SPF vient du
+CNAME. Le SPF racine ne concerne donc que le courrier partant de la racine —
+vérifié par un envoi Resend après coup, remis sans dégradation.
 
 Deux pièges rencontrés, notés pour la prochaine fois :
 
