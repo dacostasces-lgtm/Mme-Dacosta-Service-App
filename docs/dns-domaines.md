@@ -69,13 +69,46 @@ partaient en anglais, sur un site entièrement francophone. **Compter environ di
 minutes de propagation** après modification : la configuration est enregistrée
 immédiatement mais GoTrue continue d'envoyer l'ancienne version entre-temps.
 
-### Toujours pas de courrier entrant
+### Protection contre l'usurpation
 
-La zone n'a **ni MX, ni SPF, ni DMARC** pour la réception.
-`contact@madamedacostaservices.com`, affiché dans le pied de page et sur les
-pages légales, peut désormais **envoyer** mais **ne reçoit rien**. Il faut une
-boîte aux lettres — Hostinger en propose, ou un renvoi vers une adresse
-existante.
+`_dmarc` publie `v=DMARC1; p=none; sp=none; adkim=r; aspf=r`.
+
+`p=none` est délibéré : c'est de l'observation, pas du blocage. Passer
+directement à `quarantine` ou `reject` sur un domaine dont on n'a pas encore
+mesuré les flux fait disparaître du courrier légitime. À durcir une fois qu'on
+aura la certitude que tout ce qui part est bien signé.
+
+### Réception — MX posés, service à activer
+
+| Type | Nom | Valeur |
+|---|---|---|
+| MX | `@` | `10 mx1.improvmx.com.` |
+| MX | `@` | `20 mx2.improvmx.com.` |
+
+Redirection plutôt que boîte aux lettres : le compte Hostinger ne contient que
+le domaine, sans hébergement, donc aucun service email inclus — et une boîte de
+plus à relever n'aide personne quand tout arrive déjà sur Gmail.
+
+**Il reste à créer le compte gratuit sur improvmx.com** et à y déclarer l'alias
+`contact@` vers l'adresse de destination. Les MX seuls ne redirigent rien.
+
+Deux pièges rencontrés, notés pour la prochaine fois :
+
+- L'API Hostinger veut la priorité **dans le contenu** (`"10 mx1.improvmx.com."`).
+  Un champ `priority` séparé renvoie une erreur 500 opaque.
+- Ajouter un second MX au même nom en mode sans écrasement échoue en 422
+  (conflit). Il faut supprimer le groupe `@`/`MX` puis reposer les deux
+  ensemble.
+- Hostinger regroupe ses publications : **compter cinq à dix minutes** avant
+  qu'un MX sorte en DNS, là où un TXT ou un CNAME sort en vingt secondes. La
+  zone lue par l'API est à jour bien avant les serveurs de noms.
+
+### Pour répondre depuis contact@
+
+Une redirection fait entrer le courrier mais ne permet pas de répondre avec
+cette adresse. Gmail sait le faire via « Envoyer des emails en tant que », en
+utilisant le SMTP Resend déjà configuré plus haut : `smtp.resend.com`, port
+`465`, utilisateur `resend`, mot de passe = la clé API.
 
 ## madamedacosta.com — ancien domaine, toujours sur Wix
 
