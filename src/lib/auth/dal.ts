@@ -4,6 +4,8 @@ import { cache } from "react";
 import { getLocale } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
 import { createClient } from "@/lib/supabase/server";
+import { isOtpConfigured } from "@/lib/otp/infobip";
+import { hasSkippedVerification } from "@/lib/otp/skip";
 import { dashboardPathFor, type UserRole } from "@/lib/auth/roles";
 
 // Re-exported so the existing call sites keep importing from the DAL, while the
@@ -21,6 +23,8 @@ export type SessionUser = {
   role: UserRole;
   fullName: string;
   isPremium: boolean;
+  /** Null tant que le numéro n'a pas été confirmé par code SMS. */
+  phoneVerifiedAt: string | null;
 };
 
 /**
@@ -47,7 +51,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, role, full_name, is_premium")
+    .select("id, role, full_name, is_premium, phone_verified_at")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -65,6 +69,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
       user.email?.split("@")[0] ||
       "Utilisateur",
     isPremium: profile?.is_premium ?? false,
+    phoneVerifiedAt: (profile?.phone_verified_at as string | null) ?? null,
   };
 });
 
@@ -73,7 +78,14 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
  * wrong role to their own dashboard. Admins pass every role gate — they have no
  * dashboard of their own, so redirecting them would bounce between the two.
  */
-export async function requireUser(options?: { role?: UserRole }): Promise<SessionUser> {
+export async function requireUser(options?: {
+  role?: UserRole;
+  /**
+   * À ne poser que sur la page de vérification elle-même : sans cela, la
+   * redirection ci-dessous la renverrait vers elle-même indéfiniment.
+   */
+  allowUnverifiedPhone?: boolean;
+}): Promise<SessionUser> {
   const locale = await getLocale();
   const user = await getCurrentUser();
 
@@ -81,6 +93,27 @@ export async function requireUser(options?: { role?: UserRole }): Promise<Sessio
   // so returning the call is what tells TypeScript the flow stops here.
   if (!user) {
     return redirect({ href: "/login", locale });
+  }
+
+  // Le numéro se vérifie avant d'entrer dans son espace. C'est le seul canal
+  // par lequel une mise en relation aboutit : le reporter à plus tard revient
+  // à ne jamais le faire, et un profil au numéro faux occupe la modération
+  // pour rien.
+  //
+  // Le garde-fou tient en une condition : rien ne se déclenche tant que la
+  // vérification par SMS n'est pas configurée. Sans cela, une variable
+  // d'environnement absente enfermerait tout le monde dehors.
+  //
+  // La présence d'un numéro n'est pas testée ici — la colonne `phone` est
+  // révoquée en lecture depuis 20260728010000. La page de vérification s'en
+  // charge : elle demande le numéro à qui n'en a pas.
+  if (
+    !options?.allowUnverifiedPhone &&
+    !user.phoneVerifiedAt &&
+    isOtpConfigured() &&
+    !(await hasSkippedVerification())
+  ) {
+    return redirect({ href: "/verification", locale });
   }
 
   if (options?.role && user.role !== options.role && user.role !== "admin") {

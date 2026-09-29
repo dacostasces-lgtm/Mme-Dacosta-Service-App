@@ -40,6 +40,14 @@ export async function register(
 
   await page.getByRole("button", { name: "Créer mon compte" }).click();
 
+  // L'inscription mène désormais à la vérification du numéro, pas directement
+  // à l'espace personnel. En test, l'envoi de SMS pointe vers le vide : la
+  // demande échoue, la porte de secours apparaît, et c'est elle qu'on emprunte
+  // — ce qui vérifie au passage qu'un SMS qui n'arrive pas n'enferme personne.
+  await page.waitForURL(/\/fr\/verification/, { timeout: 30_000 });
+  await page.getByRole("button", { name: /Recevoir mon code/ }).click();
+  await page.getByRole("button", { name: "Continuer sans vérifier" }).click({ timeout: 30_000 });
+
   const dashboard = role === "employer" ? "/dashboard/employer" : "/dashboard/candidate";
   await page.waitForURL(new RegExp(`/fr${dashboard}`), { timeout: 30_000 });
 

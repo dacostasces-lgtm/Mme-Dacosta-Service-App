@@ -172,7 +172,13 @@ export function RegisterForm({ cities }: { cities: CityRef[] }) {
     }
 
     if (signUpData.session) {
-      router.push(data.role === "employer" ? "/dashboard/employer" : "/dashboard/candidate");
+      // Vers la vérification du numéro, pas vers le tableau de bord : c'est
+      // l'étape qui doit être franchie tant que la personne est encore dans
+      // son élan d'inscription. Reportée à plus tard, elle n'est jamais faite,
+      // et un profil au numéro faux occupe la modération pour rien.
+      // requireUser y renvoie de toute façon ; passer par là directement évite
+      // un aller-retour visible.
+      router.push("/verification");
       router.refresh();
     } else {
       // Email confirmation is enabled on the project: no session until the link is clicked.

@@ -65,6 +65,15 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       NEXT_PUBLIC_MOMO_MTN_NUMBER: "060000000",
       NEXT_PUBLIC_SITE_URL: BASE_URL,
+
+      // Vérification par SMS activée, mais pointée vers le vide : la porte de
+      // requireUser se déclenche donc réellement, sans qu'un seul SMS parte.
+      // Sans ces variables la porte reste dormante et les tests ne
+      // prouveraient rien du parcours d'inscription réel.
+      INFOBIP_API_KEY: "test-sans-envoi",
+      INFOBIP_BASE_URL: "http://127.0.0.1:9",
+      INFOBIP_2FA_APPLICATION_ID: "test",
+      INFOBIP_2FA_MESSAGE_ID: "test",
     },
   },
 });
