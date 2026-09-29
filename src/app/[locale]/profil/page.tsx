@@ -8,6 +8,8 @@ import {
   type EmployerProfile,
 } from "@/components/features/profile/ProfileForm";
 import { FileUploads } from "@/components/features/profile/FileUploads";
+import { PhoneVerification } from "@/components/features/profile/PhoneVerification";
+import { isOtpConfigured } from "@/lib/otp/infobip";
 
 export const metadata: Metadata = {
   title: "Mon profil",
@@ -29,7 +31,7 @@ export default async function ProfilePage() {
   const [profileResult, neighborhoodResult, contactResult, detailsResult] = await Promise.all([
     supabase
       .from("profiles")
-      .select("full_name, neighborhood_id, avatar_url")
+      .select("full_name, neighborhood_id, avatar_url, phone_verified_at")
       .eq("id", user.profileId ?? "")
       .maybeSingle(),
     supabase.from("neighborhoods").select("id, name, cities(name)").order("name"),
@@ -102,6 +104,17 @@ export default async function ProfilePage() {
             avatarUrl={(profileResult.data?.avatar_url as string) ?? null}
             fullName={profileResult.data?.full_name ?? user.fullName}
             hasCv={Boolean(details?.cv_url)}
+          />
+        </div>
+
+        {/* Avant le formulaire : c'est le numéro déjà enregistré qu'on vérifie,
+            pas celui en cours de saisie. Le placer après donnerait à penser
+            qu'il faut enregistrer d'abord. */}
+        <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-soft mb-6">
+          <PhoneVerification
+            phone={contact?.phone ?? null}
+            verifiedAt={(profileResult.data?.phone_verified_at as string) ?? null}
+            available={isOtpConfigured()}
           />
         </div>
 
