@@ -1,0 +1,82 @@
+name: Vérifications
+
+# Sur chaque poussée et chaque pull request : c'est le seul moment où l'on est
+# sûr que ça tourne. Lancées à la main, ces vérifications finissent par être
+# oubliées précisément les jours pressés, qui sont ceux où elles servent.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  # Une poussée annule la vérification de la précédente sur la même branche :
+  # seul le dernier état compte, et la suite e2e monopolise un exécuteur.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  statique:
+    name: Types, lint et build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Types
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint src e2e
+
+      # Les NEXT_PUBLIC_* sont figées à la construction. Des valeurs factices
+      # suffisent : on vérifie que le code compile, pas qu'il joigne une base.
+      - name: Build
+        run: npx next build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://exemple.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: cle-factice-pour-la-construction
+          NEXT_PUBLIC_SITE_URL: https://madamedacostaservices.com
+
+  e2e:
+    name: Parcours de bout en bout
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Navigateur Playwright
+        run: npx playwright install --with-deps chromium
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Le script démarre la pile, rejoue les migrations à neuf et lance la
+      # suite. Il refuse de tourner si l'URL Supabase n'est pas locale — ces
+      # tests créent des comptes et des paiements.
+      - name: Suite end-to-end
+        run: ./scripts/e2e.sh
+
+      # Sans ça, un échec sur l'exécuteur est indéchiffrable : ni capture, ni
+      # trace, juste un nom de test.
+      - name: Conserver les traces en cas d'échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
