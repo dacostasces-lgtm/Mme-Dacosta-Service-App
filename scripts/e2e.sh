@@ -13,7 +13,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "→ démarrage de la pile Supabase locale"
-supabase start -x studio,imgproxy,vector >/dev/null
+supabase start -x studio,imgproxy,vector,logflare,edge-runtime,realtime >/dev/null
 
 echo "→ remise à zéro de la base (migrations rejouées)"
 supabase db reset >/dev/null
