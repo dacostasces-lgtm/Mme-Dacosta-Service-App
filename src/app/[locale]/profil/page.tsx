@@ -24,7 +24,11 @@ function stringList(value: unknown): string[] {
 }
 
 export default async function ProfilePage() {
-  const user = await requireUser();
+  // Exemptée de la porte de vérification : c'est ici qu'on corrige son numéro,
+  // et qu'on le vérifie via le bloc dédié. L'y soumettre renverrait quelqu'un
+  // vers l'écran de vérification au moment même où il vient de saisir son
+  // numéro — en pleine édition, sans avoir rien demandé.
+  const user = await requireUser({ allowUnverifiedPhone: true });
   const supabase = await createClient();
   const isEmployer = user.role === "employer";
 

@@ -25,6 +25,8 @@ export type SessionUser = {
   isPremium: boolean;
   /** Null tant que le numéro n'a pas été confirmé par code SMS. */
   phoneVerifiedAt: string | null;
+  /** Présence d'un numéro, sans sa valeur : la colonne `phone` est révoquée. */
+  hasPhone: boolean;
 };
 
 /**
@@ -51,7 +53,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, role, full_name, is_premium, phone_verified_at")
+    .select("id, role, full_name, is_premium, phone_verified_at, phone_present")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -70,6 +72,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
       "Utilisateur",
     isPremium: profile?.is_premium ?? false,
     phoneVerifiedAt: (profile?.phone_verified_at as string | null) ?? null,
+    hasPhone: Boolean(profile?.phone_present),
   };
 });
 
@@ -104,11 +107,13 @@ export async function requireUser(options?: {
   // vérification par SMS n'est pas configurée. Sans cela, une variable
   // d'environnement absente enfermerait tout le monde dehors.
   //
-  // La présence d'un numéro n'est pas testée ici — la colonne `phone` est
-  // révoquée en lecture depuis 20260728010000. La page de vérification s'en
-  // charge : elle demande le numéro à qui n'en a pas.
+  // `hasPhone` vient d'une colonne calculée qui n'expose que la présence, pas
+  // la valeur : `phone` reste révoquée. Sans ce test, un compte créé avec une
+  // adresse email seule serait renvoyé sans fin vers un écran lui réclamant un
+  // code pour un numéro qui n'existe pas.
   if (
     !options?.allowUnverifiedPhone &&
+    user.hasPhone &&
     !user.phoneVerifiedAt &&
     isOtpConfigured() &&
     !(await hasSkippedVerification())

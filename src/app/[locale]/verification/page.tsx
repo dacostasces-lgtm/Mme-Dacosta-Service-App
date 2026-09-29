@@ -23,8 +23,10 @@ export default async function VerificationPage() {
     getLocale(),
   ]);
 
-  // Déjà vérifié, ou vérification indisponible : rien à faire ici.
-  if (user.phoneVerifiedAt || !isOtpConfigured()) {
+  // Rien à faire ici dans trois cas : déjà vérifié, vérification indisponible,
+  // ou compte sans numéro — celui créé avec une adresse email seule, qu'il
+  // serait absurde d'arrêter pour confirmer un numéro qu'il n'a pas.
+  if (user.phoneVerifiedAt || !user.hasPhone || !isOtpConfigured()) {
     return redirect({ href: dashboardPathFor(user.role), locale });
   }
 

@@ -52,6 +52,13 @@ test.describe("parcours candidate", () => {
     await page.reload();
     await expect(page.getByLabel("Téléphone")).toHaveValue("+242 06 000 00 01");
 
+    // Le profil porte désormais un numéro non vérifié : la porte se referme dès
+    // qu'on quitte la page profil, qui en est exemptée. On la franchit par la
+    // porte de secours — l'envoi SMS pointe vers le vide en test.
+    await page.goto("/fr/verification");
+    await page.getByRole("button", { name: /Recevoir mon code/ }).click();
+    await page.getByRole("button", { name: "Continuer sans vérifier" }).click({ timeout: 30_000 });
+
     // --- Premium --------------------------------------------------------------
     await page.goto("/fr/pricing");
     // Located through the hidden plan input rather than the card's text: the id
@@ -87,9 +94,10 @@ test.describe("parcours candidate", () => {
     await page.goto("/fr/register");
     await page.locator('select[name="role"]').selectOption("candidate");
     await page.getByPlaceholder("Awa Dacosta").fill("Test Court");
+    // Le formulaire propose le numéro par défaut : il faut basculer sur email.
+    await page.getByRole("button", { name: "Mon email" }).click();
     await page.getByPlaceholder("email@exemple.com").fill("court@example.test");
     await page.getByPlaceholder("••••••••").fill("court");
-    await page.getByLabel("Téléphone").fill("067173030");
     await page.getByLabel("Ville").selectOption({ label: "Brazzaville" });
     await page.getByLabel("Quartier").selectOption({ label: "Bacongo" });
     await page.getByRole("button", { name: "Créer mon compte" }).click();

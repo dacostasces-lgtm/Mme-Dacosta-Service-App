@@ -8,11 +8,18 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
+import { normalisePhone } from "@/lib/phone";
 import { dashboardPathFor, type UserRole } from "@/lib/auth/roles";
 import { Link, useRouter } from "@/i18n/routing";
 
+/**
+ * Un seul champ pour les deux : on se connecte avec l'identifiant utilisé à
+ * l'inscription, email ou numéro. Demander lequel serait une question de plus
+ * sur un écran qui doit en poser le moins possible — la forme de la saisie
+ * suffit à trancher.
+ */
 const schema = z.object({
-  email: z.string().email("Email invalide"),
+  identifiant: z.string().trim().min(1, "Saisissez votre email ou votre numéro"),
   // No length rule on sign-in: the minimum belongs at signup, and enforcing the
   // current one here would lock out accounts created under the old 6-character
   // rule with a validation error instead of letting them log in and change it.
@@ -27,7 +34,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { identifiant: "", password: "" },
   });
 
   const onSubmit = async (data: FormData) => {
@@ -38,16 +45,29 @@ export function LoginForm({ initialError }: { initialError?: string }) {
       return;
     }
 
+    // Un numéro congolais valide l'emporte ; tout le reste part en email.
+    // Se fier à la présence d'un « @ » suffirait, mais laisserait un numéro
+    // mal recopié échouer avec « email invalide », message incompréhensible
+    // pour quelqu'un qui n'a jamais saisi d'email.
+    const parsedPhone = normalisePhone(data.identifiant);
+    const parTelephone = parsedPhone.ok;
+
     const supabase = createClient();
-    const { data: signInData, error } = await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
-    });
+    const { data: signInData, error } = await supabase.auth.signInWithPassword(
+      parTelephone
+        ? {
+            phone: `+${parsedPhone.value.replace(/\D/g, "")}`,
+            password: data.password,
+          }
+        : { email: data.identifiant, password: data.password }
+    );
 
     if (error) {
       setSubmitError(
         error.message === "Invalid login credentials"
-          ? "Email ou mot de passe incorrect."
+          ? parTelephone
+            ? "Numéro ou mot de passe incorrect."
+            : "Email ou mot de passe incorrect."
           : error.message === "Email not confirmed"
             ? "Veuillez confirmer votre email avant de vous connecter."
             : `Erreur lors de la connexion : ${error.message}`
@@ -79,9 +99,22 @@ export function LoginForm({ initialError }: { initialError?: string }) {
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <label className="text-sm font-medium mb-1 block">Email</label>
-          <Input type="email" placeholder="email@exemple.com" {...form.register("email")} />
-          {form.formState.errors.email && <p className="text-xs text-destructive mt-1">{form.formState.errors.email.message}</p>}
+          <label htmlFor="identifiant" className="text-sm font-medium mb-1 block">
+            Email ou numéro de téléphone
+          </label>
+          <Input
+            id="identifiant"
+            type="text"
+            inputMode="email"
+            autoComplete="username"
+            placeholder="email@exemple.com ou 06 717 30 30"
+            {...form.register("identifiant")}
+          />
+          {form.formState.errors.identifiant && (
+            <p className="text-xs text-destructive mt-1">
+              {form.formState.errors.identifiant.message}
+            </p>
+          )}
         </div>
 
         <div>

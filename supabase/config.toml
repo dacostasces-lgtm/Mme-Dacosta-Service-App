@@ -266,8 +266,12 @@ otp_expiry = 3600
 # content_path = "./templates/password_changed_notification.html"
 
 [auth.sms]
-# Allow/disallow new user signups via SMS to your project.
-enable_signup = false
+# Aligné sur la production : l'inscription par numéro est possible, et Supabase
+# n'envoie aucun SMS lui-même — aucun fournisseur n'est configuré chez lui. La
+# vérification passe par notre code Infobip, qui écrit phone_verified_at. Sans
+# enable_signup, un compte créé avec un numéro seul est refusé et la pile
+# locale cesse de reproduire la production.
+enable_signup = true
 # If enabled, users need to confirm their phone number before signing in.
 enable_confirmations = false
 # Template for sending OTP to users
@@ -297,10 +301,18 @@ max_frequency = "5s"
 # uri = "pg-functions://<database>/<schema>/<hook_name>"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
+# Déclaré uniquement pour que GOTRUE_EXTERNAL_PHONE_ENABLED passe à true en
+# local : c'est la présence d'un fournisseur qui l'active, pas enable_signup.
+# Aucun SMS ne part pour autant — enable_confirmations = false ci-dessus met
+# GoTrue en auto-confirmation, et la vraie vérification passe par notre code
+# Infobip. Les identifiants sont volontairement factices.
+#
+# En production ce réglage est posé directement par l'API de gestion ; ne pas
+# lancer `supabase config push`, qui y écrirait ces valeurs-ci.
 [auth.sms.twilio]
-enabled = false
-account_sid = ""
-message_service_sid = ""
+enabled = true
+account_sid = "local-seulement"
+message_service_sid = "local-seulement"
 # DO NOT commit your Twilio auth token to git. Use environment variable substitution instead:
 auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 

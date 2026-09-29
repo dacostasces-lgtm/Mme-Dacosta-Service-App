@@ -13,25 +13,42 @@ import { Link, useRouter } from "@/i18n/routing";
 import { normalisePhone, PHONE_HINT } from "@/lib/phone";
 import type { CityRef } from "@/lib/geo/locations";
 
-const schema = z.object({
+/**
+ * On s'inscrit avec une adresse email OU un numéro, au choix.
+ *
+ * Beaucoup de candidates n'ont pas d'adresse email, ou n'y accèdent jamais ;
+ * exiger les deux écartait exactement le public que la plateforme vise. Le
+ * champ non retenu reste vide et n'est pas validé — d'où les `optional()` et
+ * le `superRefine` qui exige l'un des deux plutôt que chacun.
+ */
+const schema = z
+  .object({
   fullName: z.string().min(2, "Requis"),
-  email: z.string().email("Email invalide"),
+  identifiant: z.enum(["email", "phone"]),
+  email: z.string().trim().optional(),
   password: z.string().min(8, "Au moins 8 caractères"),
   role: z.enum(["employer", "candidate"]),
-  phone: z
-    .string()
-    .trim()
-    .min(1, "Requis")
-    .refine((value) => normalisePhone(value).ok, {
-      message: "Numéro invalide. Format attendu : 06 717 30 30.",
-    }),
+  phone: z.string().trim().optional(),
   // Ids from the seeded reference list, not free text. Typed quartiers are what
   // produced two Brazzaville rows in production, each with its own Bacongo.
   cityId: z.string().uuid("Choisissez une ville"),
   neighborhoodId: z.string().uuid("Choisissez un quartier"),
   lat: z.number().optional(),
   lng: z.number().optional(),
-});
+  })
+  .superRefine((data, ctx) => {
+    if (data.identifiant === "email") {
+      if (!data.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email)) {
+        ctx.addIssue({ code: "custom", path: ["email"], message: "Email invalide" });
+      }
+    } else if (!data.phone || !normalisePhone(data.phone).ok) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["phone"],
+        message: "Numéro invalide. Format attendu : 06 717 30 30.",
+      });
+    }
+  });
 
 type FormData = z.infer<typeof schema>;
 
@@ -47,6 +64,8 @@ export function RegisterForm({ cities }: { cities: CityRef[] }) {
     resolver: zodResolver(schema),
     defaultValues: {
       role: "employer",
+      identifiant: "phone",
+      email: "",
       fullName: "",
       phone: "",
       // Brazzaville first: it is the launch city and carries most of the traffic.
@@ -55,6 +74,8 @@ export function RegisterForm({ cities }: { cities: CityRef[] }) {
     },
   });
 
+  // Pilote l'affichage du champ email ou téléphone.
+  const identifiant = form.watch("identifiant");
   const selectedCityId = form.watch("cityId");
   const selectedCity = cities.find((city) => city.id === selectedCityId) ?? cities[0];
 
@@ -129,19 +150,27 @@ export function RegisterForm({ cities }: { cities: CityRef[] }) {
       return;
     }
 
-    // Computed once: calling normalisePhone twice would not narrow its union,
-    // and the schema has already guaranteed this parses.
-    const parsedPhone = normalisePhone(data.phone);
-    const normalisedPhone = parsedPhone.ok ? parsedPhone.value : data.phone;
+    const parEmail = data.identifiant === "email";
+
+    // Le numéro est normalisé avant de partir : Supabase veut du E.164 pour
+    // l'identifiant, et le déclencheur enregistre une forme unique côté profil.
+    const parsedPhone = data.phone ? normalisePhone(data.phone) : null;
+    const normalisedPhone = parsedPhone?.ok ? parsedPhone.value : undefined;
+    const e164 = normalisedPhone ? `+${normalisedPhone.replace(/\D/g, "")}` : undefined;
 
     const supabase = createClient();
     const { data: signUpData, error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
+      // L'un ou l'autre, jamais les deux : Supabase refuse un appel qui
+      // fournirait email et phone simultanément.
+      ...(parEmail
+        ? { email: data.email!, password: data.password }
+        : { phone: e164!, password: data.password }),
       options: {
         // Sends the confirmation link to our own handler, which exchanges the
         // token and forwards to the right dashboard in the user's language.
-        emailRedirectTo: `${window.location.origin}/auth/confirm?locale=${locale}`,
+        ...(parEmail
+          ? { emailRedirectTo: `${window.location.origin}/auth/confirm?locale=${locale}` }
+          : {}),
         data: {
           role: data.role,
           full_name: data.fullName,
@@ -165,20 +194,29 @@ export function RegisterForm({ cities }: { cities: CityRef[] }) {
     if (error) {
       setSubmitError(
         error.message === "User already registered"
-          ? "Un compte existe déjà avec cet email."
+          ? parEmail
+            ? "Un compte existe déjà avec cet email."
+            : "Un compte existe déjà avec ce numéro."
           : `Erreur lors de l'inscription : ${error.message}`
       );
       return;
     }
 
     if (signUpData.session) {
-      // Vers la vérification du numéro, pas vers le tableau de bord : c'est
-      // l'étape qui doit être franchie tant que la personne est encore dans
-      // son élan d'inscription. Reportée à plus tard, elle n'est jamais faite,
-      // et un profil au numéro faux occupe la modération pour rien.
-      // requireUser y renvoie de toute façon ; passer par là directement évite
-      // un aller-retour visible.
-      router.push("/verification");
+      // Vers la vérification du numéro quand il y en a un : c'est l'étape qui
+      // doit être franchie tant que la personne est encore dans son élan
+      // d'inscription. Reportée à plus tard, elle n'est jamais faite, et un
+      // profil au numéro faux occupe la modération pour rien.
+      //
+      // Une inscription par email n'a pas de numéro à vérifier et va droit à
+      // son espace ; requireUser ne l'arrêtera pas davantage.
+      router.push(
+        parEmail
+          ? data.role === "employer"
+            ? "/dashboard/employer"
+            : "/dashboard/candidate"
+          : "/verification"
+      );
       router.refresh();
     } else {
       // Email confirmation is enabled on the project: no session until the link is clicked.
@@ -238,35 +276,91 @@ export function RegisterForm({ cities }: { cities: CityRef[] }) {
           {form.formState.errors.fullName && <p className="text-xs text-destructive mt-1">{form.formState.errors.fullName.message}</p>}
         </div>
 
+        {/* Email ou téléphone, au choix. Beaucoup de candidates n'ont pas
+            d'adresse email ou n'y accèdent jamais : exiger les deux écartait
+            précisément le public visé. Le téléphone est proposé en premier
+            pour cette raison. */}
         <div>
-          <label className="text-sm font-medium mb-1 block">Email</label>
-          <Input type="email" placeholder="email@exemple.com" {...form.register("email")} />
-          {form.formState.errors.email && <p className="text-xs text-destructive mt-1">{form.formState.errors.email.message}</p>}
+          <label className="text-sm font-medium mb-2 block">
+            Comment souhaitez-vous créer votre compte ?
+          </label>
+          <div className="grid grid-cols-2 gap-2 p-1 rounded-full bg-surface border border-border">
+            {(
+              [
+                ["phone", "Mon numéro"],
+                ["email", "Mon email"],
+              ] as const
+            ).map(([valeur, libelle]) => (
+              <button
+                key={valeur}
+                type="button"
+                onClick={() => {
+                  form.setValue("identifiant", valeur);
+                  // On vide l'autre champ : le laisser rempli enverrait une
+                  // valeur que l'utilisatrice croit avoir abandonnée.
+                  form.setValue(valeur === "phone" ? "email" : "phone", "");
+                  form.clearErrors(["email", "phone"]);
+                }}
+                aria-pressed={identifiant === valeur}
+                className={`h-10 rounded-full text-sm font-medium transition-colors ${
+                  identifiant === valeur
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {libelle}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {identifiant === "email" ? (
+          <div>
+            <label htmlFor="email" className="text-sm font-medium mb-1 block">
+              Email
+            </label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder="email@exemple.com"
+              {...form.register("email")}
+            />
+            {form.formState.errors.email && (
+              <p className="text-xs text-destructive mt-1">
+                {form.formState.errors.email.message}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div>
+            <label htmlFor="phone" className="text-sm font-medium mb-1 block">
+              Téléphone
+            </label>
+            <Input
+              id="phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="06 717 30 30"
+              {...form.register("phone")}
+            />
+            {form.formState.errors.phone ? (
+              <p className="text-xs text-destructive mt-1">
+                {form.formState.errors.phone.message}
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground mt-1">
+                {PHONE_HINT} — un code vous sera envoyé pour le vérifier.
+              </p>
+            )}
+          </div>
+        )}
 
         <div>
           <label className="text-sm font-medium mb-1 block">Mot de passe</label>
           <Input type="password" placeholder="••••••••" {...form.register("password")} />
           {form.formState.errors.password && <p className="text-xs text-destructive mt-1">{form.formState.errors.password.message}</p>}
-        </div>
-
-        <div>
-          <label htmlFor="phone" className="text-sm font-medium mb-1 block">
-            Téléphone
-          </label>
-          <Input
-            id="phone"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder="06 717 30 30"
-            {...form.register("phone")}
-          />
-          {form.formState.errors.phone ? (
-            <p className="text-xs text-destructive mt-1">{form.formState.errors.phone.message}</p>
-          ) : (
-            <p className="text-xs text-muted-foreground mt-1">{PHONE_HINT}</p>
-          )}
         </div>
 
         {/* Menus rather than text inputs: a typed quartier is what created two

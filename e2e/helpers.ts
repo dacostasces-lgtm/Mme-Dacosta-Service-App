@@ -32,22 +32,20 @@ export async function register(
 
   await page.locator('select[name="role"]').selectOption(role);
   await page.getByPlaceholder("Awa Dacosta").fill(fullName);
+
+  // L'inscription se fait avec un email OU un numéro. Le formulaire propose le
+  // numéro par défaut ; ce chemin-ci choisit l'email, l'autre est couvert par
+  // `registerByPhone`.
+  await page.getByRole("button", { name: "Mon email" }).click();
   await page.getByPlaceholder("email@exemple.com").fill(email);
   await page.getByPlaceholder("••••••••").fill(PASSWORD);
-  await page.getByLabel("Téléphone").fill("067173030");
   await page.getByLabel("Ville").selectOption({ label: "Brazzaville" });
   await page.getByLabel("Quartier").selectOption({ label: "Bacongo" });
 
   await page.getByRole("button", { name: "Créer mon compte" }).click();
 
-  // L'inscription mène désormais à la vérification du numéro, pas directement
-  // à l'espace personnel. En test, l'envoi de SMS pointe vers le vide : la
-  // demande échoue, la porte de secours apparaît, et c'est elle qu'on emprunte
-  // — ce qui vérifie au passage qu'un SMS qui n'arrive pas n'enferme personne.
-  await page.waitForURL(/\/fr\/verification/, { timeout: 30_000 });
-  await page.getByRole("button", { name: /Recevoir mon code/ }).click();
-  await page.getByRole("button", { name: "Continuer sans vérifier" }).click({ timeout: 30_000 });
-
+  // Pas de numéro sur ce compte, donc pas d'étape de vérification : la porte
+  // posée dans requireUser ne s'applique qu'aux comptes qui en ont un.
   const dashboard = role === "employer" ? "/dashboard/employer" : "/dashboard/candidate";
   await page.waitForURL(new RegExp(`/fr${dashboard}`), { timeout: 30_000 });
 
@@ -95,4 +93,33 @@ export async function uploadVia(
   ]);
 
   await chooser.setFiles(file);
+}
+
+/**
+ * Inscription avec un numéro au lieu d'une adresse email.
+ *
+ * Traverse la vérification par SMS : en test l'envoi pointe vers le vide, donc
+ * la demande échoue et c'est la porte de secours qu'on emprunte — ce qui
+ * vérifie au passage qu'un SMS qui n'arrive pas n'enferme personne dehors.
+ */
+export async function registerByPhone(page: Page, role: Role, fullName: string, phone: string) {
+  await page.goto("/fr/register");
+
+  await page.locator('select[name="role"]').selectOption(role);
+  await page.getByPlaceholder("Awa Dacosta").fill(fullName);
+  await page.getByLabel("Téléphone").fill(phone);
+  await page.getByPlaceholder("••••••••").fill(PASSWORD);
+  await page.getByLabel("Ville").selectOption({ label: "Brazzaville" });
+  await page.getByLabel("Quartier").selectOption({ label: "Bacongo" });
+
+  await page.getByRole("button", { name: "Créer mon compte" }).click();
+
+  await page.waitForURL(/\/fr\/verification/, { timeout: 30_000 });
+  await page.getByRole("button", { name: /Recevoir mon code/ }).click();
+  await page.getByRole("button", { name: "Continuer sans vérifier" }).click({ timeout: 30_000 });
+
+  const dashboard = role === "employer" ? "/dashboard/employer" : "/dashboard/candidate";
+  await page.waitForURL(new RegExp(`/fr${dashboard}`), { timeout: 30_000 });
+
+  return { phone, password: PASSWORD };
 }
