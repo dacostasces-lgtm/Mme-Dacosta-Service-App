@@ -119,7 +119,9 @@ export function LoginForm({ initialError }: { initialError?: string }) {
 
         <div>
           <div className="flex items-baseline justify-between mb-1">
-            <label className="text-sm font-medium">Mot de passe</label>
+            <label htmlFor="password" className="text-sm font-medium">
+              Mot de passe
+            </label>
             <Link
               href="/mot-de-passe-oublie"
               className="text-xs text-primary font-medium hover:underline"
@@ -127,7 +129,13 @@ export function LoginForm({ initialError }: { initialError?: string }) {
               Mot de passe oublié ?
             </Link>
           </div>
-          <Input type="password" placeholder="••••••••" {...form.register("password")} />
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            placeholder="••••••••"
+            {...form.register("password")}
+          />
           {form.formState.errors.password && <p className="text-xs text-destructive mt-1">{form.formState.errors.password.message}</p>}
         </div>
 

@@ -260,8 +260,11 @@ export function RegisterForm({ cities }: { cities: CityRef[] }) {
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <label className="text-sm font-medium mb-1 block">Rôle</label>
-          <select 
+          <label htmlFor="role" className="text-sm font-medium mb-1 block">
+            Rôle
+          </label>
+          <select
+            id="role"
             {...form.register("role")}
             className="w-full h-12 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
           >
@@ -271,8 +274,15 @@ export function RegisterForm({ cities }: { cities: CityRef[] }) {
         </div>
 
         <div>
-          <label className="text-sm font-medium mb-1 block">Nom complet</label>
-          <Input placeholder="Awa Dacosta" {...form.register("fullName")} />
+          <label htmlFor="fullName" className="text-sm font-medium mb-1 block">
+            Nom complet
+          </label>
+          <Input
+            id="fullName"
+            autoComplete="name"
+            placeholder="Awa Dacosta"
+            {...form.register("fullName")}
+          />
           {form.formState.errors.fullName && <p className="text-xs text-destructive mt-1">{form.formState.errors.fullName.message}</p>}
         </div>
 
@@ -281,10 +291,17 @@ export function RegisterForm({ cities }: { cities: CityRef[] }) {
             précisément le public visé. Le téléphone est proposé en premier
             pour cette raison. */}
         <div>
-          <label className="text-sm font-medium mb-2 block">
+          {/* Un groupe de boutons, pas une saisie : d'où le rôle `group` et
+              l'`aria-labelledby` plutôt qu'un label, qui n'aurait aucun champ
+              à nommer et resterait muet. */}
+          <p id="choix-identifiant" className="text-sm font-medium mb-2">
             Comment souhaitez-vous créer votre compte ?
-          </label>
-          <div className="grid grid-cols-2 gap-2 p-1 rounded-full bg-surface border border-border">
+          </p>
+          <div
+            role="group"
+            aria-labelledby="choix-identifiant"
+            className="grid grid-cols-2 gap-2 p-1 rounded-full bg-surface border border-border"
+          >
             {(
               [
                 ["phone", "Mon numéro"],
@@ -358,8 +375,16 @@ export function RegisterForm({ cities }: { cities: CityRef[] }) {
         )}
 
         <div>
-          <label className="text-sm font-medium mb-1 block">Mot de passe</label>
-          <Input type="password" placeholder="••••••••" {...form.register("password")} />
+          <label htmlFor="password" className="text-sm font-medium mb-1 block">
+            Mot de passe
+          </label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            placeholder="••••••••"
+            {...form.register("password")}
+          />
           {form.formState.errors.password && <p className="text-xs text-destructive mt-1">{form.formState.errors.password.message}</p>}
         </div>
 

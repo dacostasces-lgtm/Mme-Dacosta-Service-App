@@ -1,4 +1,4 @@
-import { Briefcase, MapPin, Clock, Plus, Wallet, Check, Send } from "lucide-react";
+import { Briefcase, MapPin, Clock, Plus, Wallet, Send } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -166,15 +166,13 @@ export default async function JobsPage() {
                     </Link>
                   </div>
 
-                  {canApply &&
-                    (appliedTo.has(job.id) ? (
-                      <p className="mt-5 text-sm font-medium text-muted-foreground flex items-center gap-2">
-                        <Check className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
-                        Vous avez déjà postulé à cette offre.
-                      </p>
-                    ) : (
-                      <ApplyButton jobId={job.id} jobTitle={job.title} />
-                    ))}
+                  {canApply && (
+                    <ApplyButton
+                      jobId={job.id}
+                      jobTitle={job.title}
+                      alreadyApplied={appliedTo.has(job.id)}
+                    />
+                  )}
 
                   {!user && (
                     <Link

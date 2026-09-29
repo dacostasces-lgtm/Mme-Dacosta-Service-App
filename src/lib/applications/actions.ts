@@ -80,6 +80,10 @@ export async function applyToJob(
     return { error: `Envoi impossible : ${error.message}` };
   }
 
+  // Les deux tableaux de bord et la liste des offres changent d'un coup. Assez
+  // large pour remonter les composants clients de la page visitée : c'est
+  // pourquoi ApplyButton porte lui-même son état « déjà postulé » au lieu de
+  // laisser la page choisir entre lui et un paragraphe.
   revalidatePath("/", "layout");
   return { ok: true };
 }

@@ -62,14 +62,15 @@ test.describe("offre et candidature", () => {
       .fill("Bonjour, six ans d'expérience auprès de jeunes enfants.");
     await candidate.getByRole("button", { name: "Envoyer ma candidature" }).click();
 
-    // La confirmation « Candidature envoyée » n'est pas attendue ici :
-    // revalidatePath("/", "layout") re-rend la page dans son état final, qui
-    // remplace le formulaire. C'est cet état qui prouve l'enregistrement.
-    await expect(candidate.getByText("Vous avez déjà postulé à cette offre.")).toBeVisible({
-      timeout: 20_000,
-    });
+    // La confirmation doit tenir, et non être balayée par la révalidation de
+    // layout que déclenche l'action : c'est la seule chose qui dit à la
+    // candidate que son envoi est parti.
+    await expect(
+      candidate.getByText("Candidature envoyée. L'employeur peut désormais vous contacter.")
+    ).toBeVisible({ timeout: 20_000 });
 
-    // Et il survit à un rechargement : la ligne est bien en base.
+    // Au rechargement elle cède la place au constat, qui prouve que la ligne
+    // est bien en base et pas seulement dans l'état du composant.
     await candidate.reload();
     await expect(candidate.getByText("Vous avez déjà postulé à cette offre.")).toBeVisible();
 

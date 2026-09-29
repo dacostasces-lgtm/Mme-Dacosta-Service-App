@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { Briefcase, Check, Clock, MapPin, Send, Wallet } from "lucide-react";
+import { Briefcase, Clock, MapPin, Send, Wallet } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -233,15 +233,13 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
             </div>
           </dl>
 
-          {canApply &&
-            (alreadyApplied ? (
-              <p className="mt-6 text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Check className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
-                Vous avez déjà postulé à cette offre.
-              </p>
-            ) : (
-              <ApplyButton jobId={job.id} jobTitle={job.title} />
-            ))}
+          {canApply && (
+            <ApplyButton
+              jobId={job.id}
+              jobTitle={job.title}
+              alreadyApplied={alreadyApplied}
+            />
+          )}
 
           {!user && job.status === "active" && (
             <Link

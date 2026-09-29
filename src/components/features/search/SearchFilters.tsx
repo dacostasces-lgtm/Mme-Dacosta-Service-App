@@ -57,8 +57,11 @@ export function SearchFilters({ values }: { values: SearchFilterValues }) {
           </div>
         </div>
 
-        <div>
-          <label className="text-sm font-medium mb-2 block">Point de départ</label>
+        {/* fieldset/legend, pas un label : « Point de départ » nomme un groupe
+            — un bouton et deux champs cachés — et non une saisie. Un label sans
+            champ associé n'est annoncé par aucun lecteur d'écran. */}
+        <fieldset>
+          <legend className="text-sm font-medium mb-2">Point de départ</legend>
           <p className="text-xs text-muted-foreground mb-2">
             {coords
               ? "Distances calculées depuis votre position."
@@ -81,7 +84,7 @@ export function SearchFilters({ values }: { values: SearchFilterValues }) {
               <input type="hidden" name="lng" value={coords.lng} />
             </>
           )}
-        </div>
+        </fieldset>
 
         <div>
           <label htmlFor="rayon" className="text-sm font-medium mb-2 block">
