@@ -58,6 +58,12 @@ test.describe("parcours candidate", () => {
     await page.goto("/fr/verification");
     await page.getByRole("button", { name: /Recevoir mon code/ }).click();
     await page.getByRole("button", { name: "Continuer sans vérifier" }).click({ timeout: 30_000 });
+    // Attendre la navigation, pas le seul clic : le bouton lance une action
+    // serveur qui pose le cookie de report, puis navigue. Enchaîner tout de
+    // suite sur /pricing partait parfois avant que le cookie soit posé, et la
+    // porte renvoyait alors sur /verification — un échec qui n'apparaissait
+    // que sous charge.
+    await page.waitForURL(/\/fr\/dashboard\/candidate/, { timeout: 30_000 });
 
     // --- Premium --------------------------------------------------------------
     await page.goto("/fr/pricing");
