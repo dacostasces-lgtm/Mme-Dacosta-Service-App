@@ -120,6 +120,63 @@ cette adresse. Gmail sait le faire via « Envoyer des emails en tant que », en
 utilisant le SMTP Resend déjà configuré plus haut : `smtp.resend.com`, port
 `465`, utilisateur `resend`, mot de passe = la clé API.
 
+## Reprise de l'ancien domaine — à exécuter
+
+Décision prise le 29 septembre 2026 : **repointer `madamedacosta.com` vers
+Vercel**, qui renvoie tout vers le nouveau domaine en conservant le chemin. Le
+dépôt est prêt (`ANCIENNES_URLS_WIX` dans `next.config.ts`, couvert par
+`e2e/smoke.spec.ts`) ; il reste deux gestes, dans cet ordre.
+
+Le domaine est chez **Wix** comme registraire *et* comme DNS. Ni le jeton
+Hostinger ni celui de Vercel ne l'atteignent : le compte Wix est indispensable.
+
+### 1. Côté Vercel — déclarer les deux noms
+
+Projet `mme-dacosta-service-app` > *Settings* > *Domains* > *Add Domain*, pour
+`madamedacosta.com` **et** `www.madamedacosta.com`. Pour chacun, choisir
+*Redirect to* → `madamedacostaservices.com`, en **308** et en **conservant le
+chemin** (*Preserve path*).
+
+Sans la conservation du chemin, les 32 anciennes adresses tomberaient toutes
+sur l'accueil et la table de correspondance ne servirait à rien.
+
+Vercel affiche alors les valeurs DNS à poser. Celles attendues sont les mêmes
+que pour le domaine de production : `216.198.79.1` pour la racine, et le CNAME
+propre au projet pour `www`. **Relever ce que Vercel affiche** plutôt que
+recopier ces valeurs : elles sont propres au projet et peuvent changer.
+
+### 2. Côté Wix — remplacer les enregistrements
+
+Wix > *Paramètres* > *Domaines* > `madamedacosta.com` > *Avancé* >
+*Modifier les enregistrements DNS*.
+
+| Nom | Type | Remplacer | Par |
+|---|---|---|---|
+| `@` | A | `185.230.63.107`, `185.230.63.171`, `185.230.63.186` | la valeur affichée par Vercel |
+| `www` | CNAME | `cdn1.wixdns.net` | la valeur affichée par Vercel |
+
+Les trois A de la racine partent ensemble : en laisser un renverrait une part
+du trafic sur Wix, au hasard du résolveur.
+
+Wix peut refuser de modifier le DNS tant que le site est publié sur ce
+domaine ; il faut alors d'abord le détacher (*Déconnecter du site*), sans
+supprimer le domaine — c'est lui qu'on garde, c'est toute la valeur de
+l'opération.
+
+### 3. Vérifier
+
+```bash
+dig +short madamedacosta.com A
+curl -sSI https://madamedacosta.com/post/offre-d-emploi-bookmaker | head -3
+```
+
+Attendu : une `308` vers `https://madamedacostaservices.com/post/…`, puis une
+seconde `308` vers `/fr/offres`. Deux sauts, ce que Google suit sans pénalité.
+
+Compter jusqu'à 24 h de propagation, en pratique quelques minutes. **Ne pas
+supprimer le site Wix avant** d'avoir vu la redirection fonctionner : tant que
+le DNS n'a pas basculé partout, il sert encore des visiteurs.
+
 ## madamedacosta.com — ancien domaine, toujours sur Wix
 
 Relevé le 12 août 2026, **pendant que le site Wix fonctionne**. Ce domaine

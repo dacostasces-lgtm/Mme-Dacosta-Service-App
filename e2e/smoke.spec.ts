@@ -82,6 +82,35 @@ test.describe("pages publiques", () => {
     }
   });
 
+  /**
+   * L'ancien site Wix est repointé vers Vercel, qui renvoie ici en conservant
+   * le chemin : ses anciennes adresses arrivent donc sur ce domaine. Sans ces
+   * règles elles tombent en 404, et l'autorité accumulée par le domaine se
+   * perd au lieu d'être transférée.
+   */
+  test("les anciennes adresses du site Wix atterrissent sur une page vivante", async ({
+    page,
+  }) => {
+    const correspondances: Array<[string, RegExp]> = [
+      ["/nos-offres", /\/fr$/],
+      ["/book-online", /\/fr\/candidats$/],
+      ["/actualites", /\/fr\/offres$/],
+      ["/post/offre-d-emploi-bookmaker", /\/fr\/offres$/],
+      // Slug accentué, donc percent-encodé : c'est le préfixe ASCII qui doit
+      // faire mouche, pas le slug entier.
+      ["/post/nous-recrutons-ménagère-nounou", /\/fr\/offres$/],
+      // Filet : un article éditorial n'a pas d'équivalent, mais ne doit pas
+      // finir en 404.
+      ["/post/quand-un-enfant-vole-comprendre-réagir-et-l-aider", /\/fr$/],
+    ];
+
+    for (const [ancienne, attendue] of correspondances) {
+      const reponse = await page.goto(ancienne);
+      expect(reponse?.status(), `${ancienne} doit répondre 200 après redirection`).toBe(200);
+      await expect(page, `${ancienne} doit mener à ${attendue}`).toHaveURL(attendue);
+    }
+  });
+
   test("le mot de passe oublié est accessible sans être connecté", async ({ page }) => {
     await page.goto("/fr/login");
     await page.getByRole("link", { name: "Mot de passe oublié ?" }).click();

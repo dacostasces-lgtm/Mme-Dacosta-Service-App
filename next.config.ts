@@ -42,6 +42,68 @@ const SECURITY_HEADERS = [
   },
 ];
 
+/**
+ * L'ancien site Wix, madamedacosta.com, garde 32 URL indexées qui concurrencent
+ * le nouveau domaine sur les moteurs. Le domaine est repointé vers Vercel, qui
+ * renvoie tout vers madamedacostaservices.com **en conservant le chemin** — les
+ * anciens chemins arrivent donc ici, où rien ne leur répond.
+ *
+ * Ces règles leur donnent la page vivante la plus proche. Une 308 (`permanent`)
+ * demande aux moteurs de transférer l'autorité de l'ancienne adresse à la
+ * nouvelle ; une 307 la garderait indéfiniment sur l'ancienne.
+ *
+ * Deux limites assumées :
+ *
+ * - Les sources restent en ASCII. Les slugs du blog portent des accents, qui
+ *   arrivent percent-encodés : `/post/nous-recrutons-ménagère-nounou` se
+ *   présente comme `/post/nous-recrutons-m%C3%A9nag%C3%A8re-nounou`. Faire
+ *   correspondre un préfixe sans accent est fiable ; écrire le slug entier ne
+ *   l'est pas. D'où des préfixes, et un filet en fin de liste.
+ * - Un `:param` collé à du texte ne peut pas être répété : path-to-regexp
+ *   refuse `-:reste*` (« Can not repeat without a prefix and suffix ») et fait
+ *   échouer le démarrage. Sans `*`, le paramètre couvre un segment, ce qui
+ *   suffit : un slug d'article n'en contient jamais deux. Le `*` n'est gardé
+ *   que sur les motifs où le paramètre suit une barre oblique.
+ */
+const ANCIENNES_URLS_WIX = [
+  // Les six pages du site Wix. Destinations choisies sur leur contenu réel,
+  // pas sur leur slug : « nos-offres » s'intitule CHAMP D'ACTION et décrit le
+  // service, ce que porte désormais l'accueil.
+  { source: '/nos-offres', destination: '/fr', permanent: true },
+  { source: '/a-propos', destination: '/fr', permanent: true },
+  { source: '/general-6', destination: '/fr', permanent: true },
+  { source: '/challenges', destination: '/fr', permanent: true },
+  { source: '/book-online', destination: '/fr/candidats', permanent: true },
+  // Le blog servait surtout d'annonces : onze des dix-neuf articles en sont.
+  { source: '/actualites', destination: '/fr/offres', permanent: true },
+
+  // Les annonces du blog, par préfixe.
+  { source: '/post/offre-d-emploi-:reste', destination: '/fr/offres', permanent: true },
+  { source: '/post/nous-recrutons-:reste', destination: '/fr/offres', permanent: true },
+  { source: '/post/recherche-:reste', destination: '/fr/offres', permanent: true },
+  { source: '/post/cuisinier-:reste', destination: '/fr/offres', permanent: true },
+  { source: '/post/commercial-:reste', destination: '/fr/offres', permanent: true },
+  {
+    source: '/post/international-live-in-nanny-:reste',
+    destination: '/fr/offres',
+    permanent: true,
+  },
+
+  // Le seul article éditorial qui a une vraie page d'arrivée : choisir sa
+  // nounou, c'est parcourir les profils.
+  {
+    source: '/post/comment-choisir-sa-nounou-:reste',
+    destination: '/fr/candidats',
+    permanent: true,
+  },
+
+  // Filet : le reste du blog est éditorial — émotions de l'enfant, routines,
+  // employée du mois — et n'a pas d'équivalent. L'accueil plutôt qu'une 404,
+  // et plutôt que les offres, qui n'auraient rien à voir avec le sujet.
+  { source: '/post/:reste*', destination: '/fr', permanent: true },
+  { source: '/blog/:reste*', destination: '/fr', permanent: true },
+] as const;
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: supabaseHost
@@ -76,6 +138,7 @@ const nextConfig: NextConfig = {
       // already shared or indexed lands on the French equivalent instead.
       { source: '/en', destination: '/fr', permanent: false },
       { source: '/en/:path*', destination: '/fr/:path*', permanent: false },
+      ...ANCIENNES_URLS_WIX,
     ];
   },
 };
