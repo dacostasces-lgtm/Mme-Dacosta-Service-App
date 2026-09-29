@@ -2,30 +2,39 @@
  * Company and hosting facts used by the three legal pages.
  *
  * Gathered in one place so a legal notice is never a copy-paste of itself in
- * three files. Fields left empty are ones this codebase has no authoritative
- * source for — registration numbers, legal form, share capital. They render as
- * a visible "à compléter" marker rather than a plausible-looking invention:
- * a wrong RCCM on a mentions légales page is a legal problem, an obvious gap is
- * merely a task.
+ * three files. Values come from the RCCM extract issued on 25/07/2025 by the
+ * Tribunal de commerce de Brazzaville. A field left empty renders as a visible
+ * "à compléter" marker rather than a plausible-looking invention: a wrong
+ * registration number on a mentions légales page is a legal problem, an obvious
+ * gap is merely a task.
  */
 
 export const COMPANY = {
+  /** Commercial name the service is known by. */
   name: "Madame Dacosta Services",
-  /** SARL, SA, entreprise individuelle… */
-  legalForm: "",
+  /**
+   * Registered trade name. It differs from the commercial name above, and the
+   * registered activities are retail trade — not placement services. See the
+   * note in the mentions légales page: this needs a registry amendment.
+   */
+  registeredName: "Ets GLWADYS",
+  /** Sole trader: "immatriculation principale d'une personne physique". */
+  legalForm: "Entreprise individuelle (personne physique)",
+  operator: "Madame Altesse Asmao DACOSTA KAYINDA",
   /** Registre du Commerce et du Crédit Mobilier. */
-  rccm: "",
-  /** Numéro d'Identification Unique. */
+  rccm: "CG-BZV-01-2014-A10-01609",
+  rccmRegisteredOn: "25 juillet 2025",
+  /** Numéro d'Identification Unique — absent de l'extrait RCCM. */
   niu: "",
-  shareCapital: "",
-  address: "18 rue Ampère, la Glacière, Bacongo",
+  /** Établissement principal au RCCM. */
+  address: "38, rue Mouléké, Ouenzé",
   city: "Brazzaville",
   country: "République du Congo",
   email: "contact@madamedacostaservices.com",
   phone: "+242 06 717 30 30",
   whatsapp: "242067173030",
   /** Responsable de la publication du site. */
-  publicationDirector: "",
+  publicationDirector: "Madame Altesse Asmao DACOSTA KAYINDA",
 } as const;
 
 export const HOSTING = [
@@ -49,7 +58,7 @@ export const DATA_LAW =
   "loi n° 29-2019 du 10 octobre 2019 portant protection des données à caractère personnel";
 
 /** Last substantive revision, shown to readers so they can spot a stale text. */
-export const LAST_UPDATED = "9 août 2026";
+export const LAST_UPDATED = "29 septembre 2026";
 
 /** True when a field still needs the company's own information. */
 export function missing(value: string) {

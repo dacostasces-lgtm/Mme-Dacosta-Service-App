@@ -16,8 +16,12 @@ export default function PrivacyPage() {
       summary="Nous collectons peu, mais nous collectons des données sensibles — dont votre position. Voici exactement lesquelles, pourquoi, et comment les faire supprimer."
     >
       <Article title="1. Responsable du traitement">
+        {/* L'exploitant est une personne physique : c'est elle, et non une
+            société, qui répond du traitement. */}
         <p>
-          {COMPANY.name}, {COMPANY.address}, {COMPANY.city}, {COMPANY.country}. Contact :{" "}
+          {COMPANY.operator}, exerçant sous l&apos;enseigne {COMPANY.registeredName} (nom
+          commercial « {COMPANY.name} »), RCCM {COMPANY.rccm}, {COMPANY.address},{" "}
+          {COMPANY.city}, {COMPANY.country}. Contact :{" "}
           <a href={`mailto:${COMPANY.email}`} className="text-primary hover:underline">
             {COMPANY.email}
           </a>

@@ -16,23 +16,24 @@ export default function LegalNoticePage() {
       summary="Qui édite ce site, qui en est responsable, et où il est hébergé."
     >
       <Article title="Éditeur du site">
-        <p className="text-foreground font-medium">{COMPANY.name}</p>
+        <p className="text-foreground font-medium">
+          {COMPANY.operator}, exerçant sous l&apos;enseigne {COMPANY.registeredName} et éditant
+          le présent site sous le nom commercial « {COMPANY.name} ».
+        </p>
         <ul className="space-y-1">
+          {/* Pas de capital social : l'exploitant est une personne physique
+              immatriculée au RCCM, non une société. */}
+          <li>Forme juridique : {COMPANY.legalForm}</li>
           <li>
-            Forme juridique :{" "}
-            {missing(COMPANY.legalForm) ? <ToFill label="Forme juridique" /> : COMPANY.legalForm}
+            RCCM : {COMPANY.rccm} — Tribunal de commerce de {COMPANY.city}, immatriculation du{" "}
+            {COMPANY.rccmRegisteredOn}
           </li>
-          <li>
-            Capital social :{" "}
-            {missing(COMPANY.shareCapital) ? <ToFill label="Capital" /> : COMPANY.shareCapital}
-          </li>
-          <li>RCCM : {missing(COMPANY.rccm) ? <ToFill label="RCCM" /> : COMPANY.rccm}</li>
           <li>
             Numéro d&apos;Identification Unique :{" "}
             {missing(COMPANY.niu) ? <ToFill label="NIU" /> : COMPANY.niu}
           </li>
           <li>
-            Siège social : {COMPANY.address}, {COMPANY.city}, {COMPANY.country}
+            Établissement principal : {COMPANY.address}, {COMPANY.city}, {COMPANY.country}
           </li>
           <li>
             Courriel :{" "}
