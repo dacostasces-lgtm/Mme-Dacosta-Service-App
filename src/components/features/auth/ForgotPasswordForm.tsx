@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 import { Link } from "@/i18n/routing";
+import { PhoneRecoveryForm } from "@/components/features/auth/PhoneRecoveryForm";
 
 const schema = z.object({
   email: z.string().email("Email invalide"),
@@ -17,7 +18,20 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-export function ForgotPasswordForm() {
+const CARTE = "w-full max-w-md mx-auto p-8 bg-card rounded-2xl shadow-xl shadow-primary/5";
+
+function RetourConnexion() {
+  return (
+    <p className="text-sm text-muted-foreground text-center mt-6">
+      <Link href="/login" className="text-primary font-medium hover:underline">
+        Retour à la connexion
+      </Link>
+    </p>
+  );
+}
+
+/** Voie historique : Supabase envoie un lien de réinitialisation. */
+function ParEmail() {
   const locale = useLocale();
   const [sent, setSent] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -52,26 +66,23 @@ export function ForgotPasswordForm() {
 
   if (sent) {
     return (
-      <div className="w-full max-w-md mx-auto p-8 bg-card rounded-2xl shadow-xl shadow-primary/5 text-center">
+      <div className="text-center">
         <MailCheck className="h-12 w-12 text-primary mx-auto mb-4" />
-        <h1 className="text-2xl font-bold mb-2">Vérifiez votre boîte mail</h1>
-        <p className="text-muted-foreground text-sm mb-6">
-          Si un compte existe avec cette adresse, vous recevrez un lien pour choisir un nouveau
-          mot de passe. Le lien expire au bout d&apos;une heure.
+        <p className="font-semibold text-lg mb-2">Vérifiez votre boîte mail</p>
+        <p className="text-muted-foreground text-sm">
+          Si un compte existe avec cette adresse, vous recevrez un lien pour choisir un
+          nouveau mot de passe. Le lien expire au bout d&apos;une heure.
         </p>
-        <Link href="/login" className="text-sm text-primary font-medium hover:underline">
-          Retour à la connexion
-        </Link>
+        <RetourConnexion />
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-md mx-auto p-8 bg-card rounded-2xl shadow-xl shadow-primary/5">
-      <h1 className="text-2xl font-bold mb-2">Mot de passe oublié</h1>
+    <>
       <p className="text-muted-foreground text-sm mb-6">
-        Indiquez l&apos;adresse email de votre compte. Nous vous enverrons un lien pour en choisir
-        un nouveau.
+        Indiquez l&apos;adresse email de votre compte. Nous vous enverrons un lien pour en
+        choisir un nouveau.
       </p>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
@@ -91,7 +102,7 @@ export function ForgotPasswordForm() {
 
         <Button
           type="submit"
-          className="w-full h-12 text-base font-semibold"
+          className="w-full h-12 text-base font-semibold rounded-full"
           disabled={form.formState.isSubmitting}
         >
           {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -99,11 +110,60 @@ export function ForgotPasswordForm() {
         </Button>
       </form>
 
-      <p className="text-sm text-muted-foreground text-center mt-6">
-        <Link href="/login" className="text-primary font-medium hover:underline">
-          Retour à la connexion
-        </Link>
-      </p>
+      <RetourConnexion />
+    </>
+  );
+}
+
+/**
+ * Deux voies de récupération, parce qu'un compte peut n'avoir que l'une des
+ * deux : depuis que l'inscription accepte un numéro seul, la voie email
+ * laisserait ces comptes définitivement enfermés dehors.
+ *
+ * Le SMS est proposé en premier, comme à l'inscription.
+ */
+export function ForgotPasswordForm() {
+  const [voie, setVoie] = useState<"phone" | "email">("phone");
+
+  return (
+    <div className={CARTE}>
+      <h1 className="text-2xl font-bold mb-2">Mot de passe oublié</h1>
+
+      <div className="grid grid-cols-2 gap-2 p-1 rounded-full bg-surface border border-border my-5">
+        {(
+          [
+            ["phone", "Par SMS"],
+            ["email", "Par email"],
+          ] as const
+        ).map(([valeur, libelle]) => (
+          <button
+            key={valeur}
+            type="button"
+            onClick={() => setVoie(valeur)}
+            aria-pressed={voie === valeur}
+            className={`h-10 rounded-full text-sm font-medium transition-colors ${
+              voie === valeur
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {libelle}
+          </button>
+        ))}
+      </div>
+
+      {voie === "phone" ? (
+        <>
+          <p className="text-muted-foreground text-sm mb-6">
+            Indiquez le numéro de votre compte. Un code vous sera envoyé pour choisir un
+            nouveau mot de passe.
+          </p>
+          <PhoneRecoveryForm />
+          <RetourConnexion />
+        </>
+      ) : (
+        <ParEmail />
+      )}
     </div>
   );
 }
