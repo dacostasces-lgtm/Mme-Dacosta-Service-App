@@ -29,6 +29,14 @@ jobs:
 
       - run: npm ci
 
+      # next-env.d.ts est ignoré par git, comme dans tout projet Next : c'est
+      # un fichier généré. Or c'est lui qui déclare les modules d'images, donc
+      # sur un clone neuf `tsc` échoue sur chaque `import … from '*.jpg'` — une
+      # erreur invisible en local, où le fichier traîne depuis le premier build.
+      # `typegen` le régénère sans faire un build complet.
+      - name: Types générés
+        run: npx next typegen
+
       - name: Types
         run: npx tsc --noEmit
 
@@ -60,6 +68,21 @@ jobs:
 
       - name: Navigateur Playwright
         run: npx playwright install --with-deps chromium
+
+      # La pile Supabase locale tire une dizaine d'images de Docker Hub, qui
+      # limite les téléchargements anonymes par adresse IP — partagée entre
+      # tous les exécuteurs GitHub. D'où des « toomanyrequests: Data limit
+      # exceeded » qui n'ont rien à voir avec le code. S'authentifier, même
+      # avec un compte gratuit, fait compter les tirages sur ce compte.
+      #
+      # L'étape se saute d'elle-même tant que les secrets ne sont pas posés :
+      # sans eux le job tourne comme avant, avec le risque de butoir.
+      - name: Docker Hub
+        if: ${{ vars.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - uses: supabase/setup-cli@v1
         with:
