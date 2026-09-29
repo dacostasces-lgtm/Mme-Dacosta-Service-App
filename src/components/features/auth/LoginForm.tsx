@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 import { normalisePhone } from "@/lib/phone";
 import { dashboardPathFor, type UserRole } from "@/lib/auth/roles";
 import { Link, useRouter } from "@/i18n/routing";
+import { GoogleButton } from "@/components/features/auth/GoogleButton";
 
 /**
  * Un seul champ pour les deux : on se connecte avec l'identifiant utilisé à
@@ -148,6 +149,8 @@ export function LoginForm({ initialError }: { initialError?: string }) {
           {form.formState.isSubmitting ? "Connexion..." : "Se connecter"}
         </Button>
       </form>
+
+      <GoogleButton libelle="Continuer avec Google" />
 
       <p className="text-sm text-center text-muted-foreground mt-6">
         Pas encore de compte ?{" "}

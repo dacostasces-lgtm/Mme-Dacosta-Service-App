@@ -27,6 +27,12 @@ export type SessionUser = {
   phoneVerifiedAt: string | null;
   /** Présence d'un numéro, sans sa valeur : la colonne `phone` est révoquée. */
   hasPhone: boolean;
+  /**
+   * Null tant que le rôle n'a pas été choisi. Ne concerne en pratique que les
+   * comptes créés par un fournisseur externe : le formulaire impose le rôle,
+   * donc le déclencheur d'inscription horodate aussitôt.
+   */
+  onboardingCompletedAt: string | null;
 };
 
 /**
@@ -53,7 +59,9 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, role, full_name, is_premium, phone_verified_at, phone_present")
+    .select(
+      "id, role, full_name, is_premium, phone_verified_at, phone_present, onboarding_completed_at"
+    )
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -73,6 +81,12 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     isPremium: profile?.is_premium ?? false,
     phoneVerifiedAt: (profile?.phone_verified_at as string | null) ?? null,
     hasPhone: Boolean(profile?.phone_present),
+    // Un profil pas encore écrit n'est pas un rôle à choisir : renvoyer null
+    // ici enverrait vers /bienvenue le temps que le déclencheur passe, et le
+    // choix porterait sur une ligne qui n'existe pas.
+    onboardingCompletedAt: profile
+      ? ((profile.onboarding_completed_at as string | null) ?? null)
+      : new Date(0).toISOString(),
   };
 });
 
@@ -88,6 +102,11 @@ export async function requireUser(options?: {
    * redirection ci-dessous la renverrait vers elle-même indéfiniment.
    */
   allowUnverifiedPhone?: boolean;
+  /**
+   * À ne poser que sur /bienvenue et son action, pour la même raison que
+   * ci-dessus : la redirection renverrait la page vers elle-même.
+   */
+  allowIncompleteOnboarding?: boolean;
 }): Promise<SessionUser> {
   const locale = await getLocale();
   const user = await getCurrentUser();
@@ -96,6 +115,16 @@ export async function requireUser(options?: {
   // so returning the call is what tells TypeScript the flow stops here.
   if (!user) {
     return redirect({ href: "/login", locale });
+  }
+
+  // Avant tout le reste : un compte arrivé par Google porte le rôle par
+  // défaut, que personne n'a choisi. Le laisser entrer, c'est installer un
+  // employeur dans l'espace candidat — et `role` étant gelé par un
+  // déclencheur, il n'en sortirait plus. La porte ne se déclenche que si la
+  // colonne est nulle, ce qui n'arrive jamais pour une inscription au
+  // formulaire.
+  if (!options?.allowIncompleteOnboarding && !user.onboardingCompletedAt) {
+    return redirect({ href: "/bienvenue", locale });
   }
 
   // Le numéro se vérifie avant d'entrer dans son espace. C'est le seul canal

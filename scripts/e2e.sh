@@ -21,6 +21,11 @@ supabase db reset >/dev/null
 STATUS=$(supabase status -o json)
 export NEXT_PUBLIC_SUPABASE_URL=$(node -e "process.stdout.write(JSON.parse(process.argv[1]).API_URL)" "$STATUS")
 export NEXT_PUBLIC_SUPABASE_ANON_KEY=$(node -e "process.stdout.write(JSON.parse(process.argv[1]).ANON_KEY)" "$STATUS")
+# Sert à fabriquer un compte sans rôle — ce que produit une connexion Google —
+# sans dépendre d'un vrai aller-retour chez Google. Clé de la pile locale,
+# publique et identique chez tout le monde : elle n'est jamais passée au
+# serveur de test, seulement aux specs.
+export SUPABASE_SERVICE_ROLE_KEY=$(node -e "process.stdout.write(JSON.parse(process.argv[1]).SERVICE_ROLE_KEY)" "$STATUS")
 
 case "$NEXT_PUBLIC_SUPABASE_URL" in
   *127.0.0.1*|*localhost*) ;;

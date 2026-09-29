@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Link, useRouter } from "@/i18n/routing";
 import { normalisePhone, PHONE_HINT } from "@/lib/phone";
 import type { CityRef } from "@/lib/geo/locations";
+import { GoogleButton } from "@/components/features/auth/GoogleButton";
 
 /**
  * On s'inscrit avec une adresse email OU un numéro, au choix.
@@ -458,6 +459,12 @@ export function RegisterForm({ cities }: { cities: CityRef[] }) {
           {form.formState.isSubmitting ? "Création du compte..." : "Créer mon compte"}
         </Button>
       </form>
+
+      {/* Après le formulaire, pas avant : c'est un raccourci pour ceux qui ont
+          un compte Google, pas le chemin principal. Beaucoup de candidates
+          n'en ont pas, et le mettre en tête ferait passer l'inscription par
+          numéro — celle qui les concerne — pour une solution de repli. */}
+      <GoogleButton libelle="S'inscrire avec Google" />
 
       <p className="text-sm text-center text-muted-foreground mt-6">
         Déjà un compte ?{" "}
