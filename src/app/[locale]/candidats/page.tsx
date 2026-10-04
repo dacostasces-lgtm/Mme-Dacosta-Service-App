@@ -2,6 +2,7 @@ import { SearchX } from "lucide-react";
 import { SearchFilters } from "@/components/features/search/SearchFilters";
 import { ProfileCard } from "@/components/features/search/ProfileCard";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { availabilityLabel } from "@/lib/candidates/availability";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import banniere from "@/assets/images/banniere-candidats.jpg";
 
@@ -16,13 +17,6 @@ type Candidate = {
   availability: string | null;
   distance_km: number | null;
   rating: number | string | null;
-};
-
-const AVAILABILITY_LABELS: Record<string, string> = {
-  full_time: "Temps Plein",
-  part_time: "Temps Partiel",
-  internal: "Interne (Logé)",
-  external: "Externe",
 };
 
 /** Shown instead of a 500 when a deploy is missing its Supabase credentials. */
@@ -126,7 +120,7 @@ export default async function CandidatesPage({
                     rating={Number(candidate.rating ?? 0)}
                     isPremium={candidate.is_premium}
                     availability={
-                      AVAILABILITY_LABELS[candidate.availability ?? ""] ?? "À préciser"
+                      availabilityLabel(candidate.availability)
                     }
                     avatarUrl={candidate.avatar_url ?? undefined}
                   />

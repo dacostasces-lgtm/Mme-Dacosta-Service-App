@@ -1,5 +1,6 @@
-import { ShieldCheck, Clock, MapPin, Mail, Undo2, Check, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ShieldCheck, Clock, MapPin, Mail, Undo2, Check, X, UserPlus } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Link } from "@/i18n/routing";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { setProfileValidation, setCandidateCheck, type CandidateCheck } from "@/lib/admin/actions";
@@ -223,7 +224,16 @@ export default async function AdminPage() {
   return (
     <div className="min-h-screen bg-surface">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold mb-2">Espace de modération</h1>
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-2">
+          <h1 className="text-3xl font-bold">Espace de modération</h1>
+          <Link
+            href="/admin/candidats/nouveau"
+            className={buttonVariants({ className: "h-11 rounded-full px-5 gap-2" })}
+          >
+            <UserPlus className="h-4 w-4" />
+            Ajouter un candidat
+          </Link>
+        </div>
         <p className="text-muted-foreground mb-8">
           Vous validez ici les paiements et les profils. Un profil n&apos;apparaît dans la
           recherche qu&apos;une fois publié, et les vérifications que vous cochez s&apos;affichent

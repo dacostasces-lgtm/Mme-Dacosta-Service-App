@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { MapPin, Star, BadgeCheck, CheckCircle2, Circle, FileText, Phone, Award, Clock, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { availabilityLabel } from "@/lib/candidates/availability";
 import { createClient } from "@/lib/supabase/server";
 
 type Candidate = {
@@ -25,13 +26,6 @@ type Candidate = {
   identity_checked_at: string | null;
   criminal_record_checked_at: string | null;
   interview_passed_at: string | null;
-};
-
-const AVAILABILITY_LABELS: Record<string, string> = {
-  full_time: "Temps Plein",
-  part_time: "Temps Partiel",
-  internal: "Interne (Logé)",
-  external: "Externe",
 };
 
 function formatDate(iso: string) {
@@ -249,7 +243,7 @@ export default async function CandidateProfilePage({
             <section className="bg-card rounded-3xl p-6 border border-border shadow-soft">
               <h3 className="text-sm font-semibold text-muted-foreground mb-1">Disponibilité</h3>
               <p className="font-medium text-lg mb-4">
-                {AVAILABILITY_LABELS[profile.availability ?? ""] ?? "À préciser"}
+                {availabilityLabel(profile.availability)}
               </p>
 
               <h3 className="text-sm font-semibold text-muted-foreground mb-1">Prétention Salariale</h3>
