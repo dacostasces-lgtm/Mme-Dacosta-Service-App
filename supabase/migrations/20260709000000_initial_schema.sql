@@ -1,6 +1,18 @@
 -- Enable PostGIS for GPS calculations (distance)
 CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA extensions;
 
+-- PostGIS vit dans `extensions`, qui n'est pas dans le search_path par défaut
+-- de la session qui rejoue ces migrations. La pile locale l'y met, un projet
+-- hébergé non : le 7 octobre 2026 cette migration a échoué en distant sur
+-- « type "geography" does not exist », à la colonne `profiles.location`, après
+-- que la réinitialisation avait déjà supprimé le schéma — laissant la base à
+-- moitié construite.
+--
+-- Le type est qualifié explicitement plus bas ; ce SET couvre ce qui ne peut
+-- pas l'être aussi simplement, l'index GIST sur cette colonne, dont la classe
+-- d'opérateurs par défaut se cherche elle aussi dans le chemin.
+SET search_path = public, extensions;
+
 -- Create Enums
 CREATE TYPE public.user_role AS ENUM ('admin', 'employer', 'candidate');
 CREATE TYPE public.availability_type AS ENUM ('full_time', 'part_time', 'internal', 'external');
@@ -35,7 +47,7 @@ CREATE TABLE public.profiles (
     email TEXT,
     avatar_url TEXT,
     neighborhood_id UUID REFERENCES public.neighborhoods(id) ON DELETE SET NULL,
-    location geography(Point, 4326),
+    location extensions.geography(Point, 4326),
     is_premium BOOLEAN NOT NULL DEFAULT FALSE,
     is_validated BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
