@@ -78,13 +78,18 @@ export async function verifyPhoneOtp(
   }
 
   const supabase = await createClient();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("phone_otp_pin_id")
-    .eq("id", user.profileId)
-    .maybeSingle();
+  // Par la fonction gardée, pas par un SELECT : la colonne est révoquée comme
+  // `phone`, et une lecture directe échouait en « permission denied ».
+  const { data: pinId, error: pinError } = await supabase.rpc("my_phone_otp_pin_id");
 
-  const pinId = profile?.phone_otp_pin_id as string | null | undefined;
+  // Distinct de « aucune demande en cours », et c'est tout le sujet : cette
+  // confusion a fait répondre « demandez-en un nouveau » pendant une semaine
+  // à des gens qui tenaient le bon code. Une lecture qui échoue n'est pas une
+  // absence de demande, et doit se voir comme une panne.
+  if (pinError) {
+    return { error: `Vérification indisponible : ${pinError.message}` };
+  }
+
   if (!pinId) {
     return { error: "Aucun code en attente. Demandez-en un nouveau." };
   }
