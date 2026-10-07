@@ -60,7 +60,17 @@ test.describe("pages publiques", () => {
     });
 
     await page.goto("/fr");
-    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+
+    // Pas `networkidle` : l'accueil enregistre un service worker, qui garde de
+    // l'activité réseau après le chargement. L'attente ne retombait donc
+    // jamais sur l'exécuteur CI, plus lent, et le test expirait à soixante
+    // secondes sans rien avoir à reprocher à la page. On attend ce que la
+    // page doit afficher, puis que le worker soit prêt — c'est lui qu'on
+    // laisse parler, puisque c'est de lui que viendrait une violation tardive.
+    await page
+      .evaluate(() => navigator.serviceWorker?.ready.then(() => undefined))
+      .catch(() => undefined);
 
     expect(problems).toEqual([]);
   });
