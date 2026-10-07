@@ -17,12 +17,17 @@ concurrency:
 jobs:
   statique:
     name: Types, lint et build
-    runs-on: ubuntu-latest
+    # Figé plutôt que `ubuntu-latest` : GitHub fait basculer cette étiquette
+    # sur Ubuntu 26 à partir du 19 octobre 2026. Un changement d'image pendant
+    # la nuit est exactement le genre de surprise qu'on ne veut pas sur une
+    # sauvegarde ni sur la CI. À monter délibérément, en vérifiant que les deux
+    # workflows passent.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -54,12 +59,12 @@ jobs:
 
   e2e:
     name: Parcours de bout en bout
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -84,7 +89,7 @@ jobs:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v3
         with:
           version: latest
 
@@ -98,7 +103,7 @@ jobs:
       # trace, juste un nom de test.
       - name: Conserver les traces en cas d'échec
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-traces
           path: test-results/

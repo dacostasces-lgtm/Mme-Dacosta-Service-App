@@ -22,12 +22,17 @@ on:
 jobs:
   exporter:
     name: Export quotidien
-    runs-on: ubuntu-latest
+    # Figé plutôt que `ubuntu-latest` : GitHub fait basculer cette étiquette
+    # sur Ubuntu 26 à partir du 19 octobre 2026. Un changement d'image pendant
+    # la nuit est exactement le genre de surprise qu'on ne veut pas sur une
+    # sauvegarde ni sur la CI. À monter délibérément, en vérifiant que les deux
+    # workflows passent.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v3
         with:
           version: latest
 
@@ -106,7 +111,7 @@ jobs:
             hors de la base et survivent de toute façon à un effacement.
           TXT
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sauvegarde-${{ github.run_id }}
           path: sauvegarde/
