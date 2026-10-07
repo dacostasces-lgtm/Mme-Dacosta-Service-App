@@ -34,6 +34,50 @@ export type SendResult =
   | { ok: true; pinId: string }
   | { ok: false; error: string };
 
+export type BalanceResult =
+  | { ok: true; balance: number; currency: string }
+  | { ok: false; error: string };
+
+/**
+ * Solde du compte Infobip.
+ *
+ * Rien dans l'application ne le surveillait, et c'est une panne silencieuse :
+ * à zéro, l'envoi échoue, l'utilisateur prend l'échappatoire « continuer sans
+ * vérifier », et tout continue de fonctionner — sauf que plus aucun numéro
+ * n'est vérifié et que personne ne s'en aperçoit. Le compte est partagé avec
+ * un autre projet, ce qui rend l'épuisement d'autant plus imprévisible.
+ *
+ * Jamais bloquant : ceci alimente un écran de modération, pas un parcours
+ * utilisateur, donc un échec se lit plutôt qu'il ne remonte.
+ */
+export async function accountBalance(): Promise<BalanceResult> {
+  const settings = config();
+  if (!settings) return { ok: false, error: "Vérification par SMS non configurée." };
+
+  try {
+    const response = await fetch(`${BASE_URL}/account/1/balance`, {
+      method: "GET",
+      headers: { Authorization: `App ${settings.apiKey}`, Accept: "application/json" },
+      // Un écran de modération ne doit pas dépendre de la fraîcheur d'un
+      // solde : une minute de cache évite un appel par affichage.
+      next: { revalidate: 60 },
+    });
+
+    if (!response.ok) {
+      return { ok: false, error: `Infobip a répondu ${response.status}.` };
+    }
+
+    const payload = (await response.json()) as { balance?: number; currency?: string };
+    if (typeof payload.balance !== "number") {
+      return { ok: false, error: "Réponse Infobip inattendue." };
+    }
+
+    return { ok: true, balance: payload.balance, currency: payload.currency ?? "" };
+  } catch {
+    return { ok: false, error: "Infobip injoignable." };
+  }
+}
+
 export type VerifyResult =
   | { ok: true }
   | { ok: false; error: string; attemptsLeft?: number };

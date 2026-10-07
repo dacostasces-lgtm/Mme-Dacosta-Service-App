@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import { setProfileValidation, setCandidateCheck, type CandidateCheck } from "@/lib/admin/actions";
 import { PaymentQueue, type DeclaredPayment } from "@/components/features/admin/PaymentQueue";
 import { AdminOverview } from "@/components/features/admin/AdminOverview";
+import { SmsCredit } from "@/components/features/admin/SmsCredit";
+import { accountBalance, isOtpConfigured } from "@/lib/otp/infobip";
 import {
   SubscriptionQueue,
   type DeclaredSubscription,
@@ -157,6 +159,11 @@ export default async function AdminPage() {
   await requireUser({ role: "admin" });
 
   const supabase = await createClient();
+  // Hors du Promise.all ci-dessous : le solde part chez Infobip, pas chez
+  // Supabase, et une lenteur de leur côté ne doit pas retarder la file de
+  // modération. `accountBalance` ne rejette jamais.
+  const soldePromise = accountBalance();
+
   const [pending, validated, declared, subscriptions] = await Promise.all([
     supabase.from("profiles").select(SELECT).eq("is_validated", false).order("created_at"),
     supabase
@@ -190,6 +197,17 @@ export default async function AdminPage() {
       .not("payment_declared_at", "is", null)
       .order("payment_declared_at"),
   ]);
+
+  // Le symptôme, pas la cause : un crédit épuisé se traduit par des numéros
+  // qui restent non confirmés. Compté à part parce que la colonne calculée
+  // n'expose que la présence du numéro, jamais sa valeur.
+  const { count: numerosNonVerifies } = await supabase
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .eq("phone_present", true)
+    .is("phone_verified_at", null);
+
+  const solde = await soldePromise;
 
   const error = pending.error ?? validated.error;
   const pendingProfiles = (pending.data ?? []) as unknown as ModerationProfile[];
@@ -252,6 +270,17 @@ export default async function AdminPage() {
           subscriptions={subscriptions.error ? null : declaredSubscriptions.length}
           profiles={pendingProfiles.length}
         />
+
+        <div className="mb-12">
+          <SmsCredit
+            solde={solde.ok ? { balance: solde.balance, currency: solde.currency } : null}
+            // Pas d'erreur affichée quand la fonctionnalité n'est simplement
+            // pas configurée : ce n'est pas une panne, et le composant le dit
+            // autrement.
+            erreur={!solde.ok && isOtpConfigured() ? solde.error : null}
+            numerosNonVerifies={numerosNonVerifies ?? 0}
+          />
+        </div>
 
         {/* scroll-mt clears the fixed navbar when the overview jumps here. */}
         <div id="paiements" className="scroll-mt-24">
