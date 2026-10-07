@@ -1,7 +1,6 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
-import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { requireUser } from "@/lib/auth/dal";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -188,6 +187,10 @@ export async function createCandidate(
     return { error: `Profil publié mais incomplet : ${detailsError.message}` };
   }
 
-  revalidatePath("/", "layout");
+  // Pas de `revalidatePath` ici : mesuré sur ce dépôt, un appel depuis une
+  // action rendue dans la page courante empêche sa réponse d'atteindre le
+  // client — l'action aboutit côté serveur, mais le bouton reste figé sur
+  // « en cours ». La recherche et la file de modération lisent la session,
+  // donc se rendent à la demande et verront la fiche à la visite suivante.
   return { profileId: profile.id, fullName: parsed.data.fullName };
 }

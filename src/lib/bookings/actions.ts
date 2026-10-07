@@ -129,6 +129,14 @@ export async function declareBookingPayment(
     return { error: error.message };
   }
 
-  revalidatePath("/", "layout");
+  // Aucune revalidation ici, délibérément. Mesuré sur cette action : tout appel
+  // à `revalidatePath` — y compris vers une route absente de l'écran — empêche
+  // sa réponse d'atteindre le client. L'action s'exécute pourtant en entier
+  // côté serveur ; le bouton, lui, reste figé sur « en cours » indéfiniment.
+  //
+  // Rien n'est perdu : les vues concernées (tableau de bord, file de
+  // modération) lisent la session, donc se rendent à la demande et voient le
+  // changement à la visite suivante. Le composant appelant se rafraîchit de
+  // lui-même une fois le résultat reçu.
   return { ok: true };
 }

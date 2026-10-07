@@ -3,6 +3,7 @@ import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import { BookingList, type BookingRow } from "@/components/features/booking/BookingList";
 
 function StatCard({
   icon,
@@ -37,7 +38,7 @@ export default async function CandidateDashboard() {
   const supabase = await createClient();
 
   // RLS scopes these to the candidate: their own applications, their own inbox.
-  const [applications, unread, reviews, profile, details] = await Promise.all([
+  const [applications, unread, reviews, profile, details, bookings] = await Promise.all([
     supabase.from("applications").select("id", { count: "exact", head: true }),
     supabase
       .from("messages")
@@ -55,6 +56,17 @@ export default async function CandidateDashboard() {
       .select("job_title, description")
       .eq("profile_id", user.profileId ?? "")
       .maybeSingle(),
+    // Visibles des deux côtés par la policy « Bookings are visible to both
+    // parties » : une simple lecture suffit, chacun ne voit que les siennes.
+    supabase
+      .from("bookings")
+      .select(
+        "id, status, amount, currency, contract_type, start_date, address, payment_declared_at, created_at, " +
+          "contrepartie:profiles!bookings_employer_id_fkey(id, full_name)"
+      )
+      .eq("candidate_id", user.profileId ?? "")
+      .order("created_at", { ascending: false })
+      .limit(20),
   ]);
 
   const ratings = (reviews.data ?? []) as { rating: number }[];
@@ -150,6 +162,16 @@ export default async function CandidateDashboard() {
             Voir les offres
           </Link>
         </div>
+
+        <section className="bg-card rounded-3xl border border-border shadow-soft p-6 sm:p-7 mt-6">
+          <h2 className="font-semibold mb-1">Familles qui vous ont réservé</h2>
+          <p className="text-sm text-muted-foreground mb-5">Une réservation réglée vous ouvre la messagerie avec la famille.</p>
+          <BookingList
+            bookings={(bookings.data ?? []) as unknown as BookingRow[]}
+            role="candidate"
+          />
+        </section>
+
       </div>
     </div>
   );

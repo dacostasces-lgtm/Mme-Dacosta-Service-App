@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { MapPin, Star, BadgeCheck, CheckCircle2, Circle, FileText, Phone, Award, Clock, Languages } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { Link } from "@/i18n/routing";
+import { getCurrentUser } from "@/lib/auth/dal";
 import { Badge } from "@/components/ui/badge";
 import { availabilityLabel } from "@/lib/candidates/availability";
 import { createClient } from "@/lib/supabase/server";
@@ -71,6 +73,16 @@ export default async function CandidateProfilePage({
     { label: "Casier judiciaire vierge", at: profile.criminal_record_checked_at },
     { label: "Entretien passé", at: profile.interview_passed_at },
   ];
+
+  const visiteur = await getCurrentUser();
+  const estSoiMeme = visiteur?.profileId === profile.id;
+  // Un candidat qui en consulte un autre ne doit pas voir « Réserver » : le
+  // tunnel exige le rôle employeur et le renverrait vers son propre tableau de
+  // bord, ce qui se lit comme une panne. Un visiteur anonyme le voit, car
+  // requireUser l'enverra se connecter puis le ramènera — on ne sait pas encore
+  // quel rôle il a.
+  const peutReserver =
+    !visiteur || visiteur.role === "employer" || visiteur.role === "admin";
 
   const initials = profile.full_name
     .split(/\s+/)
@@ -155,14 +167,42 @@ export default async function CandidateProfilePage({
                 )}
               </div>
 
-              <div className="flex gap-3">
-                <Button size="lg" className="rounded-full px-8 shadow-md">
-                  <Phone className="mr-2 h-4 w-4" /> Contacter
-                </Button>
-                <Button size="lg" variant="outline" className="rounded-full px-8">
-                  <FileText className="mr-2 h-4 w-4" /> Proposer une offre
-                </Button>
-              </div>
+              {/* Ces deux boutons étaient inertes : aucun gestionnaire, aucun
+                  lien. Le tunnel de réservation — et donc tout l'encaissement —
+                  n'était atteignable depuis nulle part. */}
+              {estSoiMeme ? (
+                <Link
+                  href="/profil"
+                  className={buttonVariants({
+                    variant: "outline",
+                    className: "h-12 rounded-full px-8",
+                  })}
+                >
+                  Modifier mon profil
+                </Link>
+              ) : (
+                <div className="flex flex-wrap gap-3">
+                  {peutReserver && (
+                    <Link
+                      href={`/candidats/${profile.id}/reserver`}
+                      className={buttonVariants({
+                        className: "h-12 rounded-full px-8 shadow-glow",
+                      })}
+                    >
+                      <FileText className="mr-2 h-4 w-4" /> Réserver ce candidat
+                    </Link>
+                  )}
+                  <Link
+                    href={`/messages?avec=${profile.id}`}
+                    className={buttonVariants({
+                      variant: "outline",
+                      className: "h-12 rounded-full px-8",
+                    })}
+                  >
+                    <Phone className="mr-2 h-4 w-4" /> Contacter
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>

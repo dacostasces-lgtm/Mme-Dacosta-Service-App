@@ -20,6 +20,7 @@ import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import { BookingList, type BookingRow } from "@/components/features/booking/BookingList";
 
 function StatCard({
   icon,
@@ -55,7 +56,7 @@ export default async function EmployerDashboard() {
 
   // Every count below is scoped by RLS: an employer only ever sees their own
   // jobs, the applications addressed to them, and their own messages.
-  const [jobs, applications, unread, received] = await Promise.all([
+  const [jobs, applications, unread, received, bookings] = await Promise.all([
     supabase.from("jobs").select("id", { count: "exact", head: true }).eq("status", "active"),
     supabase.from("applications").select("id", { count: "exact", head: true }),
     supabase
@@ -72,6 +73,17 @@ export default async function EmployerDashboard() {
           "jobs(title), profiles!applications_candidate_id_fkey(id, full_name, avatar_url)"
       )
       .order("applied_at", { ascending: false })
+      .limit(20),
+    // Visibles des deux côtés par la policy « Bookings are visible to both
+    // parties » : une simple lecture suffit, chacun ne voit que les siennes.
+    supabase
+      .from("bookings")
+      .select(
+        "id, status, amount, currency, contract_type, start_date, address, payment_declared_at, created_at, " +
+          "contrepartie:profiles!bookings_candidate_id_fkey(id, full_name)"
+      )
+      .eq("employer_id", user.profileId ?? "")
+      .order("created_at", { ascending: false })
       .limit(20),
   ]);
 
@@ -198,6 +210,16 @@ export default async function EmployerDashboard() {
             Modifier mon profil
           </Link>
         </div>
+
+        <section className="bg-card rounded-3xl border border-border shadow-soft p-6 sm:p-7 mt-6">
+          <h2 className="font-semibold mb-1">Mes réservations</h2>
+          <p className="text-sm text-muted-foreground mb-5">Les candidats que vous avez réservés, et où en est le règlement.</p>
+          <BookingList
+            bookings={(bookings.data ?? []) as unknown as BookingRow[]}
+            role="employer"
+          />
+        </section>
+
       </div>
     </div>
   );

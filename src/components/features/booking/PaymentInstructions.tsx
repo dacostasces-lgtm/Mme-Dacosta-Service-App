@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "@/i18n/routing";
 import { AlertTriangle, CheckCircle2, Loader2, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,18 +16,35 @@ import {
 type Props = {
   bookingId: string;
   amountLabel: string;
+  /**
+   * La réservation porte déjà une déclaration.
+   *
+   * Ce composant doit rester monté dans ce cas : il porte l'action, et le
+   * démonter au moment où sa propre revalidation change l'étape laisse la
+   * transition en vol — bouton figé, écran de succès jamais rendu.
+   */
+  dejaDeclare?: boolean;
 };
 
-export function PaymentInstructions({ bookingId, amountLabel }: Props) {
+export function PaymentInstructions({ bookingId, amountLabel, dejaDeclare }: Props) {
   const [state, formAction, pending] = useActionState<DeclareState, FormData>(
     declareBookingPayment,
     {}
   );
 
+  const router = useRouter();
+
+  // Le rafraîchissement part d'ici, pas de l'action : déclenché côté serveur il
+  // retenait la réponse. Ici il s'exécute une fois le résultat en main, donc
+  // sans rien bloquer.
+  useEffect(() => {
+    if (state.ok) router.refresh();
+  }, [state.ok, router]);
+
   const reference = paymentReference(bookingId);
   const operators = MOMO_OPERATORS.filter((operator) => operator.number);
 
-  if (state.ok) {
+  if (state.ok || dejaDeclare) {
     return (
       <div className="bg-surface border border-border rounded-2xl p-6 text-left max-w-md mx-auto">
         <div className="flex items-center gap-3 mb-2">
