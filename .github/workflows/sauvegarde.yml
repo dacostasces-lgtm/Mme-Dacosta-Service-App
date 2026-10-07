@@ -31,25 +31,40 @@ jobs:
         with:
           version: latest
 
-      # Un message clair plutôt qu'un pg_dump qui échoue sur une URL vide : ce
-      # secret est la seule chose à poser à la main, et son absence est le seul
-      # motif d'échec probable ici.
-      - name: Vérifier le secret
+      # Le secret ne porte que le mot de passe, pas l'URL entière.
+      #
+      # La première version demandait l'URL complète, et elle a échoué en
+      # « password authentication failed » : les mots de passe générés par
+      # Supabase contiennent des caractères comme @, / ou #, qui découpent une
+      # chaîne de connexion au mauvais endroit dès qu'ils n'y sont pas encodés.
+      # L'erreur est alors indiscernable d'un mauvais mot de passe.
+      #
+      # L'hôte et l'utilisateur se déduisent de la référence du projet, qui est
+      # versionnée ; il ne reste donc à coller qu'un mot de passe brut, que ce
+      # script encode lui-même.
+      - name: Construire la chaîne de connexion
         env:
-          URL: ${{ secrets.SUPABASE_DB_URL }}
+          MDP: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          if [ -z "$URL" ]; then
-            echo "::error::Le secret SUPABASE_DB_URL est absent. Settings > Secrets and variables > Actions. Voir docs/incident-2026-10-07.md."
+          set -euo pipefail
+          if [ -z "$MDP" ]; then
+            echo "::error::Le secret SUPABASE_DB_PASSWORD est absent. Settings > Secrets and variables > Actions."
             exit 1
           fi
+          REF=$(tr -d '[:space:]' < supabase/projet-production)
+          MDP_ENCODE=$(python3 -c 'import os,urllib.parse;print(urllib.parse.quote(os.environ["MDP"], safe=""))')
+          # Dans l'environnement du job et masqué dans les journaux : il porte
+          # le mot de passe.
+          echo "::add-mask::$MDP_ENCODE"
+          echo "URL=postgresql://postgres.$REF:$MDP_ENCODE@aws-0-eu-west-1.pooler.supabase.com:5432/postgres" >> "$GITHUB_ENV"
+          echo "Projet visé : $REF"
 
       # Trois exports, parce qu'une restauration les rejoue dans cet ordre.
       # `auth` est inclus délibérément : sans lui on restaure des profils dont
       # aucun compte ne peut plus se connecter. Les mots de passe chiffrés en
       # font partie, donc l'artefact est sensible — d'où un dépôt privé.
+      # `URL` vient de l'étape précédente, par GITHUB_ENV.
       - name: Exporter
-        env:
-          URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
           mkdir -p sauvegarde
