@@ -1,0 +1,99 @@
+name: Sauvegarde de la base
+
+# Le forfait Supabase gratuit ne conserve aucune sauvegarde automatique. Le 7
+# octobre 2026, un `supabase db reset --linked` lancé depuis le dépôt d'un autre
+# projet a effacé la production, et il n'y avait rien à restaurer — voir
+# docs/incident-2026-10-07.md.
+#
+# Ceci en tient lieu, gratuitement : un export nocturne, conservé en artefact.
+# Ce n'est pas l'équivalent du forfait Pro, et le README de l'artefact le dit
+# aussi — on perd jusqu'à vingt-quatre heures d'écritures, les artefacts ne se
+# gardent que quatre-vingt-dix jours, et les fichiers des buckets n'y sont pas.
+# Mais c'est la différence entre « reconstruire le schéma » et « tout a disparu ».
+
+on:
+  schedule:
+    # 02h00 UTC, soit 03h00 à Brazzaville. Décalé des tâches pg_cron de la base,
+    # planifiées à 03h17 et 03h41 UTC, pour ne pas exporter pendant qu'elles
+    # écrivent.
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  exporter:
+    name: Export quotidien
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Un message clair plutôt qu'un pg_dump qui échoue sur une URL vide : ce
+      # secret est la seule chose à poser à la main, et son absence est le seul
+      # motif d'échec probable ici.
+      - name: Vérifier le secret
+        env:
+          URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$URL" ]; then
+            echo "::error::Le secret SUPABASE_DB_URL est absent. Settings > Secrets and variables > Actions. Voir docs/incident-2026-10-07.md."
+            exit 1
+          fi
+
+      # Trois exports, parce qu'une restauration les rejoue dans cet ordre.
+      # `auth` est inclus délibérément : sans lui on restaure des profils dont
+      # aucun compte ne peut plus se connecter. Les mots de passe chiffrés en
+      # font partie, donc l'artefact est sensible — d'où un dépôt privé.
+      - name: Exporter
+        env:
+          URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p sauvegarde
+          supabase db dump --db-url "$URL" --role-only -f sauvegarde/1-roles.sql
+          supabase db dump --db-url "$URL" -s auth,public,storage -f sauvegarde/2-schema.sql
+          supabase db dump --db-url "$URL" --data-only --use-copy \
+            -s auth,public,storage -f sauvegarde/3-donnees.sql
+
+      - name: Contrôler que l'export n'est pas vide
+        run: |
+          set -euo pipefail
+          # Un pg_dump peut réussir en ne produisant rien d'utile — une
+          # sauvegarde vide qu'on croit bonne est pire que pas de sauvegarde.
+          test -s sauvegarde/2-schema.sql
+          grep -q 'CREATE TABLE IF NOT EXISTS "public"."profiles"' sauvegarde/2-schema.sql
+          grep -q 'COPY "auth"."users"' sauvegarde/3-donnees.sql
+          echo "Tables exportées : $(grep -c 'CREATE TABLE' sauvegarde/2-schema.sql)"
+          echo "Politiques RLS   : $(grep -c 'CREATE POLICY' sauvegarde/2-schema.sql)"
+
+      - name: Mode d'emploi joint à l'archive
+        run: |
+          cat > sauvegarde/LIRE-MOI.md <<'TXT'
+          # Restaurer cette sauvegarde
+
+          Rejouer dans l'ordre, contre le bon projet :
+
+              ./scripts/verifier-projet.sh
+              psql "$SUPABASE_DB_URL" -f 1-roles.sql
+              psql "$SUPABASE_DB_URL" -f 2-schema.sql
+              psql "$SUPABASE_DB_URL" -f 3-donnees.sql
+
+          ## Ce que cette sauvegarde ne contient pas
+
+          - Les **fichiers** des buckets `avatars` et `cvs`. Seules les lignes de
+            `storage.objects` y sont : après restauration, les enregistrements
+            pointeront vers des fichiers absents.
+          - Les écritures des dernières heures, jusqu'à vingt-quatre.
+          - Les réglages du projet — Site URL, Redirect URLs, SMTP. Ils vivent
+            hors de la base et survivent de toute façon à un effacement.
+          TXT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sauvegarde-${{ github.run_id }}
+          path: sauvegarde/
+          # Le maximum autorisé. Au-delà, il faut sortir l'archive de GitHub.
+          retention-days: 90
