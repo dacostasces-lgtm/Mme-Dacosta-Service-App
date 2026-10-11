@@ -1,5 +1,6 @@
 "use client";
 
+import { Link } from "@/i18n/routing";
 import { useActionState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -129,7 +130,17 @@ export function JobForm({ neighborhoods }: { neighborhoods: NeighborhoodOption[]
       </p>
 
       {state.error && (
-        <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">{state.error}</p>
+        <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">
+          {state.error}
+          {state.missingPhone && (
+            <>
+              {" "}
+              <Link href="/profil" className="font-semibold underline">
+                Ajouter mon numéro
+              </Link>
+            </>
+          )}
+        </p>
       )}
 
       <Button type="submit" className="w-full h-12 text-base font-semibold" disabled={pending}>

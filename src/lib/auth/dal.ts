@@ -35,8 +35,9 @@ export type SessionUser = {
    */
   onboardingCompletedAt: string | null;
   /**
-   * Cases encore vides du profil candidat (src/lib/profile/completeness.ts).
-   * Toujours vide pour un employeur ou un admin.
+   * Cases obligatoires encore vides : celles du profil candidat
+   * (src/lib/profile/completeness.ts), ou le seul téléphone pour un employeur.
+   * Toujours vide pour un admin.
    */
   missingProfileFields: string[];
 };
@@ -78,6 +79,10 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   // (colonne absente le temps d'une migration) ne doit enfermer personne :
   // on considère alors le profil complet.
   let missingProfileFields: string[] = [];
+  // Un employeur n'a qu'une case obligatoire : son numéro.
+  if (profile?.role === "employer" && !profile.phone_present) {
+    missingProfileFields = ["Téléphone"];
+  }
   if (profile?.role === "candidate") {
     const { data: details, error } = await supabase
       .from("candidate_details")

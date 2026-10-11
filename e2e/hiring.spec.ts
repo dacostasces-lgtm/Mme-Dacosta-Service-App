@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { register, completeCandidateProfile } from "./helpers";
+import { register, completeCandidateProfile, addEmployerPhone } from "./helpers";
 
 test.describe("offre et candidature", () => {
   /**
@@ -19,6 +19,9 @@ test.describe("offre et candidature", () => {
     // --- l'employeur publie ---------------------------------------------------
     await register(employer, "employer", "Famille Nkodia");
     await expect(employer.getByRole("heading", { name: "Mon Espace Employeur" })).toBeVisible();
+
+    // Le numéro est obligatoire pour publier une offre.
+    await addEmployerPhone(employer, "060000004");
 
     await employer.goto("/fr/offres/creer");
     // Unique, mais en base 36 : un horodatage brut aligne 13 chiffres, que le
