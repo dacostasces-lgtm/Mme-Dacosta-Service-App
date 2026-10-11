@@ -2,6 +2,8 @@ import { BellRing } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { Badge } from "@/components/ui/badge";
 import { JobStatusButtons } from "@/components/features/jobs/JobStatusButtons";
+import { ShareButton } from "@/components/shared/ShareButton";
+import { localisedUrl } from "@/lib/site";
 import { formatShortDate } from "@/lib/jobs/format";
 import { daysLeft, JOB_LIFETIME_DAYS, jobState, type JobState } from "@/lib/jobs/expiry";
 
@@ -106,7 +108,19 @@ export function MyJobs({ jobs }: { jobs: MyJobRow[] }) {
                 </div>
                 {/* Une offre pourvue se remet en ligne d'un clic si le poste se
                     libère à nouveau ; elle n'a plus rien à fermer. */}
-                <JobStatusButtons jobId={job.id} canClose={state !== "closed"} />
+                <div className="flex flex-wrap items-start gap-2">
+                  {(state === "available" || state === "expiring") && (
+                    <ShareButton
+                      url={localisedUrl(`/offres/${job.id}`)}
+                      title={job.title}
+                      text={`Je recrute : ${job.title}. Postulez sur Madame Dacosta Services :`}
+                      size="sm"
+                      align="left"
+                      className="[&_button]:h-8 [&_button]:px-3"
+                    />
+                  )}
+                  <JobStatusButtons jobId={job.id} canClose={state !== "closed"} />
+                </div>
               </li>
             );
           })}

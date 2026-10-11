@@ -4,6 +4,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ApplyButton } from "@/components/features/jobs/ApplyButton";
+import { ShareButton } from "@/components/shared/ShareButton";
+import { localisedUrl } from "@/lib/site";
 import { JobFilters, type JobFilterValues } from "@/components/features/jobs/JobFilters";
 import { formatSalary, formatShortDate } from "@/lib/jobs/format";
 import { formatHours, formatWorkDays, isWorkDay, sortWorkDays } from "@/lib/jobs/schedule";
@@ -254,12 +256,21 @@ export default async function JobsPage({
                     {/* Employers awaiting moderation are invisible under the
                         profiles policy, so the embed can legitimately be null. */}
                     <span>{job.profiles?.full_name ?? "Employeur particulier"}</span>
-                    <Link
-                      href={`/offres/${job.id}`}
-                      className="ml-auto font-medium text-primary hover:underline"
-                    >
-                      Voir l&apos;offre
-                    </Link>
+                    <span className="ml-auto flex items-center gap-3">
+                      <ShareButton
+                        url={localisedUrl(`/offres/${job.id}`)}
+                        title={job.title}
+                        text={`Offre d'emploi : ${job.title}${place ? ` à ${place}` : ""}. Postulez sur Madame Dacosta Services :`}
+                        variant="ghost"
+                        size="sm"
+                      />
+                      <Link
+                        href={`/offres/${job.id}`}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        Voir l&apos;offre
+                      </Link>
+                    </span>
                   </div>
 
                   {canApply && (

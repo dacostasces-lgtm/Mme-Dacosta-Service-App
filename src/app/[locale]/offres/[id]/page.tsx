@@ -6,6 +6,7 @@ import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ApplyButton } from "@/components/features/jobs/ApplyButton";
+import { ShareButton } from "@/components/shared/ShareButton";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { formatLongDate, formatSalary } from "@/lib/jobs/format";
@@ -213,11 +214,24 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
         <article className="bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-soft mt-4">
           <div className="flex items-start justify-between gap-4 flex-wrap mb-3">
             <h1 className="text-3xl font-bold leading-tight">{job.title}</h1>
-            {job.profiles?.is_premium && (
-              <Badge className="bg-secondary text-secondary-foreground font-semibold shrink-0">
-                Premium
-              </Badge>
-            )}
+            <div className="flex items-center gap-2 shrink-0">
+              {job.profiles?.is_premium && (
+                <Badge className="bg-secondary text-secondary-foreground font-semibold">
+                  Premium
+                </Badge>
+              )}
+              {/* Rien à faire circuler pour une offre close : le lien
+                  n'amènerait qu'à « plus ouverte aux candidatures ». */}
+              {open && (
+                <ShareButton
+                  url={localisedUrl(`/offres/${job.id}`)}
+                  title={job.title}
+                  text={`Offre d'emploi : ${job.title}${place ? ` à ${place}` : ""}. Postulez sur Madame Dacosta Services :`}
+                  size="sm"
+                  className="[&_button]:h-9 [&_button]:px-4"
+                />
+              )}
+            </div>
           </div>
 
           {open ? (
