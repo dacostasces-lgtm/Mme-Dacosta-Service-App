@@ -14,20 +14,37 @@ import { formatPrice } from "@/lib/subscriptions/plans";
 import { UNLOCK_PRICE } from "@/lib/contact/unlock";
 
 /** « Débloquer ce numéro » : crée la demande, puis la page affiche le paiement. */
-export function UnlockButton({ jobId }: { jobId: string }) {
+export function UnlockButton({
+  jobId,
+  next,
+  size = "default",
+}: {
+  jobId: string;
+  /** Page où aller une fois la demande créée — depuis la liste des offres,
+   *  celle de l'offre, qui affiche le paiement. Sinon, la page se rafraîchit. */
+  next?: string;
+  size?: "default" | "sm";
+}) {
   const router = useRouter();
   const [state, action, pending] = useActionState<UnlockState, FormData>(requestContactUnlock, {});
 
   // La page se rafraîchit elle-même : un `revalidatePath` dans l'action
   // bloquerait sa réponse (voir src/lib/bookings/actions.ts).
   useEffect(() => {
-    if (state.ok) router.refresh();
-  }, [state.ok, router]);
+    if (!state.ok) return;
+    if (next) router.push(next);
+    else router.refresh();
+  }, [state.ok, router, next]);
 
   return (
     <form action={action}>
       <input type="hidden" name="jobId" value={jobId} />
-      <Button type="submit" className="rounded-full gap-2 w-full sm:w-auto" disabled={pending}>
+      <Button
+        type="submit"
+        size={size}
+        className={size === "sm" ? "rounded-full gap-1.5 h-9 px-4" : "rounded-full gap-2 w-full sm:w-auto"}
+        disabled={pending}
+      >
         {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <LockOpen className="h-4 w-4" />}
         Débloquer ce numéro · {formatPrice(UNLOCK_PRICE)}
       </Button>

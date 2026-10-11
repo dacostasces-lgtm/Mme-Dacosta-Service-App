@@ -25,7 +25,7 @@ test.describe("parcours candidate", () => {
     await expect(page).toHaveURL(/\/fr\/profil/);
 
     // --- profil ---------------------------------------------------------------
-    await page.getByLabel("Poste recherché").fill("Nounou");
+    await page.getByRole("button", { name: "Nounou", exact: true }).click();
     await page.getByLabel("Années d'expérience").fill("6 ans");
     await page
       .getByLabel("Compétences")
