@@ -33,11 +33,6 @@ test.describe("parcours candidate", () => {
     await page.getByLabel("Langues parlées").fill("français, lingala");
     await page.getByLabel("Salaire souhaité").fill("90000");
     await page.getByLabel("Disponibilité").selectOption("full_time");
-    await page
-      .getByLabel("Présentation")
-      .fill(
-        "Six ans auprès de familles à Brazzaville, références disponibles.",
-      );
 
     await page.getByRole("button", { name: "Enregistrer mon profil" }).click();
     await expect(page.getByText("Profil enregistré.")).toBeVisible();

@@ -284,12 +284,6 @@ export default async function CandidateProfilePage({
         {/* Details Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="md:col-span-2 space-y-8">
-            <section className="bg-card rounded-3xl p-8 border border-border shadow-soft">
-              <h2 className="text-xl font-bold mb-4">À propos</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                {profile.description ?? "Ce candidat n'a pas encore rédigé sa présentation."}
-              </p>
-            </section>
 
             {skills.length > 0 && (
               <section className="bg-card rounded-3xl p-8 border border-border shadow-soft">

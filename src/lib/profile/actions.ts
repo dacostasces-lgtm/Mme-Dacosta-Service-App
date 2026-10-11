@@ -199,7 +199,8 @@ export async function updateProfile(
         experience: parsed.data.experience ?? null,
         desired_salary: parsed.data.desiredSalary ?? null,
         availability: parsed.data.availability || null,
-        description: parsed.data.description ?? null,
+        // Pas de `description` : le champ a été retiré du profil candidat, et
+        // l'écrire ici effacerait à chaque enregistrement celles déjà saisies.
         languages: parsed.data.languages,
         skills: parsed.data.skills,
         ...scheduleColumns(parsed.data),

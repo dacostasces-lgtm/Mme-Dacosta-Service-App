@@ -308,21 +308,6 @@ export function ProfileForm({
               placeholder="français, lingala"
             />
           </Field>
-
-          <Field
-            label="Présentation"
-            htmlFor="description"
-            hint="Quelques lignes sur votre parcours. C'est souvent ce qui décide un employeur."
-          >
-            <textarea
-              id="description"
-              name="description"
-              rows={6}
-              defaultValue={candidate?.description ?? ""}
-              placeholder="Votre expérience, ce que vous savez faire, ce que vous recherchez..."
-              className={FIELD}
-            />
-          </Field>
         </section>
       )}
 
