@@ -1,6 +1,6 @@
 import { MessageCircle, Phone } from "lucide-react";
 import { Link } from "@/i18n/routing";
-import { telLink, whatsappLink } from "@/lib/contact/unlock";
+import { telLink, whatsappLink, UNVERIFIED_NUMBER } from "@/lib/contact/unlock";
 
 export type UnlockedContact = {
   job_id: string;
@@ -8,6 +8,7 @@ export type UnlockedContact = {
   full_name: string;
   phone: string | null;
   whatsapp: string | null;
+  phone_verified?: boolean;
 };
 
 /**
@@ -62,6 +63,9 @@ export function UnlockedContacts({ contacts }: { contacts: UnlockedContact[] }) 
                   WhatsApp
                 </a>
               )}
+              {contact.phone_verified === false && (
+            <span className="text-xs text-amber-700 dark:text-amber-500">{UNVERIFIED_NUMBER}</span>
+          )}
             </div>
           </li>
         ))}

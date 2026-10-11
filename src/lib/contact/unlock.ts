@@ -17,3 +17,6 @@ export function whatsappLink(number: string, text?: string) {
 export function telLink(number: string) {
   return `tel:${number.replace(/[^\d+]/g, "")}`;
 }
+
+/** Libellé d'un numéro jamais confirmé par SMS (phone_verified = false). */
+export const UNVERIFIED_NUMBER = "Numéro non confirmé par SMS";
