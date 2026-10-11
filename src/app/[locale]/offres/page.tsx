@@ -22,6 +22,7 @@ type Job = {
   start_time: string | null;
   end_time: string | null;
   live_in: boolean;
+  expires_at: string;
   profiles: { full_name: string; is_premium: boolean } | null;
   neighborhoods: { name: string; cities: { name: string } | null } | null;
 };
@@ -66,9 +67,14 @@ export default async function JobsPage({
         .from("jobs")
         .select(
           "id, title, description, salary_range_min, salary_range_max, created_at, " +
-            "work_days, start_time, end_time, live_in, " +
+            "work_days, start_time, end_time, live_in, expires_at, " +
             "profiles(full_name, is_premium), neighborhoods(name, cities(name))"
         )
+        // La politique de lecture montre aussi à un employeur ses propres
+        // offres pourvues ou expirées. Elles se gèrent depuis son tableau de
+        // bord ; la liste publique ne montre que ce qui est disponible.
+        .eq("status", "active")
+        .gt("expires_at", new Date().toISOString())
         .order("created_at", { ascending: false })
     : null;
 
@@ -240,6 +246,10 @@ export default async function JobsPage({
                     <span className="flex items-center gap-1.5">
                       <Clock className="h-3.5 w-3.5" aria-hidden />
                       Publiée le {formatShortDate(job.created_at)}
+                    </span>
+                    <span className="flex items-center gap-1.5 font-medium text-green-700 dark:text-green-400">
+                      <span aria-hidden className="h-2 w-2 rounded-full bg-current" />
+                      Disponible jusqu&apos;au {formatShortDate(job.expires_at)}
                     </span>
                     {/* Employers awaiting moderation are invisible under the
                         profiles policy, so the embed can legitimately be null. */}

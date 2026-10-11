@@ -14,6 +14,7 @@ import {
   scheduleOrderValid,
   scheduleShape,
 } from "@/lib/jobs/schedule-form";
+import { renewedExpiry } from "@/lib/jobs/expiry";
 
 const schema = z
   .object({
@@ -91,4 +92,61 @@ export async function createJob(
   // Returned, not just called: `redirect` throws, but next-intl's inferred types
   // don't advertise `never`, so this is what ends the control flow for TS.
   return redirect({ href: "/offres", locale });
+}
+
+export type JobStatusState = { error?: string; ok?: boolean };
+
+const jobId = z.string().uuid();
+
+/**
+ * « Toujours disponible » : repousse l'échéance de 15 jours à partir de
+ * maintenant, et remet en ligne une offre déjà expirée.
+ *
+ * Pas de `revalidatePath` : appelé depuis l'action de la page courante, il
+ * empêche la réponse d'atteindre le client (voir src/lib/bookings/actions.ts).
+ * Le bouton rafraîchit la page lui-même une fois la réponse reçue.
+ */
+export async function renewJob(
+  _previous: JobStatusState,
+  formData: FormData
+): Promise<JobStatusState> {
+  const user = await requireUser({ role: "employer" });
+  const parsed = jobId.safeParse(formData.get("jobId"));
+  if (!parsed.success || !user.profileId) return { error: "Offre introuvable." };
+
+  // Filtré sur l'employeur en plus de la RLS : un admin passe la politique de
+  // mise à jour, et ce bouton ne doit agir que sur ses propres offres.
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("jobs")
+    .update({ status: "active", expires_at: renewedExpiry(), updated_at: new Date().toISOString() })
+    .eq("id", parsed.data)
+    .eq("employer_id", user.profileId)
+    .select("id");
+
+  if (error) return { error: `Prolongation impossible : ${error.message}` };
+  if (!data?.length) return { error: "Offre introuvable." };
+  return { ok: true };
+}
+
+/** « Poste pourvu » : retire l'offre, qui reste visible de son employeur. */
+export async function closeJob(
+  _previous: JobStatusState,
+  formData: FormData
+): Promise<JobStatusState> {
+  const user = await requireUser({ role: "employer" });
+  const parsed = jobId.safeParse(formData.get("jobId"));
+  if (!parsed.success || !user.profileId) return { error: "Offre introuvable." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("jobs")
+    .update({ status: "closed", updated_at: new Date().toISOString() })
+    .eq("id", parsed.data)
+    .eq("employer_id", user.profileId)
+    .select("id");
+
+  if (error) return { error: `Fermeture impossible : ${error.message}` };
+  if (!data?.length) return { error: "Offre introuvable." };
+  return { ok: true };
 }

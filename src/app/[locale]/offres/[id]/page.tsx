@@ -10,6 +10,7 @@ import { getCurrentUser } from "@/lib/auth/dal";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { formatLongDate, formatSalary } from "@/lib/jobs/format";
 import { formatHours, formatWorkDays } from "@/lib/jobs/schedule";
+import { jobState } from "@/lib/jobs/expiry";
 import { localisedUrl } from "@/lib/site";
 
 type Job = {
@@ -24,6 +25,7 @@ type Job = {
   start_time: string | null;
   end_time: string | null;
   live_in: boolean;
+  expires_at: string;
   profiles: { full_name: string; is_premium: boolean } | null;
   neighborhoods: { name: string; cities: { name: string; country: string } | null } | null;
 };
@@ -57,7 +59,7 @@ function countryCode(name: string | null | undefined) {
 
 const SELECT =
   "id, title, description, salary_range_min, salary_range_max, created_at, status, " +
-  "work_days, start_time, end_time, live_in, " +
+  "work_days, start_time, end_time, live_in, expires_at, " +
   "profiles(full_name, is_premium), neighborhoods(name, cities(name, country))";
 
 async function getJob(id: string): Promise<Job | null> {
@@ -99,7 +101,11 @@ export async function generateMetadata({
     },
     // A closed posting stays reachable for anyone holding the link, but it has
     // no business being indexed or kept in the results.
-    robots: job.status === "active" ? undefined : { index: false, follow: false },
+    robots:
+      jobState(job.status, job.expires_at) === "closed" ||
+      jobState(job.status, job.expires_at) === "expired"
+        ? { index: false, follow: false }
+        : undefined,
   };
 }
 
@@ -118,7 +124,12 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   const days = formatWorkDays(job.work_days);
   const hours = formatHours(job.start_time, job.end_time);
 
-  const canApply = user?.role === "candidate" && job.status === "active";
+  // Visible ici seulement de son employeur et de l'admin une fois échue : la
+  // politique de lecture la cache à tous les autres.
+  const state = jobState(job.status, job.expires_at);
+  const open = state === "available" || state === "expiring";
+
+  const canApply = user?.role === "candidate" && open;
 
   let alreadyApplied = false;
   if (canApply && user.profileId) {
@@ -141,6 +152,8 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
     title: job.title,
     description: job.description,
     datePosted: new Date(job.created_at).toISOString(),
+    // Google retire l'offre de ses résultats à cette date.
+    validThrough: new Date(job.expires_at).toISOString(),
     employmentType: "FULL_TIME",
     hiringOrganization: {
       "@type": "Organization",
@@ -179,7 +192,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
 
   return (
     <div className="flex-1 bg-surface bg-grain py-10 sm:py-14">
-      {job.status === "active" && (
+      {open && (
         <script
           type="application/ld+json"
           nonce={nonce}
@@ -207,9 +220,16 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
             )}
           </div>
 
-          {job.status !== "active" && (
+          {open ? (
+            <p className="inline-flex items-center gap-2 text-sm font-medium text-green-700 dark:text-green-400 mb-4">
+              <span aria-hidden className="h-2 w-2 rounded-full bg-current" />
+              Disponible jusqu&apos;au {formatLongDate(job.expires_at)}
+            </p>
+          ) : (
             <p className="text-sm font-medium bg-muted text-muted-foreground rounded-lg p-3 mb-5">
-              Cette offre n&apos;est plus ouverte aux candidatures.
+              {state === "expired"
+                ? `Cette offre a expiré le ${formatLongDate(job.expires_at)}. Son employeur ne l'a pas confirmée.`
+                : "Ce poste a été pourvu : l'offre n'est plus ouverte aux candidatures."}
             </p>
           )}
 
@@ -276,7 +296,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
             />
           )}
 
-          {!user && job.status === "active" && (
+          {!user && open && (
             <Link
               href="/login"
               className={buttonVariants({ variant: "outline", className: "rounded-full gap-2 mt-6" })}
