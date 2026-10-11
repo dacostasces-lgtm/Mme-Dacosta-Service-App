@@ -1,5 +1,6 @@
 "use client";
 
+import { MetierPicker } from "@/components/features/jobs/MetierPicker";
 import { useActionState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -189,18 +190,17 @@ export function ProfileForm({
         <section className="space-y-5">
           <h2 className="font-semibold text-lg">Votre métier</h2>
 
-          <Field
-            label="Poste recherché"
-            htmlFor="jobTitle"
-            hint="C'est le titre affiché en gros sur votre fiche."
-          >
-            <Input
-              id="jobTitle"
+          <div>
+            <MetierPicker
               name="jobTitle"
-              defaultValue={candidate?.jobTitle ?? ""}
-              placeholder="Nounou, Ménagère, Cuisinière, Chauffeur..."
+              legend="Poste recherché"
+              defaultValue={candidate?.jobTitle}
+              otherPlaceholder="Écrivez le poste que vous recherchez"
             />
-          </Field>
+            <p className="text-xs text-muted-foreground mt-2">
+              Touchez votre métier. C&apos;est le titre affiché en gros sur votre fiche.
+            </p>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Années d'expérience" htmlFor="experience">

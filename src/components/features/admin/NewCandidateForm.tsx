@@ -1,5 +1,6 @@
 "use client";
 
+import { MetierPicker } from "@/components/features/jobs/MetierPicker";
 import { useActionState, useState } from "react";
 import { CheckCircle2, Loader2, UserPlus } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -114,9 +115,8 @@ export function NewCandidateForm({ cities }: { cities: CityRef[] }) {
       <section className="bg-card border border-border rounded-3xl shadow-soft p-6 sm:p-7">
         <h2 className="font-semibold mb-5">Métier</h2>
         <div className="grid sm:grid-cols-2 gap-5">
-          <div>
-            <Label htmlFor="jobTitle">Métier</Label>
-            <Input id="jobTitle" name="jobTitle" required maxLength={80} placeholder="Ex : Nounou expérimentée" />
+          <div className="sm:col-span-2">
+            <MetierPicker name="jobTitle" legend="Métier" required />
           </div>
 
           <div>

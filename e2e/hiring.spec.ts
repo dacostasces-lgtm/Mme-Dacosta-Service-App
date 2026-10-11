@@ -22,7 +22,9 @@ test.describe("offre et candidature", () => {
 
     await employer.goto("/fr/offres/creer");
     const title = `Nounou temps plein ${Date.now()}`;
-    await employer.getByLabel("Intitulé du poste").fill(title);
+    // Un intitulé unique, donc hors liste : par « Autre… ».
+    await employer.getByRole("button", { name: "Autre…" }).click();
+    await employer.getByLabel("Autre métier").fill(title);
     await employer
       .getByLabel("Description")
       .fill(
