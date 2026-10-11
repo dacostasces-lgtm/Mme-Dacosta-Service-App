@@ -58,7 +58,10 @@ export default async function PremiumPage() {
               {subscription.end_date
                 ? `Votre abonnement est valable jusqu'au ${formatDate(subscription.end_date)}.`
                 : "Votre abonnement est actif."}{" "}
-              Votre profil est mis en avant dans les résultats de recherche.
+              Votre profil est mis en avant dans les résultats de recherche
+              {subscription.plan_name === "Premium Candidat" &&
+                ", et le numéro de chaque employeur s'affiche sur ses offres"}
+              .
             </p>
           </div>
         ) : subscription?.status === "pending_payment" ? (

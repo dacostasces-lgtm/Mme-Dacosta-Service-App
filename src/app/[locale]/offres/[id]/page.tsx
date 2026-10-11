@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ApplyButton } from "@/components/features/jobs/ApplyButton";
 import { ShareButton } from "@/components/shared/ShareButton";
+import { EmployerContact } from "@/components/features/contact/EmployerContact";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { formatLongDate, formatSalary } from "@/lib/jobs/format";
@@ -301,6 +302,8 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
               <dd>{job.profiles?.full_name ?? "Employeur particulier"}</dd>
             </div>
           </dl>
+
+          <EmployerContact jobId={job.id} jobTitle={job.title} user={user} />
 
           {canApply && (
             <ApplyButton

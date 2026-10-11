@@ -11,6 +11,7 @@ import { useLocale } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { Link, useRouter } from "@/i18n/routing";
 import { normalisePhone, PHONE_HINT } from "@/lib/phone";
+import { authErrorMessage } from "@/lib/auth/errors";
 import type { CityRef } from "@/lib/geo/locations";
 import { GoogleButton } from "@/components/features/auth/GoogleButton";
 
@@ -198,7 +199,7 @@ export function RegisterForm({ cities }: { cities: CityRef[] }) {
           ? parEmail
             ? "Un compte existe déjà avec cet email."
             : "Un compte existe déjà avec ce numéro."
-          : `Erreur lors de l'inscription : ${error.message}`
+          : `Erreur lors de l'inscription : ${authErrorMessage(error, { sendsEmail: parEmail })}`
       );
       return;
     }

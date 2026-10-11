@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  LockOpen,
   MessageSquareText,
   UserCheck,
   Wallet,
@@ -12,6 +13,7 @@ type Props = {
   /** null when the queue's migration isn't applied yet — not the same as zero. */
   payments: number | null;
   subscriptions: number | null;
+  unlocks: number | null;
   profiles: number;
 };
 
@@ -26,7 +28,7 @@ type Item = {
   urgent?: boolean;
 };
 
-export function AdminOverview({ payments, subscriptions, profiles }: Props) {
+export function AdminOverview({ payments, subscriptions, unlocks, profiles }: Props) {
   const items: Item[] = [
     {
       href: "#paiements",
@@ -44,6 +46,15 @@ export function AdminOverview({ payments, subscriptions, profiles }: Props) {
       plural: "abonnements à vérifier",
       count: subscriptions,
       icon: CheckCircle2,
+      urgent: true,
+    },
+    {
+      href: "#numeros",
+      label: "Numéros",
+      singular: "numéro à débloquer",
+      plural: "numéros à débloquer",
+      count: unlocks,
+      icon: LockOpen,
       urgent: true,
     },
     {

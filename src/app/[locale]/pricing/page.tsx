@@ -19,6 +19,7 @@ const PLANS = [
       { label: "Profil visible après vérification", included: true },
       { label: "Recherche par proximité", included: true },
       { label: "Messagerie avec vos contacts", included: true },
+      { label: "Numéro des employeurs (500 FCFA par offre)", included: false },
       { label: "Mise en avant dans les résultats", included: false },
       { label: "Badge Premium sur votre profil", included: false },
     ],
@@ -34,10 +35,9 @@ const PLANS = [
     highlighted: true,
     features: [
       { label: "Tout ce qui est inclus dans Gratuit", included: true },
+      { label: "Le numéro de téléphone de tous les employeurs", included: true },
       { label: "Mise en avant dans les résultats", included: true },
       { label: "Badge Premium sur votre profil", included: true },
-      { label: "Candidatures illimitées aux offres", included: true },
-      { label: "Statistiques de vues du profil", included: true },
     ],
   },
   {
@@ -151,6 +151,10 @@ export default async function PricingPage() {
         </div>
 
         <p className="text-center text-sm text-muted-foreground mt-12">
+          Sans abonnement, un candidat peut aussi débloquer le numéro d&apos;un seul employeur
+          pour 500 FCFA, depuis la page de l&apos;offre.
+        </p>
+        <p className="text-center text-sm text-muted-foreground mt-2">
           Paiement par MTN MoMo ou Airtel Money. Résiliable à tout moment, sans engagement.
         </p>
       </div>

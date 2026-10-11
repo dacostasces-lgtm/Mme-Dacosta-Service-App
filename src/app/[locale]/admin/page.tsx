@@ -3,6 +3,10 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/routing";
 import { requireUser } from "@/lib/auth/dal";
 import { JobReminders, type MyJobRow } from "@/components/features/jobs/MyJobs";
+import {
+  ContactUnlockQueue,
+  type DeclaredUnlock,
+} from "@/components/features/admin/ContactUnlockQueue";
 import { createClient } from "@/lib/supabase/server";
 import { setProfileValidation, setCandidateCheck, type CandidateCheck } from "@/lib/admin/actions";
 import { PaymentQueue, type DeclaredPayment } from "@/components/features/admin/PaymentQueue";
@@ -165,7 +169,7 @@ export default async function AdminPage() {
   // modération. `accountBalance` ne rejette jamais.
   const soldePromise = accountBalance();
 
-  const [pending, validated, declared, subscriptions, ownJobs] = await Promise.all([
+  const [pending, validated, declared, subscriptions, ownJobs, unlocks] = await Promise.all([
     supabase.from("profiles").select(SELECT).eq("is_validated", false).order("created_at"),
     supabase
       .from("profiles")
@@ -205,6 +209,16 @@ export default async function AdminPage() {
       .eq("employer_id", admin.profileId ?? "")
       .order("created_at", { ascending: false })
       .limit(50),
+    // Numéros d'employeur dont le paiement a été déclaré.
+    supabase
+      .from("contact_unlocks")
+      .select(
+        "id, price, payment_reference, payment_declared_at, " +
+          "candidate:profiles!contact_unlocks_candidate_id_fkey(full_name), jobs(title)"
+      )
+      .eq("status", "pending_payment")
+      .not("payment_declared_at", "is", null)
+      .order("payment_declared_at"),
   ]);
 
   // Le symptôme, pas la cause : un crédit épuisé se traduit par des numéros
@@ -279,6 +293,7 @@ export default async function AdminPage() {
           // null, not 0: an unapplied migration must not read as "nothing to do".
           payments={paymentsUnavailable ? null : declaredPayments.length}
           subscriptions={subscriptions.error ? null : declaredSubscriptions.length}
+          unlocks={unlocks.error ? null : (unlocks.data ?? []).length}
           profiles={pendingProfiles.length}
         />
 
@@ -301,6 +316,16 @@ export default async function AdminPage() {
         <div id="abonnements" className="scroll-mt-24">
           <SubscriptionQueue subscriptions={declaredSubscriptions} />
         </div>
+
+        {/* Masquée tant que sa migration n'est pas passée, comme l'est le
+            compteur ci-dessus : une file vide mentirait. */}
+        {!unlocks.error && (
+          <div id="numeros" className="scroll-mt-24">
+            <ContactUnlockQueue
+              unlocks={(unlocks.data ?? []) as unknown as DeclaredUnlock[]}
+            />
+          </div>
+        )}
 
         <section id="profils" className="mb-12 scroll-mt-24">
           <h2 className="text-lg font-semibold mb-4">
