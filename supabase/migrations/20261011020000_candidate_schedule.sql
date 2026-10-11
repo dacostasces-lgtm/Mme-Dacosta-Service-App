@@ -223,3 +223,13 @@ AS $$
     -- when its id is guessed, which the page turns into a 404.
     AND (p.is_validated OR p.user_id = auth.uid() OR public.is_admin());
 $$;
+
+-- Recréées, les fonctions repartent des droits par défaut. La recherche et les
+-- fiches sont publiques : les droits sont posés ici plutôt que laissés à ces
+-- défauts, qui ne sont pas les mêmes en local et en production
+-- (voir 20260728060000_fix_function_grants.sql).
+GRANT EXECUTE ON FUNCTION public.search_candidates(
+  DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, TEXT, TEXT, TEXT[], TIME, TIME, BOOLEAN
+) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_candidate(UUID, DOUBLE PRECISION, DOUBLE PRECISION)
+  TO anon, authenticated, service_role;
