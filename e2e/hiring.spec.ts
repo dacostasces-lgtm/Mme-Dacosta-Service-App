@@ -21,7 +21,10 @@ test.describe("offre et candidature", () => {
     await expect(employer.getByRole("heading", { name: "Mon Espace Employeur" })).toBeVisible();
 
     await employer.goto("/fr/offres/creer");
-    const title = `Nounou temps plein ${Date.now()}`;
+    // Unique, mais en base 36 : un horodatage brut aligne 13 chiffres, que le
+    // filtre anti-numéros (20261011050000_block_phone_numbers.sql) prend à
+    // juste titre pour un numéro de téléphone, et l'offre est refusée.
+    const title = `Nounou temps plein ${Date.now().toString(36)}`;
     await employer.getByLabel("Intitulé du poste").fill(title);
     await employer
       .getByLabel("Description")
