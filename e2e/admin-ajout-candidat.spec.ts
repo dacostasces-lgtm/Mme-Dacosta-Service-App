@@ -79,7 +79,6 @@ test.describe("ajout d'un candidat par la modération", () => {
     await page.getByLabel("Expérience").fill("12 ans");
     await page.getByLabel("Disponibilité").selectOption("full_time");
     await page.getByLabel("Langues parlées").fill("Français, lingala");
-    await page.getByLabel("Présentation").fill("Douze ans auprès de familles à Brazzaville.");
 
     await page.getByRole("button", { name: "Publier le profil" }).click();
 

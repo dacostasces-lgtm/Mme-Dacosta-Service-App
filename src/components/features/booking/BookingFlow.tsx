@@ -117,8 +117,8 @@ export function BookingFlow({
                     defaultValue="full_time"
                     className="w-full h-12 rounded-lg border border-input bg-background px-4"
                   >
-                    <option value="full_time">Temps Plein</option>
-                    <option value="part_time">Temps Partiel</option>
+                    <option value="full_time">Temps plein</option>
+                    <option value="part_time">Temps partiel</option>
                     <option value="one_off">Mission ponctuelle</option>
                   </select>
                 </div>

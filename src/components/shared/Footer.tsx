@@ -13,7 +13,7 @@ export function Footer() {
               Madame Dacosta
             </h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              La plateforme Premium de référence pour le recrutement de personnel de maison qualifié en Afrique.
+              La plateforme Premium de référence pour le recrutement de personnel de maison qualifié au Congo.
             </p>
             <ShareButton
               url={localisedUrl("/")}
@@ -31,7 +31,7 @@ export function Footer() {
                 prefix and every one of these ends on a 404. */}
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li><Link href="/candidats" className="hover:text-primary transition-colors">Rechercher un profil</Link></li>
-              <li><Link href="/offres" className="hover:text-primary transition-colors">Déposer une offre</Link></li>
+              <li><Link href="/offres/creer" className="hover:text-primary transition-colors">Déposer une offre</Link></li>
               <li><Link href="/pricing" className="hover:text-primary transition-colors">Tarifs Premium</Link></li>
             </ul>
           </div>

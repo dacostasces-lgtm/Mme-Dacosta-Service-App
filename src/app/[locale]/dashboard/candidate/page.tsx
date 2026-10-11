@@ -174,7 +174,7 @@ export default async function CandidateDashboard() {
 
         <section className="bg-card rounded-3xl border border-border shadow-soft p-6 sm:p-7 mt-6">
           <h2 className="font-semibold mb-1">Familles qui vous ont réservé</h2>
-          <p className="text-sm text-muted-foreground mb-5">Une réservation réglée vous ouvre la messagerie avec la famille.</p>
+          <p className="text-sm text-muted-foreground mb-5">Les familles qui ont réservé vos services et réglé la mise en relation.</p>
           <BookingList
             bookings={(bookings.data ?? []) as unknown as BookingRow[]}
             role="candidate"

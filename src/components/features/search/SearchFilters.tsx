@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, MapPin, Loader2 } from "lucide-react";
 import { WORK_DAYS, WORK_DAY_LABELS } from "@/lib/jobs/schedule";
+import { RHYTHM_OPTIONS } from "@/lib/candidates/availability";
 
 export type SearchFilterValues = {
   q: string;
@@ -121,10 +122,12 @@ export function SearchFilters({ values }: { values: SearchFilterValues }) {
             className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
           >
             <option value="">Toutes</option>
-            <option value="full_time">Temps Plein</option>
-            <option value="part_time">Temps Partiel</option>
-            <option value="internal">Interne (Logé)</option>
-            <option value="external">Externe</option>
+            {/* Le logement a sa propre case, « Dormir sur place », plus bas. */}
+            {RHYTHM_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
 
