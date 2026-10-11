@@ -5,7 +5,7 @@
  * (20261011060000_paid_job_offers.sql) : changer l'un sans l'autre afficherait
  * un prix et en encaisserait un autre.
  */
-export const JOB_PRICE = 10000;
+export const JOB_PRICE = 5000;
 
 export type JobPaymentRow = {
   id: string;

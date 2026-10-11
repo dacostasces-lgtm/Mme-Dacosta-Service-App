@@ -20,7 +20,7 @@ const PLANS = [
       { label: "Recherche par proximité", included: true },
       { label: "Messagerie avec vos contacts", included: true },
       { label: "Publier des offres et recevoir des candidatures", included: true },
-      { label: "Numéro des candidats (10 000 FCFA par offre)", included: false },
+      { label: "Numéro des candidats (5 000 FCFA par offre)", included: false },
       { label: "Numéro des employeurs (500 FCFA par offre)", included: false },
       { label: "Mise en avant dans les résultats", included: false },
       { label: "Badge Premium sur votre profil", included: false },
@@ -153,7 +153,7 @@ export default async function PricingPage() {
         </div>
 
         <p className="text-center text-sm text-muted-foreground mt-12">
-          Sans abonnement, un employeur peut passer une seule offre en payante pour 10 000 FCFA
+          Sans abonnement, un employeur peut passer une seule offre en payante pour 5 000 FCFA
           et recevoir le numéro de ses candidats ; un candidat peut débloquer le numéro d&apos;un
           seul employeur pour 500 FCFA, depuis la page de l&apos;offre.
         </p>

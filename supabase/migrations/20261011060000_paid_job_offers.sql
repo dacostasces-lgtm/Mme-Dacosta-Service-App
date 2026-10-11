@@ -1,6 +1,6 @@
 -- Offre gratuite ou offre payante.
 --
--- Une offre payante (10 000 FCFA, une fois pour toute sa durée) montre à son
+-- Une offre payante (5 000 FCFA, une fois pour toute sa durée) montre à son
 -- employeur le numéro de téléphone des candidats qui y postulent. Une offre
 -- gratuite montre leur profil, sans numéro. L'abonnement Premium Employeur
 -- rend payantes toutes les offres de l'employeur tant qu'il est actif.
@@ -117,7 +117,7 @@ BEGIN
   END IF;
 
   INSERT INTO public.job_payments (job_id, employer_id, price)
-  VALUES (p_job_id, v_me, 10000)
+  VALUES (p_job_id, v_me, 5000)
   ON CONFLICT (job_id) DO UPDATE
      SET status              = 'pending_payment',
          payment_reference   = NULL,
