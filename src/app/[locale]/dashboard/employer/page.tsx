@@ -143,6 +143,24 @@ export default async function EmployerDashboard() {
           </div>
         </div>
 
+        {/* Le numéro est obligatoire pour publier une offre. */}
+        {user.missingProfileFields.length > 0 && (
+          <div className="rounded-3xl border-2 border-secondary bg-secondary/10 p-6 sm:p-7 mb-8">
+            <h2 className="font-semibold mb-1">Ajoutez votre numéro de téléphone</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Il est obligatoire pour publier une offre : c&apos;est par lui que les candidats et
+              notre équipe vous joignent.
+            </p>
+            <Link
+              href="/profil"
+              className={buttonVariants({ className: "rounded-full gap-2" })}
+            >
+              <UserPen className="h-4 w-4" />
+              Ajouter mon numéro
+            </Link>
+          </div>
+        )}
+
         <JobReminders jobs={myJobs} />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

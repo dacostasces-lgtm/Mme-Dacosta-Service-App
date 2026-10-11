@@ -31,7 +31,11 @@ const schema = z
   })
   .refine(scheduleOrderValid, { message: SCHEDULE_ORDER_MESSAGE });
 
-export type JobFormState = { error?: string };
+export type JobFormState = {
+  error?: string;
+  /** Refus faute de numéro : le formulaire propose le lien vers le profil. */
+  missingPhone?: boolean;
+};
 
 function optionalInt(value: FormDataEntryValue | null) {
   const text = String(value ?? "").trim();
@@ -46,6 +50,16 @@ export async function createJob(
 ): Promise<JobFormState> {
   const user = await requireUser({ role: "employer" });
   const locale = await getLocale();
+
+  // Le numéro de l'employeur est obligatoire pour publier : c'est lui que
+  // paient les candidats, et par lui que la modération le joint. L'admin, qui
+  // publie aussi, en est exempté.
+  if (user.role !== "admin" && !user.hasPhone) {
+    return {
+      error: "Ajoutez d'abord votre numéro de téléphone dans votre profil pour publier une offre.",
+      missingPhone: true,
+    };
+  }
 
   // Job postings are the public face of the platform; a loop here would fill
   // the listing with spam faster than moderation could clear it.

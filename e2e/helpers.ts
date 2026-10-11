@@ -71,11 +71,36 @@ export async function completeCandidateProfile(page: Page, phone: string) {
   await page.waitForURL(/\/fr\/dashboard\/candidate/, { timeout: 30_000 });
 }
 
+/**
+ * Ajoute le numéro d'un employeur, obligatoire pour publier une offre, puis
+ * franchit la vérification par la porte de secours (l'envoi SMS pointe vers le
+ * vide en test).
+ */
+export async function addEmployerPhone(page: Page, phone: string) {
+  await page.goto("/fr/profil");
+  await page.getByLabel("Téléphone").fill(phone);
+  await page.getByRole("button", { name: "Enregistrer mon profil" }).click();
+  await expect(page.getByText("Profil enregistré.")).toBeVisible();
+
+  await page.goto("/fr/verification");
+  await page.getByRole("button", { name: /Recevoir mon code/ }).click();
+  await page.getByRole("button", { name: "Continuer sans vérifier" }).click({ timeout: 30_000 });
+  await page.waitForURL(/\/fr\/dashboard\/employer/, { timeout: 30_000 });
+}
+
 /** Les cases du profil candidat, sans enregistrer. Le quartier vient de
  *  l'inscription. */
 export async function fillCandidateProfile(page: Page, phone: string) {
   await page.getByLabel("Téléphone").fill(phone);
-  await page.getByRole("button", { name: "Nounou", exact: true }).click();
+  // Le choix du métier est un composant React : touché avant l'hydratation de
+  // la page, le bouton ne réagit pas, le métier reste vide et le navigateur
+  // refuse ensuite d'envoyer le formulaire (case obligatoire). On recommence
+  // jusqu'à ce que le bouton soit bien enfoncé.
+  const nounou = page.getByRole("button", { name: "Nounou", exact: true });
+  await expect(async () => {
+    await nounou.click();
+    await expect(nounou).toHaveAttribute("aria-pressed", "true", { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
   await page.getByLabel("Années d'expérience").selectOption("6 ans");
   await page.getByLabel("Âge").fill("32");
   await page.getByLabel("Sexe").selectOption("F");

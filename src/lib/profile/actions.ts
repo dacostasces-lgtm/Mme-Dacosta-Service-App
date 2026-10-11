@@ -144,6 +144,13 @@ export async function updateProfile(
       return { error: PHONE_NUMBER_REFUSED };
     }
 
+    // Le téléphone de l'employeur est obligatoire, comme celui du candidat.
+    // Champ absent du formulaire (my_contact() manquante) : on se fie au
+    // numéro déjà enregistré plutôt que de bloquer pour rien.
+    if (!(contactEditable ? parsed.data.phone : user.hasPhone)) {
+      return { error: "Le numéro de téléphone est obligatoire." };
+    }
+
     const profileError = await saveShared(supabase, user.profileId, parsed.data, contactEditable);
     if (profileError) return { error: profileError };
 
