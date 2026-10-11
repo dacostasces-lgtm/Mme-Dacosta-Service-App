@@ -15,6 +15,10 @@ import {
   ContactUnlockQueue,
   type DeclaredUnlock,
 } from "@/components/features/admin/ContactUnlockQueue";
+import {
+  CandidateUnlockQueue,
+  type DeclaredCandidateUnlock,
+} from "@/components/features/admin/CandidateUnlockQueue";
 import { createClient } from "@/lib/supabase/server";
 import { setProfileValidation, setCandidateCheck, type CandidateCheck } from "@/lib/admin/actions";
 import { PaymentQueue, type DeclaredPayment } from "@/components/features/admin/PaymentQueue";
@@ -255,8 +259,16 @@ export default async function AdminPage() {
   // jour en pratique. La fonction n'est ouverte qu'au rôle de service.
   await createAdminClient()?.rpc("expire_subscriptions");
 
-  const [pending, validated, declared, subscriptions, ownJobs, unlocks, jobPayments] =
-    await Promise.all([
+  const [
+    pending,
+    validated,
+    declared,
+    subscriptions,
+    ownJobs,
+    unlocks,
+    jobPayments,
+    candidateUnlocks,
+  ] = await Promise.all([
     supabase.from("profiles").select(SELECT).eq("is_validated", false).order("created_at"),
     supabase
       .from("profiles")
@@ -312,6 +324,17 @@ export default async function AdminPage() {
       .select(
         "id, price, payment_reference, payment_declared_at, " +
           "employer:profiles!job_payments_employer_id_fkey(full_name), jobs(title)"
+      )
+      .eq("status", "pending_payment")
+      .not("payment_declared_at", "is", null)
+      .order("payment_declared_at"),
+    // Numéros de candidat qu'un employeur dit avoir payés, depuis une fiche.
+    supabase
+      .from("candidate_unlocks")
+      .select(
+        "id, price, payment_reference, payment_declared_at, " +
+          "employer:profiles!candidate_unlocks_employer_id_fkey(full_name), " +
+          "candidate:profiles!candidate_unlocks_candidate_id_fkey(full_name)"
       )
       .eq("status", "pending_payment")
       .not("payment_declared_at", "is", null)
@@ -433,7 +456,13 @@ export default async function AdminPage() {
           // null, not 0: an unapplied migration must not read as "nothing to do".
           payments={paymentsUnavailable ? null : declaredPayments.length}
           subscriptions={subscriptions.error ? null : declaredSubscriptions.length}
-          unlocks={unlocks.error ? null : (unlocks.data ?? []).length}
+          // Les deux sens sous la même rubrique « Numéros » ; une seule des
+          // deux migrations appliquée suffit à afficher un compte.
+          unlocks={
+            unlocks.error && candidateUnlocks.error
+              ? null
+              : (unlocks.data ?? []).length + (candidateUnlocks.data ?? []).length
+          }
           jobPayments={jobPayments.error ? null : (jobPayments.data ?? []).length}
           profiles={pendingProfiles.length}
         />
@@ -468,13 +497,18 @@ export default async function AdminPage() {
           </div>
         )}
 
-        {!unlocks.error && (
-          <div id="numeros" className="scroll-mt-24">
+        <div id="numeros" className="scroll-mt-24">
+          {!unlocks.error && (
             <ContactUnlockQueue
               unlocks={(unlocks.data ?? []) as unknown as DeclaredUnlock[]}
             />
-          </div>
-        )}
+          )}
+          {!candidateUnlocks.error && (
+            <CandidateUnlockQueue
+              unlocks={(candidateUnlocks.data ?? []) as unknown as DeclaredCandidateUnlock[]}
+            />
+          )}
+        </div>
 
         <section id="profils" className="mb-12 scroll-mt-24">
           <h2 className="text-lg font-semibold mb-4">

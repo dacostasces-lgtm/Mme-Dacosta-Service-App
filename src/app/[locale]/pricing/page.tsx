@@ -4,7 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { ChoosePlanButton } from "@/components/features/subscriptions/ChoosePlanButton";
 import { PLANS as PRICES, formatPrice, type PlanId } from "@/lib/subscriptions/plans";
-import { UNLOCK_PRICE } from "@/lib/contact/unlock";
+import { CANDIDATE_UNLOCK_PRICE, UNLOCK_PRICE } from "@/lib/contact/unlock";
 import { JOB_PRICE } from "@/lib/jobs/payment";
 import { BOOKING_FEE_XAF } from "@/lib/bookings/constants";
 import { cn } from "@/lib/utils";
@@ -24,7 +24,10 @@ const PLANS = [
       { label: "Recherche par proximité", included: true },
       { label: "Messagerie avec vos contacts", included: true },
       { label: "Publier des offres et recevoir des candidatures", included: true },
-      { label: `Numéro des candidats (${formatPrice(JOB_PRICE)} par offre)`, included: false },
+      {
+        label: `Numéro des candidats (${formatPrice(JOB_PRICE)} par offre, ou ${formatPrice(CANDIDATE_UNLOCK_PRICE)} l'unité)`,
+        included: false,
+      },
       { label: `Numéro des employeurs (${formatPrice(UNLOCK_PRICE)} par offre)`, included: false },
       { label: "Mise en avant dans les résultats", included: false },
       { label: "Badge Premium sur votre profil", included: false },
@@ -53,7 +56,7 @@ const PLANS = [
     tagline: "Pour recruter sans attendre",
     audience: "Employeurs et agences",
     features: [
-      { label: "Le numéro de tous vos candidats, sur toutes vos offres", included: true },
+      { label: "Le numéro de tous les candidats, sur leur fiche et sur vos offres", included: true },
       { label: "Toutes vos offres en formule payante, sans supplément", included: true },
       { label: "Badge Premium sur vos offres", included: true },
     ],
@@ -67,6 +70,12 @@ const ONE_OFF = [
     audience: "Candidat",
     price: UNLOCK_PRICE,
     detail: "Pour une offre, depuis sa page. Le numéro reste dans votre tableau de bord.",
+  },
+  {
+    label: "Numéro d'un candidat",
+    audience: "Employeur",
+    price: CANDIDATE_UNLOCK_PRICE,
+    detail: "Depuis la fiche du candidat. Le numéro reste ensuite affiché sur sa fiche.",
   },
   {
     label: "Offre payante",

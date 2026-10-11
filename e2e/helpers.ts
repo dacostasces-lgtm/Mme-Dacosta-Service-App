@@ -62,8 +62,7 @@ export async function register(
 export async function completeCandidateProfile(page: Page, phone: string) {
   await page.goto("/fr/profil");
   await fillCandidateProfile(page, phone);
-  await page.getByRole("button", { name: "Enregistrer mon profil" }).click();
-  await expect(page.getByText("Profil enregistré.")).toBeVisible();
+  await saveProfile(page);
 
   await page.goto("/fr/verification");
   await page.getByRole("button", { name: /Recevoir mon code/ }).click();
@@ -78,14 +77,45 @@ export async function completeCandidateProfile(page: Page, phone: string) {
  */
 export async function addEmployerPhone(page: Page, phone: string) {
   await page.goto("/fr/profil");
-  await page.getByLabel("Téléphone").fill(phone);
-  await page.getByRole("button", { name: "Enregistrer mon profil" }).click();
-  await expect(page.getByText("Profil enregistré.")).toBeVisible();
+  // Même piège que le choix du métier (fillCandidateProfile) : envoyé avant
+  // que la page soit prête, l'enregistrement se perdait sans message (deux
+  // échecs d'affilée sur le parcours d'embauche, run 38161463574). On
+  // recommence : réenregistrer le même numéro ne change rien.
+  await expect(async () => {
+    // Un envoi parti avant que la page soit prête a pu la quitter.
+    if (!/\/fr\/profil/.test(page.url())) await page.goto("/fr/profil");
+    await page.getByLabel("Téléphone").fill(phone);
+    await saveProfile(page, 5_000);
+  }).toPass({ timeout: 30_000 });
 
   await page.goto("/fr/verification");
   await page.getByRole("button", { name: /Recevoir mon code/ }).click();
   await page.getByRole("button", { name: "Continuer sans vérifier" }).click({ timeout: 30_000 });
   await page.waitForURL(/\/fr\/dashboard\/employer/, { timeout: 30_000 });
+}
+
+/**
+ * Enregistre le profil et attend la confirmation. Si le formulaire affiche une
+ * erreur, ou reste bloqué sur « Enregistrement... », l'échec le dit : un simple
+ * « Profil enregistré. introuvable » ne permettait pas de savoir pourquoi.
+ */
+export async function saveProfile(page: Page, timeout = 20_000) {
+  const form = page.locator("form", {
+    has: page.getByRole("button", { name: /Enregistrer mon profil|Enregistrement/ }),
+  });
+  const saved = form.getByText("Profil enregistré.");
+  const refused = form.locator("p.text-destructive");
+
+  await form.getByRole("button", { name: "Enregistrer mon profil" }).click();
+  try {
+    await expect(saved.or(refused).first()).toBeVisible({ timeout });
+  } catch {
+    const button = await form.getByRole("button").last().textContent();
+    throw new Error(`Ni confirmation ni erreur après ${timeout} ms (bouton : « ${button?.trim()} »).`);
+  }
+  if (await refused.isVisible()) {
+    throw new Error(`Profil refusé : ${(await refused.textContent())?.trim()}`);
+  }
 }
 
 /** Les cases du profil candidat, sans enregistrer. Le quartier vient de

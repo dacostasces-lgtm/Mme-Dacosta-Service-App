@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { PASSWORD, register, uniqueEmail } from "./helpers";
+import { PASSWORD, addEmployerPhone, register, uniqueEmail } from "./helpers";
 
 /**
  * Le chemin qui porte le chiffre d'affaires, de bout en bout.
@@ -20,7 +20,7 @@ function serviceClient() {
 }
 
 /** Un candidat publié, sans quoi il n'apparaît ni en recherche ni en fiche. */
-async function candidatPublie(nom: string) {
+async function candidatPublie(nom: string, telephone?: string) {
   const admin = serviceClient();
   const email = uniqueEmail("cand");
 
@@ -38,7 +38,10 @@ async function candidatPublie(nom: string) {
     .eq("user_id", data.user!.id)
     .single();
 
-  await admin.from("profiles").update({ is_validated: true }).eq("id", profile!.id);
+  await admin
+    .from("profiles")
+    .update({ is_validated: true, ...(telephone ? { phone: telephone } : {}) })
+    .eq("id", profile!.id);
   await admin
     .from("candidate_details")
     .update({ job_title: "Nounou", availability: "full_time" })
@@ -129,13 +132,66 @@ test.describe("réservation d'un candidat", () => {
   });
 
   test("un candidat ne se voit pas proposer de réserver un autre candidat", async ({ page }) => {
-    const { profileId } = await candidatPublie(`Autre ${Date.now()}`);
+    const telephone = numeroDeTest();
+    const { profileId } = await candidatPublie(`Autre ${Date.now()}`, telephone);
     await register(page, "candidate", "Candidate Curieuse");
 
     await page.goto(`/fr/candidats/${profileId}`);
     // Le tunnel exige le rôle employeur : afficher le bouton le renverrait vers
     // son propre tableau de bord, ce qui se lit comme une panne.
     await expect(page.getByRole("link", { name: "Réserver ce candidat" })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Contacter" })).toBeVisible();
+    // Le numéro d'un candidat ne se vend qu'aux employeurs.
+    await expect(page.getByRole("button", { name: /Payer pour avoir le numéro/ })).toHaveCount(0);
+    await expect(page.getByText(telephone)).toHaveCount(0);
+  });
+});
+
+/** Un numéro à neuf chiffres, différent à chaque essai. */
+function numeroDeTest() {
+  return `06${String(Date.now()).slice(-7)}`;
+}
+
+test.describe("numéro d'un candidat sur sa fiche", () => {
+  test("l'employeur paie le numéro, la modération valide, le numéro s'affiche", async ({
+    page,
+  }) => {
+    const telephone = numeroDeTest();
+    const { profileId } = await candidatPublie(`Candidate Numéro ${Date.now()}`, telephone);
+
+    // Le bouton « Contacter » menait à une messagerie vide : il a laissé la
+    // place au numéro, ou au moyen de l'obtenir.
+    await page.goto(`/fr/candidats/${profileId}`);
+    await expect(page.getByRole("link", { name: "Contacter" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Se connecter pour avoir le numéro" })).toBeVisible();
+
+    await register(page, "employer", "Famille Numéro");
+    await addEmployerPhone(page, "060000005");
+
+    await page.goto(`/fr/candidats/${profileId}`);
+    await expect(page.getByText(telephone)).toHaveCount(0);
+    await page.getByRole("button", { name: /Payer pour avoir le numéro/ }).click();
+
+    await expect(
+      page.getByRole("heading", { name: "Régler le numéro du candidat" })
+    ).toBeVisible({ timeout: 30_000 });
+    await page
+      .getByLabel("Identifiant de transaction Mobile Money")
+      .fill("PP261011.1234.A56789");
+    await page.getByRole("button", { name: "J'ai payé" }).click();
+    await expect(page.getByText("Paiement déclaré")).toBeVisible({ timeout: 30_000 });
+
+    // Déclarer n'ouvre rien : la modération doit d'abord voir l'argent.
+    await page.goto(`/fr/candidats/${profileId}?v=${Date.now()}`);
+    await expect(page.getByText(telephone)).toHaveCount(0);
+
+    const { error } = await serviceClient()
+      .from("candidate_unlocks")
+      .update({ status: "active", payment_confirmed_at: new Date().toISOString() })
+      .eq("candidate_id", profileId);
+    expect(error).toBeNull();
+
+    await page.goto(`/fr/candidats/${profileId}?v=${Date.now()}`);
+    await expect(page.getByRole("link", { name: telephone })).toBeVisible();
+    await expect(page.getByText("Numéro débloqué.")).toBeVisible();
   });
 });

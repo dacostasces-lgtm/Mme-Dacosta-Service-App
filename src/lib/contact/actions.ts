@@ -94,3 +94,81 @@ export async function settleContactUnlock(unlockId: string, confirmed: boolean) 
   // que seul ce rafraîchissement met à jour.
   revalidatePath("/", "layout");
 }
+
+// Le numéro d'un candidat, pour un employeur ----------------------------------
+// Même circuit que ci-dessus, dans l'autre sens (20261011090000_candidate_contact.sql).
+
+export type CandidateUnlockState = { error?: string; ok?: boolean; missingPhone?: boolean };
+
+const candidateId = z.string().uuid();
+
+/** « Payer pour avoir le numéro » : ouvre la demande, au prix fixé en base. */
+export async function requestCandidateUnlock(
+  _previous: CandidateUnlockState,
+  formData: FormData
+): Promise<CandidateUnlockState> {
+  const user = await requireUser({ role: "employer" });
+
+  const parsed = candidateId.safeParse(formData.get("candidateId"));
+  if (!parsed.success) return { error: "Profil introuvable." };
+
+  // La règle de la publication d'une offre (src/lib/jobs/actions.ts) : un
+  // employeur sans numéro ne peut pas obtenir celui d'un candidat.
+  if (user.role !== "admin" && !user.hasPhone) {
+    return {
+      error: "Ajoutez d'abord votre numéro de téléphone dans votre profil.",
+      missingPhone: true,
+    };
+  }
+
+  const limit = rateLimit(`candidate-unlock:${user.id}`, { limit: 10, windowSeconds: 600 });
+  if (!limit.ok) return { error: tooManyRequestsMessage(limit.retryAfterSeconds) };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("request_candidate_unlock", {
+    p_candidate_id: parsed.data,
+  });
+  if (error) return { error: error.message };
+
+  return { ok: true };
+}
+
+export async function declareCandidateUnlockPayment(
+  _previous: CandidateUnlockState,
+  formData: FormData
+): Promise<CandidateUnlockState> {
+  await requireUser({ role: "employer" });
+
+  const parsed = declareSchema.safeParse({
+    unlockId: formData.get("unlockId"),
+    reference: formData.get("reference"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Saisie invalide." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("declare_candidate_unlock_payment", {
+    p_unlock_id: parsed.data.unlockId,
+    p_reference: parsed.data.reference,
+  });
+  if (error) return { error: error.message };
+
+  return { ok: true };
+}
+
+export async function settleCandidateUnlock(unlockId: string, confirmed: boolean) {
+  await requireUser({ role: "admin" });
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("settle_candidate_unlock", {
+    p_unlock_id: unlockId,
+    p_confirmed: confirmed,
+  });
+
+  if (error) {
+    throw new Error(`Impossible de mettre à jour le déblocage : ${error.message}`);
+  }
+
+  revalidatePath("/", "layout");
+}

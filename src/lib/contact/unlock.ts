@@ -7,6 +7,13 @@
  */
 export const UNLOCK_PRICE = 500;
 
+/**
+ * Prix du numéro d'un candidat pour un employeur, pour l'affichage seulement.
+ * Le montant facturé est fixé par request_candidate_unlock()
+ * (20261011090000_candidate_contact.sql).
+ */
+export const CANDIDATE_UNLOCK_PRICE = 500;
+
 /** « 06 111 11 11 » → « 24206111111 », la forme qu'attend wa.me. */
 export function whatsappLink(number: string, text?: string) {
   const digits = number.replace(/\D/g, "");

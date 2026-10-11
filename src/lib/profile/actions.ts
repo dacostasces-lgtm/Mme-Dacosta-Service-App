@@ -2,7 +2,6 @@
 
 import { missingCandidateFields } from "@/lib/profile/completeness";
 import { containsPhoneNumber, PHONE_NUMBER_REFUSED } from "@/lib/contact/phone-filter";
-import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -246,8 +245,11 @@ export async function updateProfile(
     if (error) return { error: `Enregistrement impossible : ${error.message}` };
   }
 
-  // The name and avatar show up in the Navbar and in every listing.
-  revalidatePath("/", "layout");
+  // Pas de `revalidatePath` : appelé depuis la page du profil, il empêchait
+  // par moments la réponse d'atteindre le navigateur, et le bouton restait figé
+  // sur « Enregistrement... » (mesuré en CI, voir src/lib/bookings/actions.ts).
+  // Le formulaire rafraîchit lui-même la page une fois le résultat reçu, ce
+  // qui remet à jour le nom dans la barre de navigation.
   return { ok: true };
 }
 
