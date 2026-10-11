@@ -1,5 +1,6 @@
 "use client";
 
+import { EXPERIENCE_OPTIONS } from "@/lib/profile/completeness";
 import { availabilityLabel, RHYTHM_OPTIONS } from "@/lib/candidates/availability";
 import { MetierPicker } from "@/components/features/jobs/MetierPicker";
 import { useActionState } from "react";
@@ -50,6 +51,8 @@ type Props = {
   neighborhoods: NeighborhoodOption[];
   candidate?: CandidateProfile;
   employer?: EmployerProfile;
+  /** Cases encore vides du profil candidat, affichées en tête du formulaire. */
+  missing?: string[];
 };
 
 function Field({
@@ -84,15 +87,29 @@ export function ProfileForm({
   neighborhoods,
   candidate,
   employer,
+  missing = [],
 }: Props) {
   const [state, formAction, pending] = useActionState<ProfileFormState, FormData>(
     updateProfile,
     {}
   );
   const isEmployer = role === "employer";
+  // Les cases obligatoires ne le sont que pour un candidat ; l'admin, qui
+  // passe par ce même formulaire, n'y est pas soumis.
+  const candidateRequired = role === "candidate";
 
   return (
     <form action={formAction} className="space-y-8">
+      {candidateRequired && missing.length > 0 && (
+        <div className="rounded-2xl border-2 border-secondary bg-secondary/10 p-4 text-sm">
+          <p className="font-semibold mb-1">Complétez votre profil pour continuer</p>
+          <p className="text-muted-foreground">
+            Toutes les cases doivent être remplies pour postuler aux offres et obtenir le numéro
+            des employeurs. Il manque : <strong>{missing.join(", ")}</strong>.
+          </p>
+        </div>
+      )}
+
       <section className="space-y-5">
         <h2 className="font-semibold text-lg">Identité</h2>
 
@@ -108,6 +125,7 @@ export function ProfileForm({
                 name="phone"
                 type="tel"
                 inputMode="tel"
+                required={candidateRequired}
                 defaultValue={phone ?? ""}
                 placeholder="06 717 30 30"
               />
@@ -143,6 +161,7 @@ export function ProfileForm({
           <select
             id="neighborhoodId"
             name="neighborhoodId"
+            required={candidateRequired}
             defaultValue={neighborhoodId ?? ""}
             className={SELECT}
           >
@@ -195,6 +214,7 @@ export function ProfileForm({
             <MetierPicker
               name="jobTitle"
               legend="Poste recherché"
+              required={candidateRequired}
               defaultValue={candidate?.jobTitle}
               otherPlaceholder="Écrivez le poste que vous recherchez"
             />
@@ -205,12 +225,24 @@ export function ProfileForm({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Années d'expérience" htmlFor="experience">
-              <Input
+              <select
                 id="experience"
                 name="experience"
+                required={candidateRequired}
                 defaultValue={candidate?.experience ?? ""}
-                placeholder="5 ans"
-              />
+                className={SELECT}
+              >
+                <option value="">Choisir</option>
+                {EXPERIENCE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+                {/* Une valeur écrite à la main avant cette liste reste choisie. */}
+                {candidate?.experience && !EXPERIENCE_OPTIONS.includes(candidate.experience) && (
+                  <option value={candidate.experience}>{candidate.experience}</option>
+                )}
+              </select>
             </Field>
             <Field label="Âge" htmlFor="age">
               <Input
@@ -219,6 +251,7 @@ export function ProfileForm({
                 type="number"
                 min="16"
                 max="80"
+                required={candidateRequired}
                 defaultValue={candidate?.age ?? ""}
               />
             </Field>
@@ -229,6 +262,7 @@ export function ProfileForm({
               <select
                 id="availability"
                 name="availability"
+                required={candidateRequired}
                 defaultValue={candidate?.availability ?? ""}
                 className={SELECT}
               >
@@ -252,6 +286,7 @@ export function ProfileForm({
               <select
                 id="gender"
                 name="gender"
+                required={candidateRequired}
                 defaultValue={candidate?.gender ?? ""}
                 className={SELECT}
               >
@@ -266,21 +301,22 @@ export function ProfileForm({
             <div>
               <h3 className="font-medium">Jours et horaires de disponibilité</h3>
               <p className="text-xs text-muted-foreground">
-                Les employeurs filtrent les candidats sur ces critères. Laissez vide si tout
-                vous convient.
+                Les employeurs filtrent les candidats sur ces critères. Cochez au moins un jour
+                et indiquez vos heures.
               </p>
             </div>
             <ScheduleFields
               daysLegend="Jours où vous êtes disponible"
               liveInHint="Vous acceptez d'être logé(e) et de passer la nuit chez l'employeur."
               defaults={candidate}
+              required={candidateRequired}
             />
           </div>
 
           <Field
             label="Salaire souhaité"
             htmlFor="desiredSalary"
-            hint="En FCFA, par mois. Facultatif."
+            hint="En FCFA, par mois."
           >
             <Input
               id="desiredSalary"
@@ -288,6 +324,7 @@ export function ProfileForm({
               type="number"
               min="0"
               step="1000"
+              required={candidateRequired}
               defaultValue={candidate?.desiredSalary ?? ""}
               placeholder="80000"
             />
@@ -301,6 +338,7 @@ export function ProfileForm({
             <Input
               id="skills"
               name="skills"
+              required={candidateRequired}
               defaultValue={candidate?.skills.join(", ") ?? ""}
               placeholder="cuisine, repassage, garde d'enfants"
             />
@@ -314,6 +352,7 @@ export function ProfileForm({
             <Input
               id="languages"
               name="languages"
+              required={candidateRequired}
               defaultValue={candidate?.languages.join(", ") ?? ""}
               placeholder="français, lingala"
             />

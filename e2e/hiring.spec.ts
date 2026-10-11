@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { register } from "./helpers";
+import { register, completeCandidateProfile } from "./helpers";
 
 test.describe("offre et candidature", () => {
   /**
@@ -57,6 +57,8 @@ test.describe("offre et candidature", () => {
     const candidateContext = await browser.newContext();
     const candidate = await candidateContext.newPage();
     await register(candidate, "candidate", "Awa Postulante");
+    // Un profil incomplet ne peut pas postuler.
+    await completeCandidateProfile(candidate, "060000002");
 
     await candidate.goto(jobUrl);
     await candidate.getByRole("button", { name: "Postuler" }).click();

@@ -140,6 +140,7 @@ export default async function ProfilePage() {
             neighborhoods={neighborhoods}
             candidate={candidate}
             employer={employer}
+            missing={user.missingProfileFields}
           />
         </div>
       </div>

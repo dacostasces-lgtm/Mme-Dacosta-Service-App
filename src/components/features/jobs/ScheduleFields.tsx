@@ -15,8 +15,12 @@ export function ScheduleFields({
   daysLegend,
   liveInHint,
   defaults,
+  required = false,
 }: {
   daysLegend: string;
+  /** Heures obligatoires (profil candidat). Les jours, eux, sont vérifiés par
+   *  l'action : le navigateur ne sait pas exiger « au moins une case ». */
+  required?: boolean;
   liveInHint: string;
   defaults?: {
     workDays?: string[] | null;
@@ -57,6 +61,7 @@ export function ScheduleFields({
             id="startTime"
             name="startTime"
             type="time"
+            required={required}
             defaultValue={toInputTime(defaults?.startTime)}
           />
         </div>
@@ -68,6 +73,7 @@ export function ScheduleFields({
             id="endTime"
             name="endTime"
             type="time"
+            required={required}
             defaultValue={toInputTime(defaults?.endTime)}
           />
         </div>

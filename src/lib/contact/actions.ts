@@ -1,12 +1,13 @@
 "use server";
 
+import { INCOMPLETE_PROFILE_MESSAGE } from "@/lib/profile/completeness";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, tooManyRequestsMessage } from "@/lib/rate-limit";
 
-export type UnlockState = { error?: string; ok?: boolean };
+export type UnlockState = { error?: string; ok?: boolean; incompleteProfile?: boolean };
 
 const jobId = z.string().uuid();
 
@@ -25,6 +26,10 @@ export async function requestContactUnlock(
 
   const parsed = jobId.safeParse(formData.get("jobId"));
   if (!parsed.success) return { error: "Offre introuvable." };
+
+  if (user.missingProfileFields.length > 0) {
+    return { error: INCOMPLETE_PROFILE_MESSAGE, incompleteProfile: true };
+  }
 
   const limit = rateLimit(`unlock:${user.id}`, { limit: 10, windowSeconds: 600 });
   if (!limit.ok) return { error: tooManyRequestsMessage(limit.retryAfterSeconds) };

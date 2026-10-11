@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { PNG_1x1, register, uploadVia } from "./helpers";
+import { fillCandidateProfile, PNG_1x1, register, uploadVia } from "./helpers";
 
 test.describe("parcours candidate", () => {
   /**
@@ -10,40 +10,18 @@ test.describe("parcours candidate", () => {
    * instabilité là-dessus empêchait de vérifier le reste du parcours.
    */
   test("inscription, profil puis demande Premium", async ({ page }) => {
+    // L'inscription mène droit au profil : il doit être complet pour postuler.
     await register(page, "candidate", "Awa Mabiala");
-
-    await expect(
-      page.getByRole("heading", { name: "Mon Espace Candidat" }),
-    ).toBeVisible();
-
-    // The signup trigger creates an empty candidate_details row, so the
-    // dashboard must nudge rather than pretend the profile is usable.
-    await expect(
-      page.getByRole("heading", { name: "Complétez votre profil" }),
-    ).toBeVisible();
-    await page.getByRole("link", { name: "Remplir mon profil" }).click();
-    await expect(page).toHaveURL(/\/fr\/profil/);
+    await expect(page.getByText("Complétez votre profil pour continuer")).toBeVisible();
 
     // --- profil ---------------------------------------------------------------
-    await page.getByRole("button", { name: "Nounou", exact: true }).click();
-    await page.getByLabel("Années d'expérience").fill("6 ans");
-    await page
-      .getByLabel("Compétences")
-      .fill("garde d'enfants, cuisine, repassage");
-    await page.getByLabel("Langues parlées").fill("français, lingala");
-    await page.getByLabel("Salaire souhaité").fill("90000");
-    await page.getByLabel("Disponibilité").selectOption("full_time");
-
+    // Toutes les cases, téléphone compris : un profil incomplet est refusé.
+    await fillCandidateProfile(page, "060000001");
     await page.getByRole("button", { name: "Enregistrer mon profil" }).click();
     await expect(page.getByText("Profil enregistré.")).toBeVisible();
 
     // --- téléphone ------------------------------------------------------------
     // Readable back only through my_contact(): the column itself is revoked.
-    // If that function were missing the form would hide these inputs instead.
-    await expect(page.getByLabel("Téléphone")).toBeVisible();
-    await page.getByLabel("Téléphone").fill("060000001");
-    await page.getByRole("button", { name: "Enregistrer mon profil" }).click();
-    await expect(page.getByText("Profil enregistré.")).toBeVisible();
     await page.reload();
     await expect(page.getByLabel("Téléphone")).toHaveValue("+242 06 000 00 01");
 

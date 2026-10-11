@@ -1,5 +1,6 @@
 "use client";
 
+import { Link } from "@/i18n/routing";
 import { useActionState, useState } from "react";
 import { Check, Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -88,7 +89,17 @@ export function ApplyButton({
       </p>
 
       {state.error && (
-        <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">{state.error}</p>
+        <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">
+          {state.error}
+          {state.incompleteProfile && (
+            <>
+              {" "}
+              <Link href="/profil" className="font-semibold underline">
+                Compléter mon profil
+              </Link>
+            </>
+          )}
+        </p>
       )}
 
       <div className="flex gap-2">

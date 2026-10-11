@@ -212,11 +212,15 @@ export function RegisterForm({ cities }: { cities: CityRef[] }) {
       //
       // Une inscription par email n'a pas de numéro à vérifier et va droit à
       // son espace ; requireUser ne l'arrêtera pas davantage.
+      //
+      // Un candidat inscrit par email va droit à son profil : tant que toutes
+      // les cases ne sont pas remplies, il ne peut ni postuler ni obtenir de
+      // numéro (src/lib/profile/completeness.ts).
       router.push(
         parEmail
           ? data.role === "employer"
             ? "/dashboard/employer"
-            : "/dashboard/candidate"
+            : "/profil"
           : "/verification"
       );
       router.refresh();

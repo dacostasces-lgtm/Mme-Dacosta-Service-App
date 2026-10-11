@@ -2,7 +2,7 @@
 
 import { useActionState, useCallback, useEffect } from "react";
 import { Loader2, LockOpen } from "lucide-react";
-import { useRouter } from "@/i18n/routing";
+import { Link, useRouter } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
 import { MomoPayment } from "@/components/features/payments/MomoPayment";
 import {
@@ -48,7 +48,19 @@ export function UnlockButton({
         {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <LockOpen className="h-4 w-4" />}
         Débloquer ce numéro · {formatPrice(UNLOCK_PRICE)}
       </Button>
-      {state.error && <p className="text-sm text-destructive mt-2">{state.error}</p>}
+      {state.error && (
+        <p className="text-sm text-destructive mt-2">
+          {state.error}
+          {state.incompleteProfile && (
+            <>
+              {" "}
+              <Link href="/profil" className="font-semibold underline">
+                Compléter mon profil
+              </Link>
+            </>
+          )}
+        </p>
+      )}
     </form>
   );
 }
