@@ -1,10 +1,12 @@
-import { Briefcase, MapPin, Clock, Plus, Wallet, Send } from "lucide-react";
+import { BedDouble, Briefcase, CalendarDays, MapPin, Clock, Plus, Timer, Wallet, Send } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ApplyButton } from "@/components/features/jobs/ApplyButton";
+import { JobFilters, type JobFilterValues } from "@/components/features/jobs/JobFilters";
 import { formatSalary, formatShortDate } from "@/lib/jobs/format";
+import { formatHours, formatWorkDays, isWorkDay, sortWorkDays } from "@/lib/jobs/schedule";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import famille from "@/assets/images/famille-cuisine.jpg";
@@ -16,6 +18,10 @@ type Job = {
   salary_range_min: number | null;
   salary_range_max: number | null;
   created_at: string;
+  work_days: string[] | null;
+  start_time: string | null;
+  end_time: string | null;
+  live_in: boolean;
   profiles: { full_name: string; is_premium: boolean } | null;
   neighborhoods: { name: string; cities: { name: string } | null } | null;
 };
@@ -24,21 +30,66 @@ type Job = {
 const MISCONFIGURED =
   "Service temporairement indisponible : la connexion à la base de données n'est pas configurée sur ce déploiement.";
 
-export default async function JobsPage() {
-  const user = await getCurrentUser();
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** Ce qui arrive de l'URL est tapé à la main autant que soumis : on trie. */
+function readFilters(params: {
+  jours?: string | string[];
+  debut?: string;
+  fin?: string;
+  loge?: string;
+}): JobFilterValues {
+  const jours = ([] as string[]).concat(params.jours ?? []).filter(isWorkDay);
+  return {
+    jours: sortWorkDays(jours),
+    debut: params.debut && TIME.test(params.debut) ? params.debut : "",
+    fin: params.fin && TIME.test(params.fin) ? params.fin : "",
+    loge: params.loge === "oui" || params.loge === "non" ? params.loge : "",
+  };
+}
+
+export default async function JobsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ jours?: string | string[]; debut?: string; fin?: string; loge?: string }>;
+}) {
+  const [user, params] = await Promise.all([getCurrentUser(), searchParams]);
+  const filters = readFilters(params);
+  const filtering = Boolean(
+    filters.jours.length || filters.debut || filters.fin || filters.loge
+  );
 
   // The "Active jobs are viewable by everyone" policy already restricts this to
   // active postings (plus an employer's own), so no status filter is needed here.
-  const { data, error } = isSupabaseConfigured()
-    ? await (
-        await createClient()
-      )
+  let query = isSupabaseConfigured()
+    ? (await createClient())
         .from("jobs")
         .select(
           "id, title, description, salary_range_min, salary_range_max, created_at, " +
+            "work_days, start_time, end_time, live_in, " +
             "profiles(full_name, is_premium), neighborhoods(name, cities(name))"
         )
         .order("created_at", { ascending: false })
+    : null;
+
+  if (query) {
+    // Une offre convient si tous ses jours font partie de ceux cochés. Une offre
+    // sans jour précisé reste visible : rien ne dit qu'elle ne convient pas.
+    if (filters.jours.length) query = query.containedBy("work_days", filters.jours);
+
+    // Même logique pour les heures : non précisée, l'offre n'est pas écartée.
+    // Les heures sont entre guillemets, le « : » étant réservé dans la syntaxe
+    // des filtres logiques de PostgREST.
+    const hours: string[] = [];
+    if (filters.debut) hours.push(`or(start_time.is.null,start_time.gte."${filters.debut}")`);
+    if (filters.fin) hours.push(`or(end_time.is.null,end_time.lte."${filters.fin}")`);
+    if (hours.length) query = query.or(`and(${hours.join(",")})`);
+
+    if (filters.loge) query = query.eq("live_in", filters.loge === "oui");
+  }
+
+  const { data, error } = query
+    ? await query
     : { data: null, error: { message: MISCONFIGURED } };
 
   const jobs = (data ?? []) as unknown as Job[];
@@ -60,7 +111,9 @@ export default async function JobsPage() {
     <>
       <PageHeader
         eyebrow="Offres d'emploi"
-        title={`${jobs.length} poste${jobs.length > 1 ? "s" : ""} à pourvoir`}
+        title={`${jobs.length} poste${jobs.length > 1 ? "s" : ""} ${
+          filtering ? (jobs.length > 1 ? "correspondent" : "correspond") : "à pourvoir"
+        }`}
         description="Les postes proposés par les familles et employeurs de la plateforme. Candidatez directement depuis votre espace."
         image={famille}
       >
@@ -80,6 +133,8 @@ export default async function JobsPage() {
 
       <div className="bg-surface bg-grain py-10 sm:py-14 flex-1">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <JobFilters values={filters} active={filtering} />
+
         {error && (
           <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3 mb-6">
             Erreur de chargement : {error.message}
@@ -89,9 +144,15 @@ export default async function JobsPage() {
         {!error && jobs.length === 0 ? (
           <div className="bg-card border border-border rounded-2xl p-10 text-center">
             <Briefcase className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-            <p className="font-medium mb-1">Aucune offre publiée pour le moment.</p>
+            <p className="font-medium mb-1">
+              {filtering
+                ? "Aucune offre ne correspond à ces critères."
+                : "Aucune offre publiée pour le moment."}
+            </p>
             <p className="text-sm text-muted-foreground">
-              {canPost
+              {filtering
+                ? "Cochez plus de jours ou élargissez les horaires."
+                : canPost
                 ? "Publiez la première et recevez des candidatures."
                 : "Revenez bientôt : de nouvelles offres sont publiées régulièrement."}
             </p>
@@ -102,6 +163,8 @@ export default async function JobsPage() {
               const place = [job.neighborhoods?.name, job.neighborhoods?.cities?.name]
                 .filter(Boolean)
                 .join(", ");
+              const days = formatWorkDays(job.work_days);
+              const hours = formatHours(job.start_time, job.end_time);
 
               return (
                 <article
@@ -143,6 +206,29 @@ export default async function JobsPage() {
                     <Wallet className="h-4 w-4" aria-hidden />
                     {formatSalary(job.salary_range_min, job.salary_range_max)}
                   </p>
+
+                  {(days || hours || job.live_in) && (
+                    <ul className="mt-3 flex flex-wrap gap-2 text-sm">
+                      {days && (
+                        <li className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1">
+                          <CalendarDays className="h-4 w-4 text-muted-foreground" aria-hidden />
+                          {days}
+                        </li>
+                      )}
+                      {hours && (
+                        <li className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1">
+                          <Timer className="h-4 w-4 text-muted-foreground" aria-hidden />
+                          {hours}
+                        </li>
+                      )}
+                      {job.live_in && (
+                        <li className="inline-flex items-center gap-1.5 rounded-full bg-secondary/20 px-3 py-1 font-medium">
+                          <BedDouble className="h-4 w-4" aria-hidden />
+                          Dort sur place
+                        </li>
+                      )}
+                    </ul>
+                  )}
 
                   <div className="mt-5 pt-4 border-t border-border flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
                     {place && (

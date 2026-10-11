@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { Briefcase, Clock, MapPin, Send, Wallet } from "lucide-react";
+import { BedDouble, Briefcase, CalendarDays, Clock, MapPin, Send, Timer, Wallet } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { ApplyButton } from "@/components/features/jobs/ApplyButton";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { formatLongDate, formatSalary } from "@/lib/jobs/format";
+import { formatHours, formatWorkDays } from "@/lib/jobs/schedule";
 import { localisedUrl } from "@/lib/site";
 
 type Job = {
@@ -19,6 +20,10 @@ type Job = {
   salary_range_max: number | null;
   created_at: string;
   status: string;
+  work_days: string[] | null;
+  start_time: string | null;
+  end_time: string | null;
+  live_in: boolean;
   profiles: { full_name: string; is_premium: boolean } | null;
   neighborhoods: { name: string; cities: { name: string; country: string } | null } | null;
 };
@@ -52,6 +57,7 @@ function countryCode(name: string | null | undefined) {
 
 const SELECT =
   "id, title, description, salary_range_min, salary_range_max, created_at, status, " +
+  "work_days, start_time, end_time, live_in, " +
   "profiles(full_name, is_premium), neighborhoods(name, cities(name, country))";
 
 async function getJob(id: string): Promise<Job | null> {
@@ -108,6 +114,9 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   const place = [job.neighborhoods?.name, job.neighborhoods?.cities?.name]
     .filter(Boolean)
     .join(", ");
+
+  const days = formatWorkDays(job.work_days);
+  const hours = formatHours(job.start_time, job.end_time);
 
   const canApply = user?.role === "candidate" && job.status === "active";
 
@@ -208,6 +217,32 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
             <Wallet className="h-4 w-4" aria-hidden />
             {formatSalary(job.salary_range_min, job.salary_range_max)}
           </p>
+
+          {(days || hours || job.live_in) && (
+            <dl className="grid gap-3 sm:grid-cols-3 rounded-2xl bg-muted/50 p-4 mb-6 text-sm">
+              <div className="flex items-start gap-2">
+                <CalendarDays className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" aria-hidden />
+                <div>
+                  <dt className="text-xs text-muted-foreground">Jours de service</dt>
+                  <dd className="font-medium">{days ?? "À convenir"}</dd>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <Timer className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" aria-hidden />
+                <div>
+                  <dt className="text-xs text-muted-foreground">Horaires</dt>
+                  <dd className="font-medium">{hours ?? "À convenir"}</dd>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <BedDouble className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" aria-hidden />
+                <div>
+                  <dt className="text-xs text-muted-foreground">Dormir sur place</dt>
+                  <dd className="font-medium">{job.live_in ? "Oui, logé sur place" : "Non"}</dd>
+                </div>
+              </div>
+            </dl>
+          )}
 
           <div className="prose-sm whitespace-pre-line leading-relaxed text-foreground mb-6">
             {job.description}
