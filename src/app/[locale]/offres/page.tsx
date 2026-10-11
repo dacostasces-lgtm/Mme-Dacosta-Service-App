@@ -4,6 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ApplyButton } from "@/components/features/jobs/ApplyButton";
+import { EmployerContact } from "@/components/features/contact/EmployerContact";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { localisedUrl } from "@/lib/site";
 import { JobFilters, type JobFilterValues } from "@/components/features/jobs/JobFilters";
@@ -207,9 +208,10 @@ export default async function JobsPage({
                     )}
                   </div>
 
-                  <p className="text-sm text-muted-foreground mb-5 line-clamp-3 whitespace-pre-line leading-relaxed">
-                    {job.description}
-                  </p>
+                  {/* Pas de description ici : elle se lit sur la page de
+                      l'offre. La carte reste courte et la liste se parcourt
+                      d'un coup d'œil. */}
+                  <div className="mb-5" />
 
                   <p className="inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-primary">
                     <Wallet className="h-4 w-4" aria-hidden />
@@ -284,6 +286,13 @@ export default async function JobsPage({
                     >
                       Votre offre · formule et paiement
                     </Link>
+                  )}
+
+                  {/* Le numéro de l'employeur, ou comment l'obtenir — pour un
+                      candidat. Rien pour les autres : l'employeur a son lien
+                      « formule et paiement » ci-dessus. */}
+                  {canApply && (
+                    <EmployerContact jobId={job.id} jobTitle={job.title} user={user} compact />
                   )}
 
                   {canApply && (
