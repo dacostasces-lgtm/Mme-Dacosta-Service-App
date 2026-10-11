@@ -84,7 +84,8 @@ export default async function CandidateDashboard() {
   const published = profile.data?.is_validated ?? false;
   // The signup trigger inserts an empty candidate_details row, so "has a row"
   // proves nothing — a profile is only usable once it says what the person does.
-  const profileComplete = Boolean(details.data?.job_title && details.data?.description);
+  // Le métier suffit : la présentation n'est plus demandée au candidat.
+  const profileComplete = Boolean(details.data?.job_title);
 
   return (
     <div className="flex-1 bg-surface bg-grain">
@@ -143,8 +144,8 @@ export default async function CandidateDashboard() {
           </h2>
           <p className="text-sm text-muted-foreground mb-4">
             {profileComplete
-              ? "Métier, compétences, présentation : tenez vos informations à jour."
-              : "Votre fiche est encore vide. Sans métier ni présentation, les familles ne peuvent pas vous choisir — c'est l'étape la plus importante."}
+              ? "Métier, compétences, disponibilités : tenez vos informations à jour."
+              : "Votre fiche est encore vide. Sans métier, les familles ne peuvent pas vous choisir — c'est l'étape la plus importante."}
           </p>
           <Link
             href="/profil"
