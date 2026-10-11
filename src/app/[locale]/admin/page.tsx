@@ -4,6 +4,10 @@ import { Link } from "@/i18n/routing";
 import { requireUser } from "@/lib/auth/dal";
 import { JobReminders, type MyJobRow } from "@/components/features/jobs/MyJobs";
 import {
+  JobPaymentQueue,
+  type DeclaredJobPayment,
+} from "@/components/features/admin/JobPaymentQueue";
+import {
   ContactUnlockQueue,
   type DeclaredUnlock,
 } from "@/components/features/admin/ContactUnlockQueue";
@@ -169,7 +173,8 @@ export default async function AdminPage() {
   // modération. `accountBalance` ne rejette jamais.
   const soldePromise = accountBalance();
 
-  const [pending, validated, declared, subscriptions, ownJobs, unlocks] = await Promise.all([
+  const [pending, validated, declared, subscriptions, ownJobs, unlocks, jobPayments] =
+    await Promise.all([
     supabase.from("profiles").select(SELECT).eq("is_validated", false).order("created_at"),
     supabase
       .from("profiles")
@@ -215,6 +220,16 @@ export default async function AdminPage() {
       .select(
         "id, price, payment_reference, payment_declared_at, " +
           "candidate:profiles!contact_unlocks_candidate_id_fkey(full_name), jobs(title)"
+      )
+      .eq("status", "pending_payment")
+      .not("payment_declared_at", "is", null)
+      .order("payment_declared_at"),
+    // Offres payantes dont l'employeur a déclaré le paiement.
+    supabase
+      .from("job_payments")
+      .select(
+        "id, price, payment_reference, payment_declared_at, " +
+          "employer:profiles!job_payments_employer_id_fkey(full_name), jobs(title)"
       )
       .eq("status", "pending_payment")
       .not("payment_declared_at", "is", null)
@@ -305,6 +320,7 @@ export default async function AdminPage() {
           payments={paymentsUnavailable ? null : declaredPayments.length}
           subscriptions={subscriptions.error ? null : declaredSubscriptions.length}
           unlocks={unlocks.error ? null : (unlocks.data ?? []).length}
+          jobPayments={jobPayments.error ? null : (jobPayments.data ?? []).length}
           profiles={pendingProfiles.length}
         />
 
@@ -330,6 +346,14 @@ export default async function AdminPage() {
 
         {/* Masquée tant que sa migration n'est pas passée, comme l'est le
             compteur ci-dessus : une file vide mentirait. */}
+        {!jobPayments.error && (
+          <div id="offres-payantes" className="scroll-mt-24">
+            <JobPaymentQueue
+              payments={(jobPayments.data ?? []) as unknown as DeclaredJobPayment[]}
+            />
+          </div>
+        )}
+
         {!unlocks.error && (
           <div id="numeros" className="scroll-mt-24">
             <ContactUnlockQueue

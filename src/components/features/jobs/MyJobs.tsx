@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { JobStatusButtons } from "@/components/features/jobs/JobStatusButtons";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { localisedUrl } from "@/lib/site";
+import { firstPayment, type JobPaymentRow } from "@/lib/jobs/payment";
 import { formatShortDate } from "@/lib/jobs/format";
 import { daysLeft, JOB_LIFETIME_DAYS, jobState, type JobState } from "@/lib/jobs/expiry";
 
@@ -15,6 +16,8 @@ export type MyJobRow = {
   created_at: string;
   /** Embarqué par `applications(count)` ; absent sur la page de modération. */
   applications?: { count: number }[];
+  /** Embarqué sur le tableau de bord employeur ; absent sur la page de modération. */
+  job_payments?: JobPaymentRow | JobPaymentRow[] | null;
 };
 
 const BADGE: Record<JobState, { label: string; className: string }> = {
@@ -78,6 +81,43 @@ export function JobReminders({ jobs }: { jobs: MyJobRow[] }) {
   );
 }
 
+/** Gratuite, payante, ou paiement en cours — et le lien pour changer. */
+function Formula({ job, premium }: { job: MyJobRow; premium: boolean }) {
+  const payment = firstPayment(job.job_payments);
+  if (premium && payment?.status !== "active") {
+    return (
+      <p className="text-xs font-medium text-green-700 dark:text-green-400 mt-1">
+        Incluse dans votre Premium : numéros des candidats visibles
+      </p>
+    );
+  }
+  if (payment?.status === "active") {
+    return (
+      <p className="text-xs font-medium text-green-700 dark:text-green-400 mt-1">
+        Offre payante : numéros des candidats visibles
+      </p>
+    );
+  }
+  if (payment?.status === "pending_payment") {
+    return (
+      <Link
+        href={`/offres/${job.id}/payer`}
+        className="text-xs font-medium text-primary hover:underline mt-1 inline-block"
+      >
+        {payment.payment_declared_at ? "Paiement en cours de vérification" : "Paiement à régler"} →
+      </Link>
+    );
+  }
+  return (
+    <p className="text-xs text-muted-foreground mt-1">
+      Offre gratuite ·{" "}
+      <Link href={`/offres/${job.id}/payer`} className="font-medium text-primary hover:underline">
+        voir les numéros des candidats
+      </Link>
+    </p>
+  );
+}
+
 function applicationCount(job: MyJobRow) {
   const count = job.applications?.[0]?.count ?? 0;
   if (count === 0) return "Aucune candidature pour l'instant";
@@ -85,7 +125,7 @@ function applicationCount(job: MyJobRow) {
 }
 
 /** Toutes les offres de l'employeur, avec leur état. */
-export function MyJobs({ jobs }: { jobs: MyJobRow[] }) {
+export function MyJobs({ jobs, premium = false }: { jobs: MyJobRow[]; premium?: boolean }) {
   return (
     <section className="bg-card rounded-3xl border border-border shadow-soft p-6 sm:p-7 mt-6">
       <h2 className="font-semibold mb-4">
@@ -113,6 +153,7 @@ export function MyJobs({ jobs }: { jobs: MyJobRow[] }) {
                     </Badge>
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">{stateLine(job, state)}</p>
+                  {job.job_payments !== undefined && <Formula job={job} premium={premium} />}
                   {job.applications && (
                     <a
                       href="#candidatures"

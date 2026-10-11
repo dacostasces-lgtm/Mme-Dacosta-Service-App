@@ -5,6 +5,7 @@ type ReceivedApplication = {
   message: string | null;
   applied_at: string;
   status: string;
+  job_id: string;
   jobs: { title: string } | null;
   profiles: { id: string; full_name: string; avatar_url: string | null } | null;
 };
@@ -21,6 +22,10 @@ import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { BookingList, type BookingRow } from "@/components/features/booking/BookingList";
+import {
+  ApplicantContact,
+  type ApplicantContactRow,
+} from "@/components/features/jobs/ApplicantContact";
 import { JobReminders, MyJobs, type MyJobRow } from "@/components/features/jobs/MyJobs";
 import { jobState } from "@/lib/jobs/expiry";
 
@@ -59,10 +64,13 @@ export default async function EmployerDashboard() {
   // Scoped by RLS — except jobs: the jobs policy also shows every *public*
   // offer, so they are filtered on the employer explicitly. Without it the
   // « Offres actives » counter counted the whole site's offers.
-  const [jobs, applications, unread, received, bookings] = await Promise.all([
+  const [jobs, applications, unread, received, bookings, contacts] = await Promise.all([
     supabase
       .from("jobs")
-      .select("id, title, status, expires_at, created_at, applications(count)")
+      .select(
+        "id, title, status, expires_at, created_at, applications(count), " +
+          "job_payments(id, status, payment_declared_at)"
+      )
       .eq("employer_id", user.profileId ?? "")
       .order("created_at", { ascending: false })
       .limit(50),
@@ -83,7 +91,7 @@ export default async function EmployerDashboard() {
     supabase
       .from("applications")
       .select(
-        "id, message, applied_at, status, " +
+        "id, job_id, message, applied_at, status, " +
           "jobs!inner(title, employer_id), profiles!applications_candidate_id_fkey(id, full_name, avatar_url)"
       )
       .eq("jobs.employer_id", user.profileId ?? "")
@@ -100,10 +108,15 @@ export default async function EmployerDashboard() {
       .eq("employer_id", user.profileId ?? "")
       .order("created_at", { ascending: false })
       .limit(20),
+    // Le numéro de chaque candidat, pour les offres payantes seulement.
+    supabase.rpc("my_applicant_contacts"),
   ]);
 
   const receivedApplications = (received.data ?? []) as unknown as ReceivedApplication[];
-  const myJobs = (jobs.data ?? []) as MyJobRow[];
+  const myJobs = (jobs.data ?? []) as unknown as MyJobRow[];
+  const contactByApplication = new Map(
+    ((contacts.data ?? []) as ApplicantContactRow[]).map((row) => [row.application_id, row])
+  );
   const liveJobs = myJobs.filter((job) => {
     const state = jobState(job.status, job.expires_at);
     return state === "available" || state === "expiring";
@@ -162,7 +175,9 @@ export default async function EmployerDashboard() {
           </Link>
         </div>
 
-        <MyJobs jobs={myJobs} />
+        {/* is_premium suffit à l'affichage ; l'accès aux numéros, lui, est
+            décidé en base sur l'échéance de l'abonnement. */}
+        <MyJobs jobs={myJobs} premium={user.isPremium} />
 
         <section
           id="candidatures"
@@ -198,6 +213,15 @@ export default async function EmployerDashboard() {
                         <p className="text-sm text-muted-foreground mt-2 whitespace-pre-line">
                           {application.message}
                         </p>
+                      )}
+                      {/* Masqué tant que la migration manque : sans elle, on
+                          ne sait pas si l'offre est payante. */}
+                      {!contacts.error && (
+                        <ApplicantContact
+                          contact={contactByApplication.get(application.id)}
+                          jobId={application.job_id}
+                          jobTitle={application.jobs?.title ?? "votre offre"}
+                        />
                       )}
                     </div>
                     {application.profiles?.id && (
