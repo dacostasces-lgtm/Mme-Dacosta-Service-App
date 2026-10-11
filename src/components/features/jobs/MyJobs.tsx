@@ -13,6 +13,8 @@ export type MyJobRow = {
   status: string;
   expires_at: string;
   created_at: string;
+  /** Embarqué par `applications(count)` ; absent sur la page de modération. */
+  applications?: { count: number }[];
 };
 
 const BADGE: Record<JobState, { label: string; className: string }> = {
@@ -76,6 +78,12 @@ export function JobReminders({ jobs }: { jobs: MyJobRow[] }) {
   );
 }
 
+function applicationCount(job: MyJobRow) {
+  const count = job.applications?.[0]?.count ?? 0;
+  if (count === 0) return "Aucune candidature pour l'instant";
+  return `${count} candidature${count > 1 ? "s" : ""} — voir`;
+}
+
 /** Toutes les offres de l'employeur, avec leur état. */
 export function MyJobs({ jobs }: { jobs: MyJobRow[] }) {
   return (
@@ -105,6 +113,14 @@ export function MyJobs({ jobs }: { jobs: MyJobRow[] }) {
                     </Badge>
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">{stateLine(job, state)}</p>
+                  {job.applications && (
+                    <a
+                      href="#candidatures"
+                      className="text-xs font-medium text-primary hover:underline mt-1 inline-block"
+                    >
+                      {applicationCount(job)}
+                    </a>
+                  )}
                 </div>
                 {/* Une offre pourvue se remet en ligne d'un clic si le poste se
                     libère à nouveau ; elle n'a plus rien à fermer. */}

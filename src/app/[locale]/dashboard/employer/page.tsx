@@ -62,11 +62,17 @@ export default async function EmployerDashboard() {
   const [jobs, applications, unread, received, bookings] = await Promise.all([
     supabase
       .from("jobs")
-      .select("id, title, status, expires_at, created_at")
+      .select("id, title, status, expires_at, created_at, applications(count)")
       .eq("employer_id", user.profileId ?? "")
       .order("created_at", { ascending: false })
       .limit(50),
-    supabase.from("applications").select("id", { count: "exact", head: true }),
+    // Filtré sur les offres de l'employeur et pas laissé à la RLS : pour un
+    // compte admin, qui passe la politique de lecture, ce seraient sinon les
+    // candidatures de tout le site.
+    supabase
+      .from("applications")
+      .select("id, jobs!inner(employer_id)", { count: "exact", head: true })
+      .eq("jobs.employer_id", user.profileId ?? ""),
     supabase
       .from("messages")
       .select("id", { count: "exact", head: true })
@@ -78,8 +84,9 @@ export default async function EmployerDashboard() {
       .from("applications")
       .select(
         "id, message, applied_at, status, " +
-          "jobs(title), profiles!applications_candidate_id_fkey(id, full_name, avatar_url)"
+          "jobs!inner(title, employer_id), profiles!applications_candidate_id_fkey(id, full_name, avatar_url)"
       )
+      .eq("jobs.employer_id", user.profileId ?? "")
       .order("applied_at", { ascending: false })
       .limit(20),
     // Visibles des deux côtés par la policy « Bookings are visible to both
@@ -157,7 +164,10 @@ export default async function EmployerDashboard() {
 
         <MyJobs jobs={myJobs} />
 
-        <section className="bg-card rounded-3xl border border-border shadow-soft p-6 sm:p-7 mt-6">
+        <section
+          id="candidatures"
+          className="bg-card rounded-3xl border border-border shadow-soft p-6 sm:p-7 mt-6 scroll-mt-24"
+        >
           <h2 className="font-semibold mb-4">
             Candidatures reçues{" "}
             <span className="text-muted-foreground font-normal">({receivedApplications.length})</span>

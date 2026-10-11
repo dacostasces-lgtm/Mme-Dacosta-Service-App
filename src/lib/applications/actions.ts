@@ -1,5 +1,6 @@
 "use server";
 
+import { containsPhoneNumber, PHONE_NUMBER_REFUSED } from "@/lib/contact/phone-filter";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { requireUser } from "@/lib/auth/dal";
@@ -48,6 +49,10 @@ export async function applyToJob(
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Candidature invalide." };
+  }
+
+  if (containsPhoneNumber(parsed.data.message)) {
+    return { error: PHONE_NUMBER_REFUSED };
   }
 
   const supabase = await createClient();

@@ -1,5 +1,6 @@
 "use server";
 
+import { containsPhoneNumber, PHONE_NUMBER_REFUSED } from "@/lib/contact/phone-filter";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { requireUser } from "@/lib/auth/dal";
@@ -138,6 +139,10 @@ export async function updateProfile(
       return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
     }
 
+    if (containsPhoneNumber(parsed.data.description) || containsPhoneNumber(parsed.data.companyName)) {
+      return { error: PHONE_NUMBER_REFUSED };
+    }
+
     const profileError = await saveShared(supabase, user.profileId, parsed.data, contactEditable);
     if (profileError) return { error: profileError };
 
@@ -171,6 +176,15 @@ export async function updateProfile(
 
     if (!parsed.success) {
       return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
+    }
+
+    // Les numéros ont leur champ à eux, plus haut, qui reste privé. Dans la
+    // présentation, ils seraient publics.
+    if (
+      user.role !== "admin" &&
+      (containsPhoneNumber(parsed.data.description) || containsPhoneNumber(parsed.data.jobTitle))
+    ) {
+      return { error: PHONE_NUMBER_REFUSED };
     }
 
     const profileError = await saveShared(supabase, user.profileId, parsed.data, contactEditable);

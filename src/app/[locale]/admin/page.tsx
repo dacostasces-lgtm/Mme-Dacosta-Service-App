@@ -283,6 +283,17 @@ export default async function AdminPage() {
 
         <JobReminders jobs={(ownJobs.data ?? []) as MyJobRow[]} />
 
+        {/* L'administration publie aussi des offres : leurs candidatures se
+            lisent sur le tableau de bord employeur, qu'elle peut ouvrir. */}
+        {(ownJobs.data ?? []).length > 0 && (
+          <Link
+            href="/dashboard/employer#candidatures"
+            className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+          >
+            Mes offres et les candidatures reçues →
+          </Link>
+        )}
+
         {error && (
           <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3 mb-8">
             Erreur de chargement : {error.message}

@@ -1,5 +1,6 @@
 "use server";
 
+import { containsPhoneNumber, PHONE_NUMBER_REFUSED } from "@/lib/contact/phone-filter";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { getLocale } from "next-intl/server";
@@ -64,6 +65,13 @@ export async function createJob(
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
+  }
+
+  if (
+    user.role !== "admin" &&
+    (containsPhoneNumber(parsed.data.title) || containsPhoneNumber(parsed.data.description))
+  ) {
+    return { error: PHONE_NUMBER_REFUSED };
   }
 
   // The signup trigger creates a profile for every user, but a row could be
