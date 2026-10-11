@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { MapPin, Star, BadgeCheck, CheckCircle2, Circle, FileText, Phone, Award, Clock, Languages } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/routing";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { Badge } from "@/components/ui/badge";
+import { ShareButton } from "@/components/shared/ShareButton";
+import { localisedUrl } from "@/lib/site";
 import { availabilityLabel } from "@/lib/candidates/availability";
 import { formatHours, formatWorkDays } from "@/lib/jobs/schedule";
 import { createClient } from "@/lib/supabase/server";
@@ -51,6 +54,51 @@ function formatSalary(amount: number | null) {
 /** Tolerates a jsonb column that holds either a real array or nothing yet. */
 function toList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+/**
+ * Ce qu'affiche un lien partagé (WhatsApp, Facebook) : sans titre ni
+ * description, l'aperçu ne montrait que le nom du site. Le prénom et le métier
+ * sont déjà sur la page publique ; rien de plus n'est exposé ici.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { title: "Profil introuvable" };
+
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("get_candidate", { candidate_id: id });
+  const profile = (data?.[0] ?? null) as Candidate | null;
+  if (!profile) return { title: "Profil introuvable", robots: { index: false, follow: false } };
+
+  const title = profile.job_title ? `${profile.full_name} — ${profile.job_title}` : profile.full_name;
+  const place = [profile.neighborhood, profile.city].filter(Boolean).join(", ");
+  const description = [
+    profile.job_title ?? "Profil",
+    place && `à ${place}`,
+    profile.experience && `${profile.experience} d'expérience`,
+    "profil vérifié sur Madame Dacosta Services.",
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  return {
+    title,
+    description,
+    alternates: { canonical: localisedUrl(`/candidats/${profile.id}`) },
+    openGraph: {
+      type: "profile",
+      title,
+      description,
+      url: localisedUrl(`/candidats/${profile.id}`),
+      ...(profile.avatar_url ? { images: [{ url: profile.avatar_url }] } : {}),
+    },
+    // Un profil encore en attente n'est visible que de son titulaire.
+    robots: profile.is_validated ? undefined : { index: false, follow: false },
+  };
 }
 
 export default async function CandidateProfilePage({
@@ -176,15 +224,28 @@ export default async function CandidateProfilePage({
                   lien. Le tunnel de réservation — et donc tout l'encaissement —
                   n'était atteignable depuis nulle part. */}
               {estSoiMeme ? (
-                <Link
-                  href="/profil"
-                  className={buttonVariants({
-                    variant: "outline",
-                    className: "h-12 rounded-full px-8",
-                  })}
-                >
-                  Modifier mon profil
-                </Link>
+                <div className="flex flex-wrap gap-3">
+                  <Link
+                    href="/profil"
+                    className={buttonVariants({
+                      variant: "outline",
+                      className: "h-12 rounded-full px-8",
+                    })}
+                  >
+                    Modifier mon profil
+                  </Link>
+                  {/* Un profil encore en attente de validation n'est visible
+                      que de son titulaire : le lien n'ouvrirait rien. */}
+                  {profile.is_validated && (
+                    <ShareButton
+                      url={localisedUrl(`/candidats/${profile.id}`)}
+                      title={profile.full_name}
+                      text={`${profile.job_title ?? "Mon profil"} — je suis disponible. Mon profil vérifié sur Madame Dacosta Services :`}
+                      label="Partager mon profil"
+                      align="left"
+                    />
+                  )}
+                </div>
               ) : (
                 <div className="flex flex-wrap gap-3">
                   {peutReserver && (
@@ -206,6 +267,14 @@ export default async function CandidateProfilePage({
                   >
                     <Phone className="mr-2 h-4 w-4" /> Contacter
                   </Link>
+                  {profile.is_validated && (
+                    <ShareButton
+                      url={localisedUrl(`/candidats/${profile.id}`)}
+                      title={profile.full_name}
+                      text={`${profile.job_title ?? "Profil"} : ${profile.full_name}, profil vérifié sur Madame Dacosta Services :`}
+                      align="left"
+                    />
+                  )}
                 </div>
               )}
             </div>

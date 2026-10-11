@@ -2,6 +2,7 @@ import { ShieldCheck, Clock, MapPin, Mail, Undo2, Check, X, UserPlus } from "luc
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/routing";
 import { requireUser } from "@/lib/auth/dal";
+import { JobReminders, type MyJobRow } from "@/components/features/jobs/MyJobs";
 import { createClient } from "@/lib/supabase/server";
 import { setProfileValidation, setCandidateCheck, type CandidateCheck } from "@/lib/admin/actions";
 import { PaymentQueue, type DeclaredPayment } from "@/components/features/admin/PaymentQueue";
@@ -156,7 +157,7 @@ function ProfileRow({ profile, validated }: { profile: ModerationProfile; valida
 }
 
 export default async function AdminPage() {
-  await requireUser({ role: "admin" });
+  const admin = await requireUser({ role: "admin" });
 
   const supabase = await createClient();
   // Hors du Promise.all ci-dessous : le solde part chez Infobip, pas chez
@@ -164,7 +165,7 @@ export default async function AdminPage() {
   // modération. `accountBalance` ne rejette jamais.
   const soldePromise = accountBalance();
 
-  const [pending, validated, declared, subscriptions] = await Promise.all([
+  const [pending, validated, declared, subscriptions, ownJobs] = await Promise.all([
     supabase.from("profiles").select(SELECT).eq("is_validated", false).order("created_at"),
     supabase
       .from("profiles")
@@ -196,6 +197,14 @@ export default async function AdminPage() {
       .eq("status", "pending_payment")
       .not("payment_declared_at", "is", null)
       .order("payment_declared_at"),
+    // L'administration publie aussi des offres : le même rappel d'échéance
+    // qu'un employeur, puisque ce tableau de bord tient lieu du sien.
+    supabase
+      .from("jobs")
+      .select("id, title, status, expires_at, created_at")
+      .eq("employer_id", admin.profileId ?? "")
+      .order("created_at", { ascending: false })
+      .limit(50),
   ]);
 
   // Le symptôme, pas la cause : un crédit épuisé se traduit par des numéros
@@ -257,6 +266,8 @@ export default async function AdminPage() {
           recherche qu&apos;une fois publié, et les vérifications que vous cochez s&apos;affichent
           sur la fiche publique : ne confirmez que ce que vous avez réellement constaté.
         </p>
+
+        <JobReminders jobs={(ownJobs.data ?? []) as MyJobRow[]} />
 
         {error && (
           <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3 mb-8">

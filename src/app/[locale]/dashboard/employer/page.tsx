@@ -21,6 +21,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { BookingList, type BookingRow } from "@/components/features/booking/BookingList";
+import { JobReminders, MyJobs, type MyJobRow } from "@/components/features/jobs/MyJobs";
+import { jobState } from "@/lib/jobs/expiry";
 
 function StatCard({
   icon,
@@ -54,10 +56,16 @@ export default async function EmployerDashboard() {
   const user = await requireUser({ role: "employer" });
   const supabase = await createClient();
 
-  // Every count below is scoped by RLS: an employer only ever sees their own
-  // jobs, the applications addressed to them, and their own messages.
+  // Scoped by RLS — except jobs: the jobs policy also shows every *public*
+  // offer, so they are filtered on the employer explicitly. Without it the
+  // « Offres actives » counter counted the whole site's offers.
   const [jobs, applications, unread, received, bookings] = await Promise.all([
-    supabase.from("jobs").select("id", { count: "exact", head: true }).eq("status", "active"),
+    supabase
+      .from("jobs")
+      .select("id, title, status, expires_at, created_at")
+      .eq("employer_id", user.profileId ?? "")
+      .order("created_at", { ascending: false })
+      .limit(50),
     supabase.from("applications").select("id", { count: "exact", head: true }),
     supabase
       .from("messages")
@@ -88,6 +96,11 @@ export default async function EmployerDashboard() {
   ]);
 
   const receivedApplications = (received.data ?? []) as unknown as ReceivedApplication[];
+  const myJobs = (jobs.data ?? []) as MyJobRow[];
+  const liveJobs = myJobs.filter((job) => {
+    const state = jobState(job.status, job.expires_at);
+    return state === "available" || state === "expiring";
+  }).length;
 
   return (
     <div className="flex-1 bg-surface bg-grain">
@@ -109,8 +122,10 @@ export default async function EmployerDashboard() {
           </div>
         </div>
 
+        <JobReminders jobs={myJobs} />
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <StatCard icon={<Briefcase className="h-6 w-6" />} value={jobs.count ?? 0} label="Offres actives" />
+          <StatCard icon={<Briefcase className="h-6 w-6" />} value={liveJobs} label="Offres en ligne" />
           <StatCard
             icon={<Users className="h-6 w-6" />}
             value={applications.count ?? 0}
@@ -128,17 +143,19 @@ export default async function EmployerDashboard() {
         <div className="bg-card rounded-3xl border border-border shadow-soft p-6 sm:p-7">
           <h2 className="font-semibold mb-2">Prochaine étape</h2>
           <p className="text-sm text-muted-foreground">
-            {(jobs.count ?? 0) === 0
+            {liveJobs === 0
               ? "Vous n'avez pas encore d'offre en ligne. Publiez-en une pour recevoir des candidatures, ou parcourez directement les profils vérifiés."
               : "Vos offres sont en ligne. Consultez vos messages pour répondre aux candidats intéressés."}
           </p>
           <Link
-            href={(jobs.count ?? 0) === 0 ? "/offres/creer" : "/messages"}
+            href={liveJobs === 0 ? "/offres/creer" : "/messages"}
             className={buttonVariants({ variant: "outline", className: "rounded-full mt-4" })}
           >
-            {(jobs.count ?? 0) === 0 ? "Publier une offre" : "Voir mes messages"}
+            {liveJobs === 0 ? "Publier une offre" : "Voir mes messages"}
           </Link>
         </div>
+
+        <MyJobs jobs={myJobs} />
 
         <section className="bg-card rounded-3xl border border-border shadow-soft p-6 sm:p-7 mt-6">
           <h2 className="font-semibold mb-4">

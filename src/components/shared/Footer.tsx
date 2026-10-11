@@ -1,5 +1,7 @@
 import { COMPANY } from "@/lib/legal/company";
 import { Link } from "@/i18n/routing";
+import { ShareButton } from "@/components/shared/ShareButton";
+import { localisedUrl } from "@/lib/site";
 
 export function Footer() {
   return (
@@ -13,6 +15,15 @@ export function Footer() {
             <p className="text-sm text-muted-foreground leading-relaxed">
               La plateforme Premium de référence pour le recrutement de personnel de maison qualifié en Afrique.
             </p>
+            <ShareButton
+              url={localisedUrl("/")}
+              title="Madame Dacosta Services"
+              text="Pour trouver du personnel de maison vérifié, ou un emploi de maison près de chez soi :"
+              label="Partager l'application"
+              size="sm"
+              align="left"
+              className="mt-4 [&_button]:h-9 [&_button]:px-4"
+            />
           </div>
           <div>
             <h4 className="font-semibold mb-4">Liens Rapides</h4>
