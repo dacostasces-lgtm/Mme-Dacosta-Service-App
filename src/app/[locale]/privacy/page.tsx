@@ -87,8 +87,29 @@ export default function PrivacyPage() {
       <Article title="5. Qui accède à vos données">
         <p>
           Les autres utilisateurs ne voient que ce que le service affiche : nom, quartier,
-          distance, et pour les Candidats publiés leur profil professionnel. Vos coordonnées
-          téléphoniques ne sont visibles que de vous et de nos administrateurs.
+          distance, et pour les Candidats publiés leur profil professionnel. Votre adresse email
+          et votre position exacte ne sont visibles que de vous et de nos administrateurs.
+        </p>
+        <p>
+          <strong>Votre numéro de téléphone</strong> (et WhatsApp) est communiqué, en plus de nos
+          administrateurs, uniquement aux personnes suivantes :
+        </p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>
+            <strong>si vous êtes Employeur</strong> : aux Candidats qui ont payé pour obtenir le
+            numéro de votre offre (à l&apos;unité ou par un abonnement Premium Candidat). Un
+            avertissement vous le rappelle au moment de publier une offre ;
+          </li>
+          <li>
+            <strong>si vous êtes Candidat</strong> : aux Employeurs auxquels vous avez envoyé une
+            candidature, lorsque leur offre est payante (à l&apos;unité ou par un abonnement
+            Premium Employeur).
+          </li>
+        </ul>
+        <p>
+          Ces numéros ne sont jamais affichés publiquement, ni communiqués à quelqu&apos;un
+          d&apos;autre. Si vous ne souhaitez pas être appelé directement, ne renseignez pas de
+          numéro dans votre profil : les échanges passent alors par la messagerie.
         </p>
         <p>Nous faisons appel aux prestataires techniques suivants :</p>
         <ul className="list-disc pl-5 space-y-1">
@@ -99,8 +120,10 @@ export default function PrivacyPage() {
           ))}
         </ul>
         <p>
-          Nous ne vendons ni ne louons vos données. Elles peuvent être communiquées à une autorité
-          si la loi nous y oblige.
+          Nous ne vendons ni ne louons vos données à des tiers extérieurs au service. Le paiement
+          décrit ci-dessus donne accès, au sein de la Plateforme, au numéro de la personne avec
+          qui l&apos;on souhaite travailler — rien d&apos;autre. Vos données peuvent être
+          communiquées à une autorité si la loi nous y oblige.
         </p>
       </Article>
 
@@ -154,7 +177,8 @@ export default function PrivacyPage() {
         <p>
           Les échanges sont chiffrés en transit. L&apos;accès aux données est cloisonné au niveau
           de la base : chaque utilisateur ne peut lire que ce qui le concerne, et les colonnes
-          sensibles — téléphone, email, position — sont inaccessibles à l&apos;interface publique,
+          sensibles — téléphone, email, position — sont inaccessibles à l&apos;interface publique
+          (le numéro n&apos;est remis que dans les cas décrits à l&apos;article 5),
           y compris à un visiteur qui interrogerait directement notre interface de données.
         </p>
         <p>

@@ -80,6 +80,13 @@ export function ApplyButton({
         className="w-full rounded-lg border border-input bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
       />
 
+      {/* Annoncé dans la politique de confidentialité (article 5) : le
+          candidat doit le savoir avant d'envoyer, pas le découvrir. */}
+      <p className="text-xs text-muted-foreground">
+        Si cette offre est payante, l&apos;employeur verra le numéro de téléphone de votre profil
+        pour vous appeler directement.
+      </p>
+
       {state.error && (
         <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">{state.error}</p>
       )}
