@@ -80,6 +80,11 @@ export function JobForm({ neighborhoods }: { neighborhoods: NeighborhoodOption[]
         )}
       </div>
 
+      <p className="text-xs text-muted-foreground bg-muted rounded-lg p-3">
+        Le numéro de téléphone de votre profil sera communiqué aux candidats Premium et à ceux
+        qui le débloquent pour cette offre, pour qu&apos;ils puissent vous appeler directement.
+      </p>
+
       {state.error && (
         <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">{state.error}</p>
       )}

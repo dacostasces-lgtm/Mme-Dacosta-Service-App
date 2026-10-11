@@ -4,6 +4,10 @@ import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { BookingList, type BookingRow } from "@/components/features/booking/BookingList";
+import {
+  UnlockedContacts,
+  type UnlockedContact,
+} from "@/components/features/contact/UnlockedContacts";
 
 function StatCard({
   icon,
@@ -38,7 +42,7 @@ export default async function CandidateDashboard() {
   const supabase = await createClient();
 
   // RLS scopes these to the candidate: their own applications, their own inbox.
-  const [applications, unread, reviews, profile, details, bookings] = await Promise.all([
+  const [applications, unread, reviews, profile, details, bookings, unlocked] = await Promise.all([
     supabase.from("applications").select("id", { count: "exact", head: true }),
     supabase
       .from("messages")
@@ -67,6 +71,8 @@ export default async function CandidateDashboard() {
       .eq("candidate_id", user.profileId ?? "")
       .order("created_at", { ascending: false })
       .limit(20),
+    // Vide (et sans erreur affichée) tant que la migration n'est pas passée.
+    supabase.rpc("my_unlocked_contacts"),
   ]);
 
   const ratings = (reviews.data ?? []) as { rating: number }[];
@@ -162,6 +168,8 @@ export default async function CandidateDashboard() {
             Voir les offres
           </Link>
         </div>
+
+        <UnlockedContacts contacts={(unlocked.data ?? []) as UnlockedContact[]} />
 
         <section className="bg-card rounded-3xl border border-border shadow-soft p-6 sm:p-7 mt-6">
           <h2 className="font-semibold mb-1">Familles qui vous ont réservé</h2>

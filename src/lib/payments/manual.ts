@@ -54,8 +54,13 @@ export function paymentReference(bookingId: string) {
   return `MD-${bookingId.replace(/-/g, "").slice(0, 6).toUpperCase()}`;
 }
 
-/** Pre-filled WhatsApp message so the employer doesn't have to retype anything. */
-export function whatsappReceiptLink(reference: string, amountLabel: string) {
-  const text = `Bonjour, je viens d'effectuer le paiement de ${amountLabel} pour la réservation ${reference}. Voici le reçu Mobile Money :`;
+/** Pre-filled WhatsApp message so the payer doesn't have to retype anything.
+ *  `purpose` names what was paid for: « la réservation », « l'abonnement »… */
+export function whatsappReceiptLink(
+  reference: string,
+  amountLabel: string,
+  purpose = "la réservation"
+) {
+  const text = `Bonjour, je viens d'effectuer le paiement de ${amountLabel} pour ${purpose} ${reference}. Voici le reçu Mobile Money :`;
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
 }
