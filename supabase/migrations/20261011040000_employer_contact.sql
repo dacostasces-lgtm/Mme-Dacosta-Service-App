@@ -46,6 +46,11 @@ CREATE POLICY "Unlocks visible to their buyer and admins."
   ON public.contact_unlocks FOR SELECT
   USING (candidate_id = public.current_profile_id() OR public.is_admin());
 
+-- La base hébergée accorde tout, sur chaque nouvelle table, à `anon` et
+-- `authenticated` (ALTER DEFAULT PRIVILEGES, voir 20260728060000). La RLS
+-- refuse déjà ces accès, mais le droit lui-même est retiré : la lecture pour
+-- l'acheteur, rien d'autre, et rien pour un visiteur.
+REVOKE ALL ON public.contact_unlocks FROM anon, authenticated;
 GRANT SELECT ON public.contact_unlocks TO authenticated;
 
 -- Premium actif, lu sur l'abonnement plutôt que sur `profiles.is_premium` :
