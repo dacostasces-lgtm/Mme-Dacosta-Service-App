@@ -58,7 +58,7 @@ export const DATA_LAW =
   "loi n° 29-2019 du 10 octobre 2019 portant protection des données à caractère personnel";
 
 /** Last substantive revision, shown to readers so they can spot a stale text. */
-export const LAST_UPDATED = "29 septembre 2026";
+export const LAST_UPDATED = "11 octobre 2026";
 
 /** True when a field still needs the company's own information. */
 export function missing(value: string) {

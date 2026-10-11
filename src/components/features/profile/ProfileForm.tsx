@@ -1,5 +1,6 @@
 "use client";
 
+import { availabilityLabel, RHYTHM_OPTIONS } from "@/lib/candidates/availability";
 import { MetierPicker } from "@/components/features/jobs/MetierPicker";
 import { useActionState } from "react";
 import { Check, Loader2 } from "lucide-react";
@@ -232,10 +233,19 @@ export function ProfileForm({
                 className={SELECT}
               >
                 <option value="">Non précisée</option>
-                <option value="full_time">Temps plein</option>
-                <option value="part_time">Temps partiel</option>
-                <option value="internal">Logée sur place</option>
-                <option value="external">Non logée</option>
+                {RHYTHM_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+                {/* Une ancienne valeur reste sélectionnée plutôt que
+                    d'être effacée en silence au prochain enregistrement. */}
+                {(candidate?.availability === "internal" ||
+                  candidate?.availability === "external") && (
+                  <option value={candidate.availability}>
+                    {availabilityLabel(candidate.availability)}
+                  </option>
+                )}
               </select>
             </Field>
             <Field label="Sexe" htmlFor="gender">

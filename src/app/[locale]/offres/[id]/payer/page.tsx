@@ -59,7 +59,9 @@ export default async function PayJobPage({ params }: { params: Promise<{ id: str
         <h1 className="text-3xl font-bold mt-4 mb-2">Offre payante</h1>
         <p className="text-muted-foreground mb-8">
           « {job.title} » est publiée. En formule payante, vous recevez le numéro de téléphone de
-          chaque candidat qui y postule, pour l&apos;appeler directement.
+          chaque candidat qui y postule, pour l&apos;appeler directement — sauf ceux qui
+          n&apos;en ont pas renseigné, à qui vous répondez par la messagerie. Un numéro qui
+          n&apos;a pas été confirmé par SMS est signalé.
         </p>
 
         {paid ? (

@@ -3,7 +3,6 @@ import { TrustBar } from "@/components/features/home/TrustBar";
 import { Categories } from "@/components/features/home/Categories";
 import { HowItWorks } from "@/components/features/home/HowItWorks";
 import { Features } from "@/components/features/home/Features";
-import { Testimonials } from "@/components/features/home/Testimonials";
 import { CtaBanner } from "@/components/features/home/CtaBanner";
 
 export default function Home() {
@@ -14,7 +13,8 @@ export default function Home() {
       <Categories />
       <HowItWorks />
       <Features />
-      <Testimonials />
+      {/* Témoignages retirés : ils n'étaient pas ceux de vraies personnes.
+          Le composant reste, à remplir avec des témoignages recueillis. */}
       <CtaBanner />
     </>
   );

@@ -1,4 +1,5 @@
 import { MessageSquare, Send, Star, ShieldCheck, Clock, Briefcase, UserPen } from "lucide-react";
+import { MyApplications, type MyApplicationRow } from "@/components/features/jobs/MyApplications";
 import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/dal";
@@ -43,7 +44,13 @@ export default async function CandidateDashboard() {
 
   // RLS scopes these to the candidate: their own applications, their own inbox.
   const [applications, unread, reviews, profile, details, bookings, unlocked] = await Promise.all([
-    supabase.from("applications").select("id", { count: "exact", head: true }),
+    // Ses candidatures et leur étape. La RLS limite aux siennes ; le titre
+    // d'une offre fermée ou échue revient vide, la jointure étant filtrée.
+    supabase
+      .from("applications")
+      .select("id, status, applied_at, job_id, jobs(title)", { count: "exact" })
+      .order("applied_at", { ascending: false })
+      .limit(30),
     supabase
       .from("messages")
       .select("id", { count: "exact", head: true })
@@ -170,11 +177,15 @@ export default async function CandidateDashboard() {
           </Link>
         </div>
 
+        <MyApplications
+          applications={(applications.data ?? []) as unknown as MyApplicationRow[]}
+        />
+
         <UnlockedContacts contacts={(unlocked.data ?? []) as UnlockedContact[]} />
 
         <section className="bg-card rounded-3xl border border-border shadow-soft p-6 sm:p-7 mt-6">
           <h2 className="font-semibold mb-1">Familles qui vous ont réservé</h2>
-          <p className="text-sm text-muted-foreground mb-5">Une réservation réglée vous ouvre la messagerie avec la famille.</p>
+          <p className="text-sm text-muted-foreground mb-5">Les familles qui ont réservé vos services et réglé la mise en relation.</p>
           <BookingList
             bookings={(bookings.data ?? []) as unknown as BookingRow[]}
             role="candidate"

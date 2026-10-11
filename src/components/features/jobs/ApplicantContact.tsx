@@ -1,6 +1,6 @@
 import { Lock, MessageCircle, Phone } from "lucide-react";
 import { Link } from "@/i18n/routing";
-import { telLink, whatsappLink } from "@/lib/contact/unlock";
+import { telLink, whatsappLink, UNVERIFIED_NUMBER } from "@/lib/contact/unlock";
 import { JOB_PRICE } from "@/lib/jobs/payment";
 import { formatPrice } from "@/lib/subscriptions/plans";
 
@@ -10,6 +10,7 @@ export type ApplicantContactRow = {
   paid: boolean;
   phone: string | null;
   whatsapp: string | null;
+  phone_verified?: boolean;
 };
 
 /**
@@ -58,6 +59,9 @@ export function ApplicantContact({
           <MessageCircle className="h-4 w-4 text-[#25D366]" aria-hidden />
           WhatsApp
         </a>
+        {contact.phone_verified === false && (
+            <span className="text-xs text-amber-700 dark:text-amber-500">{UNVERIFIED_NUMBER}</span>
+          )}
       </div>
     );
   }

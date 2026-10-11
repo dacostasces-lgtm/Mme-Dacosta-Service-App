@@ -76,14 +76,37 @@ export default function CguPage() {
 
       <Article title="5. Frais de mise en relation et abonnements">
         <p>
-          La création de compte, la consultation des profils et la messagerie sont gratuites. Une
-          réservation donne lieu à des frais de mise en relation, dont le montant est affiché avant
-          toute confirmation.
+          La création de compte, la consultation des profils, la publication d&apos;offres et la
+          messagerie sont gratuites. Sont payants, aux tarifs affichés sur la page Tarifs et avant
+          toute confirmation :
+        </p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>
+            <strong>le numéro d&apos;un Employeur</strong>, pour une offre donnée, par un Candidat ;
+          </li>
+          <li>
+            <strong>l&apos;offre payante</strong>, qui donne à l&apos;Employeur le numéro des
+            Candidats qui y postulent, pour toute la durée de l&apos;offre ;
+          </li>
+          <li>
+            <strong>la réservation</strong> d&apos;un Candidat, qui donne lieu à des frais de mise
+            en relation ;
+          </li>
+          <li>
+            <strong>les abonnements Premium</strong> Candidat et Employeur, d&apos;une durée
+            d&apos;un mois.
+          </li>
+        </ul>
+        <p>
+          Un numéro de téléphone n&apos;est communiqué que s&apos;il a été renseigné par son
+          titulaire. Nous ne garantissons pas qu&apos;une personne réponde à un appel. Les
+          numéros de téléphone ne peuvent pas être échangés dans les messages, les candidatures,
+          les offres ni les présentations.
         </p>
         <p>
           Le règlement s&apos;effectue par transfert Mobile Money vers le numéro indiqué, en
-          rappelant la référence de la réservation. Une réservation n&apos;est considérée comme
-          réglée qu&apos;après vérification du paiement. Aucun prélèvement automatique n&apos;est
+          rappelant la référence indiquée. Un achat n&apos;est considéré comme réglé
+          qu&apos;après vérification du paiement par notre équipe. Aucun prélèvement automatique n&apos;est
           effectué : c&apos;est vous qui déclenchez le transfert.
         </p>
         <p>

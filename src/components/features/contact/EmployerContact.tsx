@@ -5,7 +5,7 @@ import { UnlockButton, UnlockPayment } from "@/components/features/contact/Unloc
 import { createClient } from "@/lib/supabase/server";
 import type { SessionUser } from "@/lib/auth/dal";
 import { PLANS, formatPrice } from "@/lib/subscriptions/plans";
-import { telLink, whatsappLink, UNLOCK_PRICE } from "@/lib/contact/unlock";
+import { telLink, whatsappLink, UNLOCK_PRICE, UNVERIFIED_NUMBER } from "@/lib/contact/unlock";
 import { cn } from "@/lib/utils";
 
 type Contact = {
@@ -15,6 +15,8 @@ type Contact = {
   full_name: string | null;
   phone: string | null;
   whatsapp: string | null;
+  /** Absent tant que 20261011070000_phone_verified_flag.sql n'est pas passée. */
+  phone_verified?: boolean;
 };
 
 const REASON: Partial<Record<Contact["access"], string>> = {
@@ -75,7 +77,14 @@ export async function EmployerContact({
 
       {visible ? (
         <>
-          <p className="text-xs text-muted-foreground mb-4">{REASON[contact.access]}</p>
+          <p className="text-xs text-muted-foreground mb-4">
+            {REASON[contact.access]}
+            {contact.phone_verified === false && (
+              <span className="block text-amber-700 dark:text-amber-500">
+                {UNVERIFIED_NUMBER} : il peut être inexact.
+              </span>
+            )}
+          </p>
           <div className="flex flex-wrap items-center gap-3">
             {contact.phone && (
               <a
@@ -209,6 +218,9 @@ function CompactContact({
           <MessageCircle className="h-4 w-4 text-[#25D366]" aria-hidden />
           WhatsApp
         </a>
+        {contact.phone_verified === false && (
+            <span className="text-xs text-amber-700 dark:text-amber-500">{UNVERIFIED_NUMBER}</span>
+          )}
       </div>
     );
   }

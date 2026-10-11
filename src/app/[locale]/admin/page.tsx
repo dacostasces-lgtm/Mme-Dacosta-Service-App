@@ -1,4 +1,5 @@
 import { ShieldCheck, Clock, MapPin, Mail, Undo2, Check, X, UserPlus } from "lucide-react";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/routing";
 import { requireUser } from "@/lib/auth/dal";
@@ -172,6 +173,14 @@ export default async function AdminPage() {
   // Supabase, et une lenteur de leur côté ne doit pas retarder la file de
   // modération. `accountBalance` ne rejette jamais.
   const soldePromise = accountBalance();
+
+  // Retire le Premium des abonnements échus avant d'afficher quoi que ce soit.
+  // C'est le rôle de la tâche pg_cron « expire-subscriptions », mais elle
+  // n'existe que si l'extension était disponible quand la migration a tourné ;
+  // sans elle, un Premium échu gardait son badge et sa place en tête de la
+  // recherche. Ici, à chaque visite de la modération, au pire une fois par
+  // jour en pratique. La fonction n'est ouverte qu'au rôle de service.
+  await createAdminClient()?.rpc("expire_subscriptions");
 
   const [pending, validated, declared, subscriptions, ownJobs, unlocks, jobPayments] =
     await Promise.all([

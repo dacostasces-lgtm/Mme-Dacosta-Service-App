@@ -88,8 +88,8 @@ export function Hero() {
                 ))}
               </div>
               <p className="text-sm text-muted-foreground text-left">
-                <span className="font-semibold text-foreground">+400 profils</span> déjà
-                vérifiés à Brazzaville et Pointe-Noire.
+                <span className="font-semibold text-foreground">Chaque profil</span> est
+                contrôlé par notre équipe avant d&apos;être publié.
               </p>
             </div>
           </div>

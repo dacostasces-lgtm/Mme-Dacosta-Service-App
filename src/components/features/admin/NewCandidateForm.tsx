@@ -6,7 +6,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "@/i18n/routing";
 import { createCandidate, type NewCandidateState } from "@/lib/admin/candidates";
-import { AVAILABILITY_OPTIONS } from "@/lib/candidates/availability";
+import { RHYTHM_OPTIONS } from "@/lib/candidates/availability";
 import { ScheduleFields } from "@/components/features/jobs/ScheduleFields";
 import { PHONE_HINT } from "@/lib/phone";
 import type { CityRef } from "@/lib/geo/locations";
@@ -127,7 +127,7 @@ export function NewCandidateForm({ cities }: { cities: CityRef[] }) {
           <div>
             <Label htmlFor="availability">Disponibilité</Label>
             <select id="availability" name="availability" className={FIELD} defaultValue="full_time">
-              {AVAILABILITY_OPTIONS.map((option) => (
+              {RHYTHM_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
@@ -155,17 +155,6 @@ export function NewCandidateForm({ cities }: { cities: CityRef[] }) {
             <Input id="skills" name="skills" maxLength={400} placeholder="Repassage, cuisine congolaise, garde de nourrisson" />
           </div>
 
-          <div className="sm:col-span-2">
-            <Label htmlFor="description" hint="Ce que vous diriez d'elle ou de lui à une famille.">Présentation</Label>
-            <textarea
-              id="description"
-              name="description"
-              rows={5}
-              maxLength={2000}
-              className={`${FIELD} h-auto py-2.5 leading-relaxed`}
-              placeholder="Douze ans d'expérience auprès de familles à Brazzaville, références vérifiées…"
-            />
-          </div>
 
           <div className="sm:col-span-2">
             <Label htmlFor="photo" hint="Fortement recommandée : une fiche sans visage est rarement contactée.">

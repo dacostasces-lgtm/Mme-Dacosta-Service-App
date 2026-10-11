@@ -112,7 +112,8 @@ export function JobForm({ neighborhoods }: { neighborhoods: NeighborhoodOption[]
               <span className="block font-medium">Payante · {formatPrice(JOB_PRICE)}</span>
               <span className="block text-xs text-muted-foreground">
                 Vous recevez le profil des candidats avec leur numéro de téléphone, pour les
-                appeler directement. Une fois, pour toute la durée de l&apos;offre.
+                appeler directement. Une fois, pour toute la durée de l&apos;offre. Seuls les
+                candidats qui ont renseigné un numéro en ont un à montrer.
               </span>
             </span>
           </label>

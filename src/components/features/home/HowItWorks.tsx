@@ -13,8 +13,8 @@ const STEPS = [
   },
   {
     icon: CalendarCheck,
-    title: "Réservez un essai",
-    text: "Fixez une date d'essai en quelques clics et confirmez l'embauche une fois convaincu.",
+    title: "Réservez",
+    text: "Réservez le candidat pour une date de début et réglez la mise en relation par Mobile Money.",
   },
 ];
 

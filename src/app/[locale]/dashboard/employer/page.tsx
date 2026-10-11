@@ -17,6 +17,7 @@ function formatDate(iso: string) {
     year: "numeric",
   });
 }
+import { ApplicationStatusSelect } from "@/components/features/jobs/ApplicationStatusSelect";
 import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/dal";
@@ -224,6 +225,11 @@ export default async function EmployerDashboard() {
                         />
                       )}
                     </div>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <ApplicationStatusSelect
+                      applicationId={application.id}
+                      status={application.status}
+                    />
                     {application.profiles?.id && (
                       <Link
                         href={{
@@ -240,6 +246,7 @@ export default async function EmployerDashboard() {
                         Répondre
                       </Link>
                     )}
+                    </div>
                   </div>
                 </li>
               ))}
