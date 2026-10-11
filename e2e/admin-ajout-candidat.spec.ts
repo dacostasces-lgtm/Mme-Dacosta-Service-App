@@ -75,9 +75,7 @@ test.describe("ajout d'un candidat par la modération", () => {
     await page.getByLabel("Téléphone").fill(phone);
     await page.getByLabel("Ville").selectOption({ label: "Brazzaville" });
     await page.getByLabel("Quartier").selectOption({ label: "Bacongo" });
-    // Un intitulé hors liste : le sélecteur de métiers passe par « Autre… ».
-    await page.getByRole("button", { name: "Autre…" }).click();
-    await page.getByLabel("Autre métier").fill("Nounou expérimentée");
+    await page.getByLabel("Métier").fill("Nounou expérimentée");
     await page.getByLabel("Expérience").fill("12 ans");
     await page.getByLabel("Disponibilité").selectOption("full_time");
     await page.getByLabel("Langues parlées").fill("Français, lingala");
@@ -114,7 +112,7 @@ test.describe("ajout d'un candidat par la modération", () => {
       await page.getByLabel("Téléphone").fill(phone);
       await page.getByLabel("Ville").selectOption({ label: "Brazzaville" });
       await page.getByLabel("Quartier").selectOption({ label: "Bacongo" });
-      await page.getByRole("button", { name: "Ménagère", exact: true }).click();
+      await page.getByLabel("Métier").fill("Ménagère");
       await page.getByRole("button", { name: "Publier le profil" }).click();
     };
 

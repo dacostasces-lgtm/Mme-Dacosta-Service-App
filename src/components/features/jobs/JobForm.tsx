@@ -1,6 +1,5 @@
 "use client";
 
-import { MetierPicker } from "@/components/features/jobs/MetierPicker";
 import { useActionState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,12 +16,12 @@ export function JobForm({ neighborhoods }: { neighborhoods: NeighborhoodOption[]
 
   return (
     <form action={formAction} className="space-y-5">
-      <MetierPicker
-        name="title"
-        legend="Poste proposé"
-        required
-        otherPlaceholder="Ex : Nounou à temps plein"
-      />
+      <div>
+        <label htmlFor="title" className="text-sm font-medium mb-1 block">
+          Intitulé du poste
+        </label>
+        <Input id="title" name="title" placeholder="Ex: Nounou à temps plein" required />
+      </div>
 
       <div>
         <label htmlFor="description" className="text-sm font-medium mb-1 block">
