@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ApplyButton } from "@/components/features/jobs/ApplyButton";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { EmployerContact } from "@/components/features/contact/EmployerContact";
+import { JobOwnerPayment } from "@/components/features/jobs/JobOwnerPayment";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { formatLongDate, formatSalary } from "@/lib/jobs/format";
@@ -23,6 +24,7 @@ type Job = {
   salary_range_max: number | null;
   created_at: string;
   status: string;
+  employer_id: string;
   work_days: string[] | null;
   start_time: string | null;
   end_time: string | null;
@@ -60,7 +62,7 @@ function countryCode(name: string | null | undefined) {
 }
 
 const SELECT =
-  "id, title, description, salary_range_min, salary_range_max, created_at, status, " +
+  "id, title, description, salary_range_min, salary_range_max, created_at, status, employer_id, " +
   "work_days, start_time, end_time, live_in, expires_at, " +
   "profiles(full_name, is_premium), neighborhoods(name, cities(name, country))";
 
@@ -303,7 +305,13 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
             </div>
           </dl>
 
-          <EmployerContact jobId={job.id} jobTitle={job.title} user={user} />
+          {/* Son employeur y voit sa formule et peut payer ; les autres
+              visiteurs, le numéro de l'employeur ou comment l'obtenir. */}
+          {user?.profileId && user.profileId === job.employer_id ? (
+            <JobOwnerPayment jobId={job.id} />
+          ) : (
+            <EmployerContact jobId={job.id} jobTitle={job.title} user={user} />
+          )}
 
           {canApply && (
             <ApplyButton

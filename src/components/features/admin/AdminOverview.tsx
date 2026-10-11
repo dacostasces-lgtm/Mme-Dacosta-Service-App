@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   ArrowRight,
+  Briefcase,
   CheckCircle2,
   LockOpen,
   MessageSquareText,
@@ -14,6 +15,7 @@ type Props = {
   payments: number | null;
   subscriptions: number | null;
   unlocks: number | null;
+  jobPayments: number | null;
   profiles: number;
 };
 
@@ -28,7 +30,13 @@ type Item = {
   urgent?: boolean;
 };
 
-export function AdminOverview({ payments, subscriptions, unlocks, profiles }: Props) {
+export function AdminOverview({
+  payments,
+  subscriptions,
+  unlocks,
+  jobPayments,
+  profiles,
+}: Props) {
   const items: Item[] = [
     {
       href: "#paiements",
@@ -46,6 +54,15 @@ export function AdminOverview({ payments, subscriptions, unlocks, profiles }: Pr
       plural: "abonnements à vérifier",
       count: subscriptions,
       icon: CheckCircle2,
+      urgent: true,
+    },
+    {
+      href: "#offres-payantes",
+      label: "Offres payantes",
+      singular: "offre payante à vérifier",
+      plural: "offres payantes à vérifier",
+      count: jobPayments,
+      icon: Briefcase,
       urgent: true,
     },
     {

@@ -1,5 +1,6 @@
 "use server";
 
+import { containsPhoneNumber, PHONE_NUMBER_REFUSED } from "@/lib/contact/phone-filter";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -27,6 +28,11 @@ export async function sendMessage(
   const content = String(formData.get("content") ?? "").trim();
   if (!content) return { error: "Écrivez un message avant d'envoyer." };
   if (content.length > 2000) return { error: "Message trop long (2000 caractères maximum)." };
+  // L'administration peut avoir à transmettre un numéro ; la base l'exempte
+  // aussi (20261011050000_block_phone_numbers.sql).
+  if (user.role !== "admin" && containsPhoneNumber(content)) {
+    return { error: PHONE_NUMBER_REFUSED };
+  }
 
   if (!user.profileId) {
     return { error: "Votre profil est introuvable. Reconnectez-vous puis réessayez." };

@@ -25,6 +25,7 @@ type Job = {
   end_time: string | null;
   live_in: boolean;
   expires_at: string;
+  employer_id: string;
   profiles: { full_name: string; is_premium: boolean } | null;
   neighborhoods: { name: string; cities: { name: string } | null } | null;
 };
@@ -69,7 +70,7 @@ export default async function JobsPage({
         .from("jobs")
         .select(
           "id, title, description, salary_range_min, salary_range_max, created_at, " +
-            "work_days, start_time, end_time, live_in, expires_at, " +
+            "work_days, start_time, end_time, live_in, expires_at, employer_id, " +
             "profiles(full_name, is_premium), neighborhoods(name, cities(name))"
         )
         // La politique de lecture montre aussi à un employeur ses propres
@@ -272,6 +273,18 @@ export default async function JobsPage({
                       </Link>
                     </span>
                   </div>
+
+                  {user?.profileId === job.employer_id && (
+                    <Link
+                      href={`/offres/${job.id}/payer`}
+                      className={buttonVariants({
+                        variant: "outline",
+                        className: "rounded-full gap-2 mt-5",
+                      })}
+                    >
+                      Votre offre · formule et paiement
+                    </Link>
+                  )}
 
                   {canApply && (
                     <ApplyButton

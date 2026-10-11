@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createJob, type JobFormState } from "@/lib/jobs/actions";
 import { ScheduleFields } from "@/components/features/jobs/ScheduleFields";
+import { JOB_PRICE } from "@/lib/jobs/payment";
+import { formatPrice } from "@/lib/subscriptions/plans";
 
 export type NeighborhoodOption = { id: string; label: string };
 
@@ -79,6 +81,46 @@ export function JobForm({ neighborhoods }: { neighborhoods: NeighborhoodOption[]
           </p>
         )}
       </div>
+
+      <fieldset>
+        <legend className="text-sm font-medium mb-2">Formule</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="flex cursor-pointer gap-3 rounded-xl border border-input p-4 has-[:checked]:border-primary has-[:checked]:bg-accent">
+            <input
+              type="radio"
+              name="formule"
+              value="gratuite"
+              defaultChecked
+              className="mt-1 h-4 w-4 accent-primary"
+            />
+            <span>
+              <span className="block font-medium">Gratuite</span>
+              <span className="block text-xs text-muted-foreground">
+                Vous recevez le profil des candidats, sans leur numéro. Vous leur répondez par la
+                messagerie.
+              </span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer gap-3 rounded-xl border border-input p-4 has-[:checked]:border-primary has-[:checked]:bg-accent">
+            <input
+              type="radio"
+              name="formule"
+              value="payante"
+              className="mt-1 h-4 w-4 accent-primary"
+            />
+            <span>
+              <span className="block font-medium">Payante · {formatPrice(JOB_PRICE)}</span>
+              <span className="block text-xs text-muted-foreground">
+                Vous recevez le profil des candidats avec leur numéro de téléphone, pour les
+                appeler directement. Une fois, pour toute la durée de l&apos;offre.
+              </span>
+            </span>
+          </label>
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Avec l&apos;abonnement Premium Employeur, toutes vos offres sont payantes sans supplément.
+        </p>
+      </fieldset>
 
       <p className="text-xs text-muted-foreground bg-muted rounded-lg p-3">
         Le numéro de téléphone de votre profil sera communiqué aux candidats Premium et à ceux
