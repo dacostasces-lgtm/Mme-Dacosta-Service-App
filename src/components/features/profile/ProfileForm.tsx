@@ -3,7 +3,8 @@
 import { EXPERIENCE_OPTIONS } from "@/lib/profile/completeness";
 import { availabilityLabel, RHYTHM_OPTIONS } from "@/lib/candidates/availability";
 import { MetierPicker } from "@/components/features/jobs/MetierPicker";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "@/i18n/routing";
 import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,6 +94,14 @@ export function ProfileForm({
     updateProfile,
     {}
   );
+  const router = useRouter();
+
+  // L'action ne revalide rien (elle bloquerait sa propre réponse) : la page se
+  // rafraîchit ici, pour le nom dans la barre de navigation et les bandeaux de
+  // cases manquantes.
+  useEffect(() => {
+    if (state.ok) router.refresh();
+  }, [state, router]);
   const isEmployer = role === "employer";
   // Les cases obligatoires ne le sont que pour un candidat ; l'admin, qui
   // passe par ce même formulaire, n'y est pas soumis.
