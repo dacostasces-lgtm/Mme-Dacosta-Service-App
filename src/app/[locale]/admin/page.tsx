@@ -1,4 +1,6 @@
-import { ShieldCheck, Clock, MapPin, Mail, Undo2, Check, X, UserPlus } from "lucide-react";
+import { ShieldCheck, Clock, MapPin, Mail, Undo2, Check, X, UserPlus, Phone, Database, Users } from "lucide-react";
+import { telLink, whatsappLink } from "@/lib/contact/unlock";
+import type { AdminContact } from "@/lib/admin/contacts";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/routing";
@@ -35,6 +37,9 @@ type ModerationProfile = {
   id: string;
   full_name: string;
   email: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  phone_verified?: boolean;
   role: string;
   created_at: string;
   neighborhoods: { name: string; cities: { name: string; country: string } | null } | null;
@@ -124,6 +129,31 @@ function ProfileRow({ profile, validated }: { profile: ModerationProfile; valida
           )}
 
           <div className="flex items-center gap-4 flex-wrap mt-1 text-xs text-muted-foreground">
+            {profile.phone && (
+              <a
+                href={telLink(profile.phone)}
+                className="flex items-center gap-1 font-mono tabular-nums text-foreground hover:text-primary"
+              >
+                <Phone className="h-3 w-3 shrink-0" />
+                {profile.phone}
+                {profile.phone_verified === false && (
+                  <span className="font-sans text-amber-700 dark:text-amber-500">(non confirmé)</span>
+                )}
+              </a>
+            )}
+            {profile.whatsapp && profile.whatsapp !== profile.phone && (
+              <a
+                href={whatsappLink(profile.whatsapp)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 font-mono tabular-nums hover:text-primary"
+              >
+                WhatsApp {profile.whatsapp}
+              </a>
+            )}
+            {profile.phone === null && (
+              <span className="text-amber-700 dark:text-amber-500">Pas de numéro</span>
+            )}
             {profile.email && (
               <span className="flex items-center gap-1 min-w-0">
                 <Mail className="h-3 w-3 shrink-0" />
@@ -263,17 +293,33 @@ export default async function AdminPage() {
   // One guarded call for both lists rather than an embed per row. The function
   // raises for non-admins, so a failure here means the email column simply goes
   // unshown — the queue itself must keep working.
-  const emails = new Map<string, string | null>();
+  //
+  // admin_profile_contacts() (20261011080000) donne aussi le téléphone et
+  // WhatsApp ; tant qu'elle n'est pas en base, on retombe sur l'email seul.
+  const contacts = new Map<string, Partial<ModerationProfile>>();
   const ids = [...pendingProfiles, ...validatedProfiles].map((profile) => profile.id);
   if (ids.length > 0) {
-    const { data } = await supabase.rpc("admin_profile_emails", { p_ids: ids });
-    for (const row of (data ?? []) as { profile_id: string; email: string | null }[]) {
-      emails.set(row.profile_id, row.email);
+    const full = await supabase.rpc("admin_profile_contacts", { p_ids: ids });
+    if (!full.error) {
+      for (const row of (full.data ?? []) as AdminContact[]) {
+        contacts.set(row.profile_id, {
+          email: row.email,
+          phone: row.phone,
+          whatsapp: row.whatsapp,
+          phone_verified: row.phone_verified,
+        });
+      }
+    } else {
+      const { data } = await supabase.rpc("admin_profile_emails", { p_ids: ids });
+      for (const row of (data ?? []) as { profile_id: string; email: string | null }[]) {
+        contacts.set(row.profile_id, { email: row.email });
+      }
     }
   }
   const withEmail = (profile: ModerationProfile): ModerationProfile => ({
     ...profile,
-    email: emails.get(profile.id) ?? null,
+    email: null,
+    ...contacts.get(profile.id),
   });
   const declaredPayments = (declared.data ?? []) as unknown as DeclaredPayment[];
   // Kept apart from `error`: until 20260728000000_manual_mobile_money.sql is
@@ -291,13 +337,29 @@ export default async function AdminPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-wrap items-start justify-between gap-4 mb-2">
           <h1 className="text-3xl font-bold">Espace de modération</h1>
-          <Link
-            href="/admin/candidats/nouveau"
-            className={buttonVariants({ className: "h-11 rounded-full px-5 gap-2" })}
-          >
-            <UserPlus className="h-4 w-4" />
-            Ajouter un candidat
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/admin/utilisateurs"
+              className={buttonVariants({ variant: "outline", className: "h-11 rounded-full px-5 gap-2" })}
+            >
+              <Database className="h-4 w-4" />
+              Base de données
+            </Link>
+            <Link
+              href="/admin/candidatures"
+              className={buttonVariants({ variant: "outline", className: "h-11 rounded-full px-5 gap-2" })}
+            >
+              <Users className="h-4 w-4" />
+              Candidatures
+            </Link>
+            <Link
+              href="/admin/candidats/nouveau"
+              className={buttonVariants({ className: "h-11 rounded-full px-5 gap-2" })}
+            >
+              <UserPlus className="h-4 w-4" />
+              Ajouter un candidat
+            </Link>
+          </div>
         </div>
         <p className="text-muted-foreground mb-8">
           Vous validez ici les paiements et les profils. Un profil n&apos;apparaît dans la
