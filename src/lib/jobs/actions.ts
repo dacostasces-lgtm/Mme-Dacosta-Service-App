@@ -7,9 +7,13 @@ import { redirect } from "@/i18n/routing";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, tooManyRequestsMessage } from "@/lib/rate-limit";
-import { WORK_DAYS, sortWorkDays } from "@/lib/jobs/schedule";
-
-const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+import {
+  SCHEDULE_ORDER_MESSAGE,
+  readSchedule,
+  scheduleColumns,
+  scheduleOrderValid,
+  scheduleShape,
+} from "@/lib/jobs/schedule-form";
 
 const schema = z
   .object({
@@ -18,28 +22,14 @@ const schema = z
     salaryMin: z.number().int().positive().optional(),
     salaryMax: z.number().int().positive().optional(),
     neighborhoodId: z.string().uuid().optional(),
-    workDays: z.array(z.enum(WORK_DAYS)),
-    startTime: z.string().regex(TIME, "Heure de début invalide.").optional(),
-    endTime: z.string().regex(TIME, "Heure de fin invalide.").optional(),
-    liveIn: z.boolean(),
+    ...scheduleShape,
   })
   .refine((data) => !data.salaryMin || !data.salaryMax || data.salaryMax >= data.salaryMin, {
     message: "Le salaire maximum doit être supérieur au minimum.",
   })
-  // Une fin avant le début n'est admise que si l'employé dort sur place : c'est
-  // alors un service de nuit (20h – 7h). Sans logement, c'est une inversion.
-  .refine(
-    (data) =>
-      data.liveIn || !data.startTime || !data.endTime || data.endTime > data.startTime,
-    { message: "L'heure de fin doit être après l'heure de début." }
-  );
+  .refine(scheduleOrderValid, { message: SCHEDULE_ORDER_MESSAGE });
 
 export type JobFormState = { error?: string };
-
-function optionalText(value: FormDataEntryValue | null) {
-  const text = String(value ?? "").trim();
-  return text || undefined;
-}
 
 function optionalInt(value: FormDataEntryValue | null) {
   const text = String(value ?? "").trim();
@@ -68,10 +58,7 @@ export async function createJob(
     salaryMin: optionalInt(formData.get("salaryMin")),
     salaryMax: optionalInt(formData.get("salaryMax")),
     neighborhoodId: String(formData.get("neighborhoodId") ?? "") || undefined,
-    workDays: sortWorkDays(formData.getAll("workDays").map(String)),
-    startTime: optionalText(formData.get("startTime")),
-    endTime: optionalText(formData.get("endTime")),
-    liveIn: formData.get("liveIn") === "on",
+    ...readSchedule(formData),
   });
 
   if (!parsed.success) {
@@ -93,10 +80,7 @@ export async function createJob(
     salary_range_min: parsed.data.salaryMin ?? null,
     salary_range_max: parsed.data.salaryMax ?? null,
     neighborhood_id: parsed.data.neighborhoodId ?? null,
-    work_days: parsed.data.workDays,
-    start_time: parsed.data.startTime ?? null,
-    end_time: parsed.data.endTime ?? null,
-    live_in: parsed.data.liveIn,
+    ...scheduleColumns(parsed.data),
   });
 
   if (error) {

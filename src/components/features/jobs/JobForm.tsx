@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createJob, type JobFormState } from "@/lib/jobs/actions";
-import { WORK_DAYS, WORK_DAY_LABELS } from "@/lib/jobs/schedule";
+import { ScheduleFields } from "@/components/features/jobs/ScheduleFields";
 
 export type NeighborhoodOption = { id: string; label: string };
 
@@ -50,45 +50,10 @@ export function JobForm({ neighborhoods }: { neighborhoods: NeighborhoodOption[]
         </div>
       </div>
 
-      <fieldset>
-        <legend className="text-sm font-medium mb-2">Jours de service</legend>
-        <div className="flex flex-wrap gap-2">
-          {WORK_DAYS.map((day) => (
-            <label
-              key={day}
-              className="cursor-pointer select-none rounded-full border border-input px-3 py-1.5 text-sm transition-colors hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/50"
-            >
-              <input type="checkbox" name="workDays" value={day} className="sr-only" />
-              {WORK_DAY_LABELS[day]}
-            </label>
-          ))}
-        </div>
-      </fieldset>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="startTime" className="text-sm font-medium mb-1 block">
-            Heure de début
-          </label>
-          <Input id="startTime" name="startTime" type="time" />
-        </div>
-        <div>
-          <label htmlFor="endTime" className="text-sm font-medium mb-1 block">
-            Heure de fin
-          </label>
-          <Input id="endTime" name="endTime" type="time" />
-        </div>
-      </div>
-
-      <label className="flex items-start gap-3 rounded-lg border border-input p-3 cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-accent">
-        <input type="checkbox" name="liveIn" className="mt-0.5 h-4 w-4 accent-primary" />
-        <span>
-          <span className="text-sm font-medium block">Dormir sur place</span>
-          <span className="text-xs text-muted-foreground">
-            L&apos;employé est logé et passe la nuit chez vous.
-          </span>
-        </span>
-      </label>
+      <ScheduleFields
+        daysLegend="Jours de service"
+        liveInHint="L'employé est logé et passe la nuit chez vous."
+      />
 
       <div>
         <label htmlFor="neighborhoodId" className="text-sm font-medium mb-1 block">

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Link } from "@/i18n/routing";
 import { createCandidate, type NewCandidateState } from "@/lib/admin/candidates";
 import { AVAILABILITY_OPTIONS } from "@/lib/candidates/availability";
+import { ScheduleFields } from "@/components/features/jobs/ScheduleFields";
 import { PHONE_HINT } from "@/lib/phone";
 import type { CityRef } from "@/lib/geo/locations";
 
@@ -135,6 +136,13 @@ export function NewCandidateForm({ cities }: { cities: CityRef[] }) {
           <div>
             <Label htmlFor="desiredSalary" hint="En FCFA par mois. Facultatif.">Salaire souhaité</Label>
             <Input id="desiredSalary" name="desiredSalary" type="number" min={0} step={1000} placeholder="Ex : 80000" />
+          </div>
+
+          <div className="sm:col-span-2 space-y-4">
+            <ScheduleFields
+              daysLegend="Jours de disponibilité"
+              liveInHint="Le candidat accepte d'être logé et de passer la nuit chez l'employeur."
+            />
           </div>
 
           <div className="sm:col-span-2">

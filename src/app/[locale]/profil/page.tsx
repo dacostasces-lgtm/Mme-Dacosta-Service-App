@@ -50,7 +50,10 @@ export default async function ProfilePage() {
           .maybeSingle()
       : supabase
           .from("candidate_details")
-          .select("job_title, age, gender, experience, desired_salary, availability, description, languages, skills, cv_url")
+          .select(
+            "job_title, age, gender, experience, desired_salary, availability, description, " +
+              "languages, skills, cv_url, work_days, start_time, end_time, live_in"
+          )
           .eq("profile_id", user.profileId ?? "")
           .maybeSingle(),
   ]);
@@ -81,6 +84,10 @@ export default async function ProfilePage() {
         description: (details?.description as string) ?? null,
         languages: stringList(details?.languages),
         skills: stringList(details?.skills),
+        workDays: stringList(details?.work_days),
+        startTime: (details?.start_time as string) ?? null,
+        endTime: (details?.end_time as string) ?? null,
+        liveIn: Boolean(details?.live_in),
       };
 
   const employer: EmployerProfile | undefined = isEmployer

@@ -5,6 +5,13 @@ import * as z from "zod";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { normalisePhone } from "@/lib/phone";
+import {
+  SCHEDULE_ORDER_MESSAGE,
+  readSchedule,
+  scheduleColumns,
+  scheduleOrderValid,
+  scheduleShape,
+} from "@/lib/jobs/schedule-form";
 
 export type ProfileFormState = { error?: string; ok?: boolean };
 
@@ -55,7 +62,8 @@ const candidateSchema = baseSchema.extend({
   description: z.string().trim().max(2000, "Description trop longue.").optional(),
   languages: z.array(z.string()).max(12),
   skills: z.array(z.string()).max(20),
-});
+  ...scheduleShape,
+}).refine(scheduleOrderValid, { message: SCHEDULE_ORDER_MESSAGE });
 
 const employerSchema = baseSchema.extend({
   companyName: z.string().trim().max(120).optional(),
@@ -158,6 +166,7 @@ export async function updateProfile(
       description: text(formData, "description"),
       languages: list(formData, "languages"),
       skills: list(formData, "skills"),
+      ...readSchedule(formData),
     });
 
     if (!parsed.success) {
@@ -179,6 +188,7 @@ export async function updateProfile(
         description: parsed.data.description ?? null,
         languages: parsed.data.languages,
         skills: parsed.data.skills,
+        ...scheduleColumns(parsed.data),
       },
       { onConflict: "profile_id" }
     );

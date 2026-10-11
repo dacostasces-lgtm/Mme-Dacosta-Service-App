@@ -6,6 +6,13 @@ import { requireUser } from "@/lib/auth/dal";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalisePhone } from "@/lib/phone";
 import { AVAILABILITY_VALUES } from "@/lib/candidates/availability";
+import {
+  SCHEDULE_ORDER_MESSAGE,
+  readSchedule,
+  scheduleColumns,
+  scheduleOrderValid,
+  scheduleShape,
+} from "@/lib/jobs/schedule-form";
 
 const schema = z.object({
   fullName: z.string().trim().min(2, "Indiquez le nom du candidat."),
@@ -19,7 +26,8 @@ const schema = z.object({
   languages: z.string().trim().max(200).optional(),
   skills: z.string().trim().max(400).optional(),
   description: z.string().trim().max(2000).optional(),
-});
+  ...scheduleShape,
+}).refine(scheduleOrderValid, { message: SCHEDULE_ORDER_MESSAGE });
 
 export type NewCandidateState = {
   error?: string;
@@ -68,6 +76,7 @@ export async function createCandidate(
     desiredSalary: formData.get("desiredSalary") || undefined,
     languages: formData.get("languages") ?? undefined,
     skills: formData.get("skills") ?? undefined,
+    ...readSchedule(formData),
     description: formData.get("description") ?? undefined,
   });
 
@@ -180,6 +189,7 @@ export async function createCandidate(
       languages: toList(parsed.data.languages),
       skills: toList(parsed.data.skills),
       description: parsed.data.description || null,
+      ...scheduleColumns(parsed.data),
     })
     .eq("profile_id", profile.id);
 
