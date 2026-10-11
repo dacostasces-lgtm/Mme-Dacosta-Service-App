@@ -102,14 +102,14 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>si vous êtes Candidat</strong> : aux Employeurs auxquels vous avez envoyé une
-            candidature, lorsque leur offre est payante (à l&apos;unité ou par un abonnement
-            Premium Employeur).
+            candidature, lorsque leur offre est payante, et aux Employeurs qui ont payé pour
+            obtenir votre numéro depuis votre fiche (à l&apos;unité ou par un abonnement Premium
+            Employeur).
           </li>
         </ul>
         <p>
           Ces numéros ne sont jamais affichés publiquement, ni communiqués à quelqu&apos;un
-          d&apos;autre. Si vous ne souhaitez pas être appelé directement, ne renseignez pas de
-          numéro dans votre profil : les échanges passent alors par la messagerie.
+          d&apos;autre.
         </p>
         <p>Nous faisons appel aux prestataires techniques suivants :</p>
         <ul className="list-disc pl-5 space-y-1">

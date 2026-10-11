@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { MapPin, Star, BadgeCheck, CheckCircle2, Circle, FileText, Phone, Award, Clock, Languages } from "lucide-react";
+import { MapPin, Star, BadgeCheck, CheckCircle2, Circle, FileText, Award, Clock, Languages } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/routing";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { Badge } from "@/components/ui/badge";
 import { ShareButton } from "@/components/shared/ShareButton";
+import {
+  CandidateNumber,
+  CandidateNumberPayment,
+  type CandidateContactRow,
+} from "@/components/features/contact/CandidateContact";
 import { localisedUrl } from "@/lib/site";
 import { availabilityLabel } from "@/lib/candidates/availability";
 import { formatHours, formatWorkDays } from "@/lib/jobs/schedule";
@@ -137,6 +142,15 @@ export default async function CandidateProfilePage({
   const peutReserver =
     !visiteur || visiteur.role === "employer" || visiteur.role === "admin";
 
+  // Le numéro, ou ce qu'il faut payer pour l'avoir : candidate_contact()
+  // décide seule qui y a droit. Une erreur (migration pas encore appliquée)
+  // laisse simplement la place vide.
+  const contact = estSoiMeme
+    ? undefined
+    : ((await supabase.rpc("candidate_contact", { p_candidate_id: profile.id })).data?.[0] as
+        | CandidateContactRow
+        | undefined);
+
   const initials = profile.full_name
     .split(/\s+/)
     .filter(Boolean)
@@ -258,15 +272,14 @@ export default async function CandidateProfilePage({
                       <FileText className="mr-2 h-4 w-4" /> Réserver ce candidat
                     </Link>
                   )}
-                  <Link
-                    href={`/messages?avec=${profile.id}`}
-                    className={buttonVariants({
-                      variant: "outline",
-                      className: "h-12 rounded-full px-8",
-                    })}
-                  >
-                    <Phone className="mr-2 h-4 w-4" /> Contacter
-                  </Link>
+                  {/* À la place de « Contacter », qui ouvrait une messagerie
+                      vide : le numéro, ou le paiement qui l'ouvre. */}
+                  <CandidateNumber
+                    contact={contact}
+                    viewerRole={visiteur?.role ?? "visitor"}
+                    candidateId={profile.id}
+                    jobTitle={profile.job_title}
+                  />
                   {profile.is_validated && (
                     <ShareButton
                       url={localisedUrl(`/candidats/${profile.id}`)}
@@ -280,6 +293,8 @@ export default async function CandidateProfilePage({
             </div>
           </div>
         </div>
+
+        <CandidateNumberPayment contact={contact} />
 
         {/* Details Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

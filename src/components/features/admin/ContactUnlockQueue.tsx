@@ -32,7 +32,7 @@ export function ContactUnlockQueue({ unlocks }: { unlocks: DeclaredUnlock[] }) {
     <section className="mb-10">
       <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
         <LockOpen className="h-5 w-5 text-secondary" />
-        Numéros à débloquer{" "}
+        Numéros d&apos;employeurs à débloquer{" "}
         <span className="text-muted-foreground font-normal">({unlocks.length})</span>
       </h2>
 

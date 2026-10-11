@@ -60,7 +60,19 @@ export default async function MessagesPage({
     thread = (data ?? []) as Message[];
   }
 
-  const active = conversations.find((conversation) => conversation.profile_id === avec);
+  // Pas encore de conversation avec ce profil (lien d'une réservation, par
+  // exemple) : on ouvre un fil vide plutôt qu'une page blanche. La RLS ne
+  // laisse lire que les profils publiés, ou ceux avec qui on échange déjà.
+  let active: Pick<Conversation, "profile_id" | "full_name" | "role"> | undefined =
+    conversations.find((conversation) => conversation.profile_id === avec);
+  if (avec && !active && avec !== user.profileId && /^[0-9a-f-]{36}$/i.test(avec)) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, full_name, role")
+      .eq("id", avec)
+      .maybeSingle();
+    if (data) active = { profile_id: data.id, full_name: data.full_name, role: data.role };
+  }
 
   return (
     <div className="h-[calc(100vh-4rem)] bg-background flex overflow-hidden">
@@ -142,6 +154,11 @@ export default async function MessagesPage({
             </header>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-surface">
+              {thread.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  Écrivez votre premier message à {active.full_name}.
+                </p>
+              )}
               {thread.map((message) => {
                 const mine = message.sender_id === user.profileId;
                 return (
