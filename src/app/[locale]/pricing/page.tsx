@@ -3,12 +3,16 @@ import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { ChoosePlanButton } from "@/components/features/subscriptions/ChoosePlanButton";
-import type { PlanId } from "@/lib/subscriptions/plans";
+import { PLANS as PRICES, formatPrice, type PlanId } from "@/lib/subscriptions/plans";
+import { UNLOCK_PRICE } from "@/lib/contact/unlock";
+import { JOB_PRICE } from "@/lib/jobs/payment";
+import { BOOKING_FEE_XAF } from "@/lib/bookings/constants";
 import { cn } from "@/lib/utils";
 
-// Placeholder amounts in XAF, gathered here so they can be changed in one place
-// once the commercial terms are settled. `subscriptions.currency` defaults to
-// XAF, the Central African CFA franc used in Congo-Brazzaville.
+// Les montants viennent des fichiers qui servent à facturer (plans.ts,
+// unlock.ts, payment.ts, bookings/constants.ts) : les recopier ici les avait
+// déjà fait diverger. Chaque fonctionnalité listée doit exister dans
+// l'application — les promesses sans fonction derrière ont été retirées.
 const PLANS = [
   {
     name: "Gratuit",
@@ -20,8 +24,8 @@ const PLANS = [
       { label: "Recherche par proximité", included: true },
       { label: "Messagerie avec vos contacts", included: true },
       { label: "Publier des offres et recevoir des candidatures", included: true },
-      { label: "Numéro des candidats (5 000 FCFA par offre)", included: false },
-      { label: "Numéro des employeurs (500 FCFA par offre)", included: false },
+      { label: `Numéro des candidats (${formatPrice(JOB_PRICE)} par offre)`, included: false },
+      { label: `Numéro des employeurs (${formatPrice(UNLOCK_PRICE)} par offre)`, included: false },
       { label: "Mise en avant dans les résultats", included: false },
       { label: "Badge Premium sur votre profil", included: false },
     ],
@@ -31,7 +35,7 @@ const PLANS = [
     // Ties the card to lib/subscriptions/plans.ts, which is where the price
     // that actually gets charged lives.
     id: "premium_candidate" as PlanId,
-    price: 5000,
+    price: PRICES.premium_candidate.price,
     tagline: "Pour être vu en premier",
     audience: "Candidats",
     highlighted: true,
@@ -45,23 +49,38 @@ const PLANS = [
   {
     name: "Premium Employeur",
     id: "premium_employer" as PlanId,
-    price: 25000,
+    price: PRICES.premium_employer.price,
     tagline: "Pour recruter sans attendre",
     audience: "Employeurs et agences",
     features: [
-      { label: "Offres d'emploi illimitées", included: true },
-      { label: "Vos offres mises en avant", included: true },
       { label: "Le numéro de tous vos candidats, sur toutes vos offres", included: true },
-      { label: "Garantie de remplacement 30 jours", included: true },
-      { label: "Accompagnement au recrutement", included: true },
+      { label: "Toutes vos offres en formule payante, sans supplément", included: true },
+      { label: "Badge Premium sur vos offres", included: true },
     ],
   },
 ];
 
-function formatPrice(price: number) {
-  if (price === 0) return "Gratuit";
-  return `${new Intl.NumberFormat("fr-FR").format(price)} FCFA`;
-}
+/** Ce qui se paie une fois, sans abonnement. */
+const ONE_OFF = [
+  {
+    label: "Numéro d'un employeur",
+    audience: "Candidat",
+    price: UNLOCK_PRICE,
+    detail: "Pour une offre, depuis sa page. Le numéro reste dans votre tableau de bord.",
+  },
+  {
+    label: "Offre payante",
+    audience: "Employeur",
+    price: JOB_PRICE,
+    detail: "Le numéro de chaque candidat qui postule à cette offre, pour toute sa durée.",
+  },
+  {
+    label: "Réservation d'un candidat",
+    audience: "Employeur",
+    price: BOOKING_FEE_XAF,
+    detail: "Frais de mise en relation pour réserver un candidat à une date de début.",
+  },
+];
 
 export default async function PricingPage() {
   const user = await getCurrentUser();
@@ -73,8 +92,9 @@ export default async function PricingPage() {
           <span className="eyebrow">Tarifs</span>
           <h1 className="mt-4 text-4xl sm:text-5xl font-bold">Des tarifs simples</h1>
           <p className="mt-4 text-lg text-muted-foreground">
-            Créer un compte et consulter les profils est gratuit. Le premium sert à être vu en
-            priorité, que vous cherchiez un emploi ou du personnel de maison.
+            Créer un compte, consulter les profils et échanger par la messagerie est gratuit.
+            Le paiement sert à obtenir les numéros de téléphone et à être vu en priorité —
+            par abonnement, ou une seule fois.
           </p>
         </div>
 
@@ -152,13 +172,32 @@ export default async function PricingPage() {
           ))}
         </div>
 
-        <p className="text-center text-sm text-muted-foreground mt-12">
-          Sans abonnement, un employeur peut passer une seule offre en payante pour 5 000 FCFA
-          et recevoir le numéro de ses candidats ; un candidat peut débloquer le numéro d&apos;un
-          seul employeur pour 500 FCFA, depuis la page de l&apos;offre.
-        </p>
-        <p className="text-center text-sm text-muted-foreground mt-2">
-          Paiement par MTN MoMo ou Airtel Money. Résiliable à tout moment, sans engagement.
+        <section className="mt-16 max-w-3xl mx-auto">
+          <h2 className="text-2xl font-bold text-center mb-2">Sans abonnement</h2>
+          <p className="text-center text-muted-foreground mb-6">
+            Payez seulement ce dont vous avez besoin, une fois.
+          </p>
+          <ul className="divide-y divide-border rounded-3xl border border-border bg-card shadow-soft">
+            {ONE_OFF.map((item) => (
+              <li key={item.label} className="flex flex-wrap items-start justify-between gap-3 p-5">
+                <div className="min-w-0">
+                  <p className="font-semibold">
+                    {item.label}{" "}
+                    <span className="text-xs font-normal text-muted-foreground">· {item.audience}</span>
+                  </p>
+                  <p className="text-sm text-muted-foreground">{item.detail}</p>
+                </div>
+                <p className="font-display text-xl font-bold text-primary shrink-0">
+                  {formatPrice(item.price)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <p className="text-center text-sm text-muted-foreground mt-10">
+          Paiement par MTN MoMo ou Airtel Money, vérifié par notre équipe. Les abonnements durent
+          un mois et ne se renouvellent pas d&apos;eux-mêmes.
         </p>
       </div>
     </div>

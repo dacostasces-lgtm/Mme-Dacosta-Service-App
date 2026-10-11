@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { ShieldCheck, MapPin, Star, HandCoins } from "lucide-react";
+import { ShieldCheck, MapPin, HandCoins, Phone } from "lucide-react";
 import famille from "@/assets/images/famille-canape.jpg";
 
 const POINTS = [
@@ -14,14 +14,14 @@ const POINTS = [
     text: "La géolocalisation trie les candidats par distance réelle. Un trajet court, c'est un personnel qui reste.",
   },
   {
-    icon: Star,
-    title: "Avis de la communauté",
-    text: "Chaque mission peut être notée par l'employeur. Les évaluations restent visibles sur le profil.",
+    icon: Phone,
+    title: "Contact direct",
+    text: "Le numéro de l'employeur ou du candidat s'obtient en un paiement Mobile Money, pour appeler sans attendre.",
   },
   {
     icon: HandCoins,
     title: "Sans commission cachée",
-    text: "La mise en relation est directe. Vous ne payez que l'abonnement, jamais un pourcentage du salaire.",
+    text: "Vous ne payez que la mise en relation que vous choisissez — numéro, offre, réservation ou abonnement —, jamais un pourcentage du salaire.",
   },
 ];
 

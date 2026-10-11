@@ -1,7 +1,15 @@
+import { METIERS } from "@/lib/jobs/metiers";
+
+/**
+ * Uniquement des faits que l'application garantit elle-même. Les chiffres
+ * d'activité (« +400 profils », « 48 h de vérification ») ont été retirés :
+ * rien ne les mesurait, et la base a été réinitialisée le 7 octobre 2026.
+ * Ne les remettre qu'avec une source réelle.
+ */
 const STATS = [
-  { value: "+400", label: "profils vérifiés" },
-  { value: "6", label: "métiers couverts" },
-  { value: "48 h", label: "délai moyen de vérification" },
+  { value: String(METIERS.length), label: "métiers proposés" },
+  { value: "100 %", label: "profils contrôlés avant publication" },
+  { value: "Mobile Money", label: "MTN et Airtel" },
   { value: "0 %", label: "commission sur le salaire" },
 ];
 
