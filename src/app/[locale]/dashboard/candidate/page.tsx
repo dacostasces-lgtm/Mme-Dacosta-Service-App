@@ -43,7 +43,7 @@ export default async function CandidateDashboard() {
   const supabase = await createClient();
 
   // RLS scopes these to the candidate: their own applications, their own inbox.
-  const [applications, unread, reviews, profile, details, bookings, unlocked] = await Promise.all([
+  const [applications, unread, reviews, profile, bookings, unlocked] = await Promise.all([
     // Ses candidatures et leur étape. La RLS limite aux siennes ; le titre
     // d'une offre fermée ou échue revient vide, la jointure étant filtrée.
     supabase
@@ -61,11 +61,6 @@ export default async function CandidateDashboard() {
       .from("profiles")
       .select("is_validated")
       .eq("id", user.profileId ?? "")
-      .maybeSingle(),
-    supabase
-      .from("candidate_details")
-      .select("job_title, description")
-      .eq("profile_id", user.profileId ?? "")
       .maybeSingle(),
     // Visibles des deux côtés par la policy « Bookings are visible to both
     // parties » : une simple lecture suffit, chacun ne voit que les siennes.
@@ -89,10 +84,10 @@ export default async function CandidateDashboard() {
       : "—";
 
   const published = profile.data?.is_validated ?? false;
-  // The signup trigger inserts an empty candidate_details row, so "has a row"
-  // proves nothing — a profile is only usable once it says what the person does.
-  // Le métier suffit : la présentation n'est plus demandée au candidat.
-  const profileComplete = Boolean(details.data?.job_title);
+  // Toutes les cases de src/lib/profile/completeness.ts, lues par le DAL : la
+  // même règle que celle qui bloque l'enregistrement, la candidature et le
+  // déblocage d'un numéro.
+  const profileComplete = user.missingProfileFields.length === 0;
 
   return (
     <div className="flex-1 bg-surface bg-grain">
@@ -152,7 +147,7 @@ export default async function CandidateDashboard() {
           <p className="text-sm text-muted-foreground mb-4">
             {profileComplete
               ? "Métier, compétences, disponibilités : tenez vos informations à jour."
-              : "Votre fiche est encore vide. Sans métier, les familles ne peuvent pas vous choisir — c'est l'étape la plus importante."}
+              : `Tant que votre profil n'est pas complet, vous ne pouvez ni postuler ni obtenir le numéro des employeurs. Il manque : ${user.missingProfileFields.join(", ")}.`}
           </p>
           <Link
             href="/profil"

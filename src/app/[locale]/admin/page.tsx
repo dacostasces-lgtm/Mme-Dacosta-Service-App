@@ -1,4 +1,5 @@
 import { ShieldCheck, Clock, MapPin, Mail, Undo2, Check, X, UserPlus, Phone, Database, Users } from "lucide-react";
+import { missingCandidateFields } from "@/lib/profile/completeness";
 import { telLink, whatsappLink } from "@/lib/contact/unlock";
 import type { AdminContact } from "@/lib/admin/contacts";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -28,6 +29,15 @@ import {
 type CandidateDetails = {
   job_title: string | null;
   experience: string | null;
+  age: number | null;
+  gender: string | null;
+  availability: string | null;
+  desired_salary: number | null;
+  skills: unknown;
+  languages: unknown;
+  work_days: string[] | null;
+  start_time: string | null;
+  end_time: string | null;
   identity_checked_at: string | null;
   criminal_record_checked_at: string | null;
   interview_passed_at: string | null;
@@ -42,6 +52,8 @@ type ModerationProfile = {
   phone_verified?: boolean;
   role: string;
   created_at: string;
+  phone_present: boolean | null;
+  neighborhood_id: string | null;
   neighborhoods: { name: string; cities: { name: string; country: string } | null } | null;
   candidate_details: CandidateDetails | null;
 };
@@ -55,9 +67,10 @@ type ModerationProfile = {
 // `profile_id` — et l'embed devient ambigu. Toute la file de modération
 // tombait sur « Could not embed because more than one relationship was found ».
 const SELECT =
-  "id, full_name, role, created_at, " +
+  "id, full_name, role, created_at, phone_present, neighborhood_id, " +
   "neighborhoods(name, cities(name, country)), " +
   "candidate_details!candidate_details_profile_id_fkey(job_title, experience, " +
+  "age, gender, availability, desired_salary, skills, languages, work_days, start_time, end_time, " +
   "identity_checked_at, criminal_record_checked_at, interview_passed_at)";
 
 const CHECKS: { key: CandidateCheck; label: string; field: keyof CandidateDetails }[] = [
@@ -101,6 +114,34 @@ function VerificationToggles({ profile }: { profile: ModerationProfile }) {
   );
 }
 
+/** Les cases vides d'un profil candidat, pour décider avant de publier. */
+function MissingFields({ profile }: { profile: ModerationProfile }) {
+  const d = profile.candidate_details;
+  const missing = missingCandidateFields({
+    phonePresent: Boolean(profile.phone_present),
+    neighborhoodId: profile.neighborhood_id,
+    jobTitle: d?.job_title,
+    experience: d?.experience,
+    age: d?.age,
+    gender: d?.gender,
+    availability: d?.availability,
+    desiredSalary: d?.desired_salary,
+    skills: d?.skills,
+    languages: d?.languages,
+    workDays: d?.work_days,
+    startTime: d?.start_time,
+    endTime: d?.end_time,
+  });
+  if (missing.length === 0) {
+    return <p className="text-xs text-green-700 dark:text-green-400">Profil complet</p>;
+  }
+  return (
+    <p className="text-xs text-amber-700 dark:text-amber-500">
+      Profil incomplet — manque : {missing.join(", ")}
+    </p>
+  );
+}
+
 function ProfileRow({ profile, validated }: { profile: ModerationProfile; validated: boolean }) {
   const city = profile.neighborhoods?.cities;
   const place = [profile.neighborhoods?.name, city?.name].filter(Boolean).join(", ");
@@ -120,6 +161,8 @@ function ProfileRow({ profile, validated }: { profile: ModerationProfile; valida
               {profile.role === "employer" ? "Employeur" : profile.role === "admin" ? "Admin" : "Candidat"}
             </span>
           </div>
+
+          {isCandidate && <MissingFields profile={profile} />}
 
           {profile.candidate_details?.job_title && (
             <p className="text-sm text-muted-foreground truncate">

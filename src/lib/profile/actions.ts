@@ -1,5 +1,6 @@
 "use server";
 
+import { missingCandidateFields } from "@/lib/profile/completeness";
 import { containsPhoneNumber, PHONE_NUMBER_REFUSED } from "@/lib/contact/phone-filter";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
@@ -176,6 +177,33 @@ export async function updateProfile(
 
     if (!parsed.success) {
       return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
+    }
+
+    // Toutes les cases, sans quoi le profil ne s'enregistre pas. L'admin en
+    // est exempté : il complète parfois une fiche en plusieurs fois.
+    if (user.role !== "admin") {
+      const missing = missingCandidateFields({
+        // Champ absent du formulaire (fonction my_contact() manquante) : on se
+        // fie au numéro déjà enregistré plutôt que de bloquer pour rien.
+        phonePresent: contactEditable ? Boolean(parsed.data.phone) : user.hasPhone,
+        neighborhoodId: parsed.data.neighborhoodId,
+        jobTitle: parsed.data.jobTitle,
+        experience: parsed.data.experience,
+        age: parsed.data.age,
+        gender: parsed.data.gender,
+        availability: parsed.data.availability,
+        desiredSalary: parsed.data.desiredSalary,
+        skills: parsed.data.skills,
+        languages: parsed.data.languages,
+        workDays: parsed.data.workDays,
+        startTime: parsed.data.startTime,
+        endTime: parsed.data.endTime,
+      });
+      if (missing.length > 0) {
+        return {
+          error: `Toutes les cases doivent être remplies pour enregistrer votre profil. Il manque : ${missing.join(", ")}.`,
+        };
+      }
     }
 
     // Les numéros ont leur champ à eux, plus haut, qui reste privé. Dans la

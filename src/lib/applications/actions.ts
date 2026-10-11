@@ -1,5 +1,6 @@
 "use server";
 
+import { INCOMPLETE_PROFILE_MESSAGE } from "@/lib/profile/completeness";
 import { containsPhoneNumber, PHONE_NUMBER_REFUSED } from "@/lib/contact/phone-filter";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
@@ -8,7 +9,12 @@ import { createClient } from "@/lib/supabase/server";
 import { rateLimit, tooManyRequestsMessage } from "@/lib/rate-limit";
 import { APPLICATION_STATUSES } from "@/lib/applications/status";
 
-export type ApplicationState = { error?: string; ok?: boolean };
+export type ApplicationState = {
+  error?: string;
+  ok?: boolean;
+  /** Refus pour profil incomplet : l'écran propose alors le lien vers le profil. */
+  incompleteProfile?: boolean;
+};
 
 const schema = z.object({
   jobId: z.string().uuid("Offre inconnue."),
@@ -34,6 +40,12 @@ export async function applyToJob(
 
   if (!user.profileId) {
     return { error: "Votre profil est introuvable. Reconnectez-vous puis réessayez." };
+  }
+
+  // Un employeur reçoit le profil avec la candidature : incomplet, il ne lui
+  // dit ni l'expérience ni les disponibilités, et parfois pas de numéro.
+  if (user.missingProfileFields.length > 0) {
+    return { error: INCOMPLETE_PROFILE_MESSAGE, incompleteProfile: true };
   }
 
   // The UNIQUE constraint stops a candidate applying twice to one posting, but

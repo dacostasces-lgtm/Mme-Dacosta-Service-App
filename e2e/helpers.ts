@@ -46,10 +46,50 @@ export async function register(
 
   // Pas de numéro sur ce compte, donc pas d'étape de vérification : la porte
   // posée dans requireUser ne s'applique qu'aux comptes qui en ont un.
-  const dashboard = role === "employer" ? "/dashboard/employer" : "/dashboard/candidate";
-  await page.waitForURL(new RegExp(`/fr${dashboard}`), { timeout: 30_000 });
+  // Un candidat arrive sur son profil, qu'il doit compléter avant de postuler.
+  const landing = role === "employer" ? "/dashboard/employer" : "/profil";
+  await page.waitForURL(new RegExp(`/fr${landing}`), { timeout: 30_000 });
 
   return { email, password: PASSWORD };
+}
+
+/**
+ * Remplit toutes les cases obligatoires du profil candidat
+ * (src/lib/profile/completeness.ts), l'enregistre, puis franchit la
+ * vérification du numéro par la porte de secours : en test l'envoi SMS pointe
+ * vers le vide. Sans profil complet, un candidat ne peut pas postuler.
+ */
+export async function completeCandidateProfile(page: Page, phone: string) {
+  await page.goto("/fr/profil");
+  await fillCandidateProfile(page, phone);
+  await page.getByRole("button", { name: "Enregistrer mon profil" }).click();
+  await expect(page.getByText("Profil enregistré.")).toBeVisible();
+
+  await page.goto("/fr/verification");
+  await page.getByRole("button", { name: /Recevoir mon code/ }).click();
+  await page.getByRole("button", { name: "Continuer sans vérifier" }).click({ timeout: 30_000 });
+  await page.waitForURL(/\/fr\/dashboard\/candidate/, { timeout: 30_000 });
+}
+
+/** Les cases du profil candidat, sans enregistrer. Le quartier vient de
+ *  l'inscription. */
+export async function fillCandidateProfile(page: Page, phone: string) {
+  await page.getByLabel("Téléphone").fill(phone);
+  await page.getByRole("button", { name: "Nounou", exact: true }).click();
+  await page.getByLabel("Années d'expérience").selectOption("6 ans");
+  await page.getByLabel("Âge").fill("32");
+  await page.getByLabel("Sexe").selectOption("F");
+  await page.getByLabel("Disponibilité").selectOption("full_time");
+  // Les jours sont des cases cachées dans leur étiquette : on touche le texte,
+  // comme le ferait une candidate.
+  for (const day of ["Lundi", "Mardi", "Mercredi"]) {
+    await page.getByText(day, { exact: true }).click();
+  }
+  await page.getByLabel("Heure de début").fill("07:00");
+  await page.getByLabel("Heure de fin").fill("17:00");
+  await page.getByLabel("Salaire souhaité").fill("90000");
+  await page.getByLabel("Compétences").fill("garde d'enfants, cuisine, repassage");
+  await page.getByLabel("Langues parlées").fill("français, lingala");
 }
 
 export async function signIn(page: Page, email: string) {

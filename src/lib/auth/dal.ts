@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isOtpConfigured } from "@/lib/otp/infobip";
 import { hasSkippedVerification } from "@/lib/otp/skip";
 import { dashboardPathFor, type UserRole } from "@/lib/auth/roles";
+import { missingCandidateFields } from "@/lib/profile/completeness";
 
 // Re-exported so the existing call sites keep importing from the DAL, while the
 // login form — which cannot touch a `server-only` module — shares the same
@@ -33,6 +34,11 @@ export type SessionUser = {
    * donc le déclencheur d'inscription horodate aussitôt.
    */
   onboardingCompletedAt: string | null;
+  /**
+   * Cases encore vides du profil candidat (src/lib/profile/completeness.ts).
+   * Toujours vide pour un employeur ou un admin.
+   */
+  missingProfileFields: string[];
 };
 
 /**
@@ -60,13 +66,46 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, role, full_name, is_premium, phone_verified_at, phone_present, onboarding_completed_at"
+      "id, role, full_name, is_premium, phone_verified_at, phone_present, onboarding_completed_at, neighborhood_id"
     )
     .eq("user_id", user.id)
     .maybeSingle();
 
   // Signup metadata is the fallback while the profile row is being created.
   const metadata = user.user_metadata ?? {};
+
+  // Complétude du profil, pour un candidat seulement. Une lecture qui échoue
+  // (colonne absente le temps d'une migration) ne doit enfermer personne :
+  // on considère alors le profil complet.
+  let missingProfileFields: string[] = [];
+  if (profile?.role === "candidate") {
+    const { data: details, error } = await supabase
+      .from("candidate_details")
+      .select(
+        "job_title, experience, age, gender, availability, desired_salary, skills, languages, " +
+          "work_days, start_time, end_time"
+      )
+      .eq("profile_id", profile.id)
+      .maybeSingle();
+    if (!error) {
+      const row = (details ?? {}) as Record<string, unknown>;
+      missingProfileFields = missingCandidateFields({
+        phonePresent: Boolean(profile.phone_present),
+        neighborhoodId: profile.neighborhood_id as string | null,
+        jobTitle: row.job_title as string | null,
+        experience: row.experience as string | null,
+        age: row.age as number | null,
+        gender: row.gender as string | null,
+        availability: row.availability as string | null,
+        desiredSalary: row.desired_salary as number | null,
+        skills: row.skills,
+        languages: row.languages,
+        workDays: row.work_days,
+        startTime: row.start_time as string | null,
+        endTime: row.end_time as string | null,
+      });
+    }
+  }
 
   return {
     id: user.id,
@@ -87,6 +126,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     onboardingCompletedAt: profile
       ? ((profile.onboarding_completed_at as string | null) ?? null)
       : new Date(0).toISOString(),
+    missingProfileFields,
   };
 });
 
