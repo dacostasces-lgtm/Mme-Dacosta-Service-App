@@ -6,6 +6,7 @@ import * as z from "zod";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, tooManyRequestsMessage } from "@/lib/rate-limit";
+import { APPLICATION_STATUSES } from "@/lib/applications/status";
 
 export type ApplicationState = { error?: string; ok?: boolean };
 
@@ -90,5 +91,47 @@ export async function applyToJob(
   // pourquoi ApplyButton porte lui-même son état « déjà postulé » au lieu de
   // laisser la page choisir entre lui et un paragraphe.
   revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+const statusSchema = z.object({
+  applicationId: z.string().uuid(),
+  status: z.enum(APPLICATION_STATUSES),
+});
+
+/**
+ * L'employeur fait avancer une candidature reçue. Filtré sur ses propres
+ * offres en plus de la RLS : un admin passe la politique de mise à jour, et ce
+ * menu ne doit agir que sur les candidatures de l'appelant.
+ *
+ * Pas de `revalidatePath` : il bloquerait la réponse de l'action (voir
+ * src/lib/bookings/actions.ts). Le menu rafraîchit la page lui-même.
+ */
+export async function setApplicationStatus(
+  _previous: ApplicationState,
+  formData: FormData
+): Promise<ApplicationState> {
+  const user = await requireUser({ role: "employer" });
+  const parsed = statusSchema.safeParse({
+    applicationId: formData.get("applicationId"),
+    status: formData.get("status"),
+  });
+  if (!parsed.success || !user.profileId) return { error: "Candidature introuvable." };
+
+  const supabase = await createClient();
+  const { data: owned } = await supabase
+    .from("applications")
+    .select("id, jobs!inner(employer_id)")
+    .eq("id", parsed.data.applicationId)
+    .eq("jobs.employer_id", user.profileId)
+    .maybeSingle();
+  if (!owned) return { error: "Candidature introuvable." };
+
+  const { error } = await supabase
+    .from("applications")
+    .update({ status: parsed.data.status })
+    .eq("id", parsed.data.applicationId);
+  if (error) return { error: `Mise à jour impossible : ${error.message}` };
+
   return { ok: true };
 }

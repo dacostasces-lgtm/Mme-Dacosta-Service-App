@@ -1,4 +1,5 @@
 import { MessageSquare, Send, Star, ShieldCheck, Clock, Briefcase, UserPen } from "lucide-react";
+import { MyApplications, type MyApplicationRow } from "@/components/features/jobs/MyApplications";
 import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/dal";
@@ -43,7 +44,13 @@ export default async function CandidateDashboard() {
 
   // RLS scopes these to the candidate: their own applications, their own inbox.
   const [applications, unread, reviews, profile, details, bookings, unlocked] = await Promise.all([
-    supabase.from("applications").select("id", { count: "exact", head: true }),
+    // Ses candidatures et leur étape. La RLS limite aux siennes ; le titre
+    // d'une offre fermée ou échue revient vide, la jointure étant filtrée.
+    supabase
+      .from("applications")
+      .select("id, status, applied_at, job_id, jobs(title)", { count: "exact" })
+      .order("applied_at", { ascending: false })
+      .limit(30),
     supabase
       .from("messages")
       .select("id", { count: "exact", head: true })
@@ -169,6 +176,10 @@ export default async function CandidateDashboard() {
             Voir les offres
           </Link>
         </div>
+
+        <MyApplications
+          applications={(applications.data ?? []) as unknown as MyApplicationRow[]}
+        />
 
         <UnlockedContacts contacts={(unlocked.data ?? []) as UnlockedContact[]} />
 
