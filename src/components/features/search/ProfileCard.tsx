@@ -13,6 +13,8 @@ interface ProfileCardProps {
   rating: number;
   isPremium: boolean;
   availability: string;
+  /** Jours, horaires, « dort sur place » — déjà mis en forme, vides omis. */
+  schedule?: string[];
   avatarUrl?: string;
 }
 
@@ -24,6 +26,7 @@ export function ProfileCard({
   rating,
   isPremium,
   availability,
+  schedule = [],
   id,
   avatarUrl,
 }: ProfileCardProps) {
@@ -120,10 +123,15 @@ export function ProfileCard({
           </div>
         </dl>
 
-        <div className="mt-4 mb-6">
+        <div className="mt-4 mb-6 flex flex-wrap gap-2">
           <Badge variant="outline" className="font-normal">
             {availability}
           </Badge>
+          {schedule.map((item) => (
+            <Badge key={item} variant="outline" className="font-normal">
+              {item}
+            </Badge>
+          ))}
         </div>
 
         <Link

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { updateProfile, type ProfileFormState } from "@/lib/profile/actions";
 import { PHONE_HINT } from "@/lib/phone";
 import type { NeighborhoodOption } from "@/components/features/jobs/JobForm";
+import { ScheduleFields } from "@/components/features/jobs/ScheduleFields";
 
 const FIELD =
   "w-full rounded-lg border border-input bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50";
@@ -23,6 +24,10 @@ export type CandidateProfile = {
   description: string | null;
   languages: string[];
   skills: string[];
+  workDays: string[];
+  startTime: string | null;
+  endTime: string | null;
+  liveIn: boolean;
 };
 
 export type EmployerProfile = {
@@ -245,6 +250,21 @@ export function ProfileForm({
                 <option value="M">Homme</option>
               </select>
             </Field>
+          </div>
+
+          <div className="space-y-5 rounded-2xl border border-border p-4">
+            <div>
+              <h3 className="font-medium">Jours et horaires de disponibilité</h3>
+              <p className="text-xs text-muted-foreground">
+                Les employeurs filtrent les candidats sur ces critères. Laissez vide si tout
+                vous convient.
+              </p>
+            </div>
+            <ScheduleFields
+              daysLegend="Jours où vous êtes disponible"
+              liveInHint="Vous acceptez d'être logé(e) et de passer la nuit chez l'employeur."
+              defaults={candidate}
+            />
           </div>
 
           <Field

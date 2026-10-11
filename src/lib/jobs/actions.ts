@@ -7,6 +7,13 @@ import { redirect } from "@/i18n/routing";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, tooManyRequestsMessage } from "@/lib/rate-limit";
+import {
+  SCHEDULE_ORDER_MESSAGE,
+  readSchedule,
+  scheduleColumns,
+  scheduleOrderValid,
+  scheduleShape,
+} from "@/lib/jobs/schedule-form";
 
 const schema = z
   .object({
@@ -15,10 +22,12 @@ const schema = z
     salaryMin: z.number().int().positive().optional(),
     salaryMax: z.number().int().positive().optional(),
     neighborhoodId: z.string().uuid().optional(),
+    ...scheduleShape,
   })
   .refine((data) => !data.salaryMin || !data.salaryMax || data.salaryMax >= data.salaryMin, {
     message: "Le salaire maximum doit être supérieur au minimum.",
-  });
+  })
+  .refine(scheduleOrderValid, { message: SCHEDULE_ORDER_MESSAGE });
 
 export type JobFormState = { error?: string };
 
@@ -49,6 +58,7 @@ export async function createJob(
     salaryMin: optionalInt(formData.get("salaryMin")),
     salaryMax: optionalInt(formData.get("salaryMax")),
     neighborhoodId: String(formData.get("neighborhoodId") ?? "") || undefined,
+    ...readSchedule(formData),
   });
 
   if (!parsed.success) {
@@ -70,6 +80,7 @@ export async function createJob(
     salary_range_min: parsed.data.salaryMin ?? null,
     salary_range_max: parsed.data.salaryMax ?? null,
     neighborhood_id: parsed.data.neighborhoodId ?? null,
+    ...scheduleColumns(parsed.data),
   });
 
   if (error) {

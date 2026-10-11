@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createJob, type JobFormState } from "@/lib/jobs/actions";
+import { ScheduleFields } from "@/components/features/jobs/ScheduleFields";
 
 export type NeighborhoodOption = { id: string; label: string };
 
@@ -29,7 +30,7 @@ export function JobForm({ neighborhoods }: { neighborhoods: NeighborhoodOption[]
           name="description"
           rows={6}
           required
-          placeholder="Horaires, tâches attendues, nombre d'enfants, contraintes particulières..."
+          placeholder="Tâches attendues, nombre d'enfants, contraintes particulières..."
           className="w-full rounded-lg border border-input bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
         />
       </div>
@@ -48,6 +49,11 @@ export function JobForm({ neighborhoods }: { neighborhoods: NeighborhoodOption[]
           <Input id="salaryMax" name="salaryMax" type="number" min="0" step="1000" placeholder="120000" />
         </div>
       </div>
+
+      <ScheduleFields
+        daysLegend="Jours de service"
+        liveInHint="L'employé est logé et passe la nuit chez vous."
+      />
 
       <div>
         <label htmlFor="neighborhoodId" className="text-sm font-medium mb-1 block">

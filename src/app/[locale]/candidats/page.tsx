@@ -3,6 +3,7 @@ import { SearchFilters } from "@/components/features/search/SearchFilters";
 import { ProfileCard } from "@/components/features/search/ProfileCard";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { availabilityLabel } from "@/lib/candidates/availability";
+import { formatHours, formatWorkDays, isWorkDay, sortWorkDays } from "@/lib/jobs/schedule";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import banniere from "@/assets/images/banniere-candidats.jpg";
 
@@ -17,7 +18,13 @@ type Candidate = {
   availability: string | null;
   distance_km: number | null;
   rating: number | string | null;
+  work_days: string[] | null;
+  start_time: string | null;
+  end_time: string | null;
+  live_in: boolean | null;
 };
+
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /** Shown instead of a 500 when a deploy is missing its Supabase credentials. */
 const MISCONFIGURED =
@@ -32,9 +39,24 @@ function toNumber(value: string | undefined) {
 export default async function CandidatesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; rayon?: string; dispo?: string; lat?: string; lng?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    rayon?: string;
+    dispo?: string;
+    lat?: string;
+    lng?: string;
+    jours?: string | string[];
+    debut?: string;
+    fin?: string;
+    loge?: string;
+  }>;
 }) {
   const params = await searchParams;
+  // Tapés à la main autant que soumis : ce qui ne se lit pas est ignoré.
+  const jours = sortWorkDays(([] as string[]).concat(params.jours ?? []).filter(isWorkDay));
+  const debut = params.debut && TIME.test(params.debut) ? params.debut : "";
+  const fin = params.fin && TIME.test(params.fin) ? params.fin : "";
+  const loge = params.loge === "oui";
 
   // Only validated profiles come back: search_candidates runs as SECURITY
   // INVOKER, so the RLS policy on `profiles` filters the rows, not this page.
@@ -47,6 +69,10 @@ export default async function CandidatesPage({
         max_km: toNumber(params.rayon) ?? null,
         search: params.q ?? null,
         availability_filter: params.dispo ?? null,
+        days_filter: jours.length ? jours : null,
+        start_filter: debut || null,
+        end_filter: fin || null,
+        live_in_filter: loge || null,
       })
     : { data: null, error: { message: MISCONFIGURED } };
 
@@ -72,6 +98,10 @@ export default async function CandidatesPage({
                 dispo: params.dispo ?? "",
                 lat: params.lat,
                 lng: params.lng,
+                jours,
+                debut,
+                fin,
+                loge,
               }}
             />
           </aside>
@@ -122,6 +152,11 @@ export default async function CandidatesPage({
                     availability={
                       availabilityLabel(candidate.availability)
                     }
+                    schedule={[
+                      formatWorkDays(candidate.work_days),
+                      formatHours(candidate.start_time, candidate.end_time),
+                      candidate.live_in ? "Dort sur place" : null,
+                    ].filter((item): item is string => Boolean(item))}
                     avatarUrl={candidate.avatar_url ?? undefined}
                   />
                 ))}

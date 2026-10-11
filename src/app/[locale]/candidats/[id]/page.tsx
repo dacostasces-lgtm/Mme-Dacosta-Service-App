@@ -5,6 +5,7 @@ import { Link } from "@/i18n/routing";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { Badge } from "@/components/ui/badge";
 import { availabilityLabel } from "@/lib/candidates/availability";
+import { formatHours, formatWorkDays } from "@/lib/jobs/schedule";
 import { createClient } from "@/lib/supabase/server";
 
 type Candidate = {
@@ -28,6 +29,10 @@ type Candidate = {
   identity_checked_at: string | null;
   criminal_record_checked_at: string | null;
   interview_passed_at: string | null;
+  work_days: string[] | null;
+  start_time: string | null;
+  end_time: string | null;
+  live_in: boolean | null;
 };
 
 function formatDate(iso: string) {
@@ -285,6 +290,17 @@ export default async function CandidateProfilePage({
               <p className="font-medium text-lg mb-4">
                 {availabilityLabel(profile.availability)}
               </p>
+
+              <h3 className="text-sm font-semibold text-muted-foreground mb-1">Jours</h3>
+              <p className="font-medium mb-4">{formatWorkDays(profile.work_days) ?? "À convenir"}</p>
+
+              <h3 className="text-sm font-semibold text-muted-foreground mb-1">Horaires</h3>
+              <p className="font-medium mb-4">
+                {formatHours(profile.start_time, profile.end_time) ?? "À convenir"}
+              </p>
+
+              <h3 className="text-sm font-semibold text-muted-foreground mb-1">Dormir sur place</h3>
+              <p className="font-medium mb-4">{profile.live_in ? "Oui, accepte" : "Non"}</p>
 
               <h3 className="text-sm font-semibold text-muted-foreground mb-1">Prétention Salariale</h3>
               <p className="font-medium text-lg">{formatSalary(profile.desired_salary)}</p>

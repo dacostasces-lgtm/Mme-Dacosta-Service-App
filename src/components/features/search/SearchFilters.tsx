@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, MapPin, Loader2 } from "lucide-react";
+import { WORK_DAYS, WORK_DAY_LABELS } from "@/lib/jobs/schedule";
 
 export type SearchFilterValues = {
   q: string;
@@ -10,6 +11,10 @@ export type SearchFilterValues = {
   dispo: string;
   lat?: string;
   lng?: string;
+  jours: string[];
+  debut: string;
+  fin: string;
+  loge: boolean;
 };
 
 /**
@@ -122,6 +127,56 @@ export function SearchFilters({ values }: { values: SearchFilterValues }) {
             <option value="external">Externe</option>
           </select>
         </div>
+
+        <fieldset>
+          <legend className="text-sm font-medium mb-2">Jours de service</legend>
+          <div className="flex flex-wrap gap-1.5">
+            {WORK_DAYS.map((day) => (
+              <label
+                key={day}
+                className="cursor-pointer select-none rounded-full border border-input px-2.5 py-1 text-xs transition-colors hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/50"
+              >
+                <input
+                  type="checkbox"
+                  name="jours"
+                  value={day}
+                  defaultChecked={values.jours.includes(day)}
+                  className="sr-only"
+                />
+                {WORK_DAY_LABELS[day].slice(0, 3)}
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Candidats disponibles tous les jours cochés.
+          </p>
+        </fieldset>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="debut" className="text-sm font-medium mb-2 block">
+              De
+            </label>
+            <Input id="debut" name="debut" type="time" defaultValue={values.debut} />
+          </div>
+          <div>
+            <label htmlFor="fin" className="text-sm font-medium mb-2 block">
+              À
+            </label>
+            <Input id="fin" name="fin" type="time" defaultValue={values.fin} />
+          </div>
+        </div>
+
+        <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+          <input
+            type="checkbox"
+            name="loge"
+            value="oui"
+            defaultChecked={values.loge}
+            className="h-4 w-4 accent-primary"
+          />
+          Dort sur place
+        </label>
 
         <Button type="submit" className="w-full h-10">
           Appliquer les filtres
