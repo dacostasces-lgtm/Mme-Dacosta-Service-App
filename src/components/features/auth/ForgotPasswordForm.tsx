@@ -8,6 +8,7 @@ import { Loader2, MailCheck } from "lucide-react";
 import { useLocale } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { authErrorMessage } from "@/lib/auth/errors";
 import { createClient } from "@/lib/supabase/client";
 import { Link } from "@/i18n/routing";
 import { PhoneRecoveryForm } from "@/components/features/auth/PhoneRecoveryForm";
@@ -57,7 +58,7 @@ function ParEmail() {
     // Shown as sent either way: telling the visitor that an address is unknown
     // turns this form into a way to find out who has an account here.
     if (error && !error.message.toLowerCase().includes("user not found")) {
-      setSubmitError(`Envoi impossible : ${error.message}`);
+      setSubmitError(`Envoi impossible : ${authErrorMessage(error, { sendsEmail: true })}`);
       return;
     }
 
