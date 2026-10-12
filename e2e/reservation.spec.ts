@@ -146,6 +146,28 @@ test.describe("réservation d'un candidat", () => {
   });
 });
 
+test.describe("filtre métier de la recherche", () => {
+  test("le bouton du métier retrouve le candidat, un autre métier l'écarte", async ({ page }) => {
+    // candidatPublie pose « Nounou » comme métier.
+    const nom = `Candidate Filtre ${Date.now()}`;
+    await candidatPublie(nom);
+
+    await page.goto(`/fr/candidats?metier=${encodeURIComponent("Nounou")}`);
+    await expect(page.getByText(nom)).toBeVisible({ timeout: 30_000 });
+
+    await page.goto(`/fr/candidats?metier=${encodeURIComponent("Chauffeur")}`);
+    await expect(page.getByRole("heading", { level: 2 }).first()).toBeVisible();
+    await expect(page.getByText(nom)).toHaveCount(0);
+
+    // Avec une saisie en plus, le métier filtre encore l'intitulé.
+    await page.goto(
+      `/fr/candidats?q=${encodeURIComponent(nom)}&metier=${encodeURIComponent("Chauffeur")}`
+    );
+    await expect(page.getByRole("heading", { level: 2 }).first()).toBeVisible();
+    await expect(page.getByText(nom)).toHaveCount(0);
+  });
+});
+
 /** Un numéro à neuf chiffres, différent à chaque essai. */
 function numeroDeTest() {
   return `06${String(Date.now()).slice(-7)}`;

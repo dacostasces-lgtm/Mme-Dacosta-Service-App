@@ -1,7 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
-import { DIRECTORY_SELECT, ROLE_LABELS, type AdminContact, type DirectoryRow } from "@/lib/admin/contacts";
+import {
+  DIRECTORY_SELECT,
+  ROLE_LABELS,
+  loadCandidateAddresses,
+  type AdminContact,
+  type DirectoryRow,
+} from "@/lib/admin/contacts";
 
 /**
  * Export de la base de contacts, pour l'administration seulement.
@@ -40,6 +46,7 @@ export async function GET(request: NextRequest) {
       "Email",
       "Quartier",
       "Ville",
+      "Adresse précise",
       "Métier",
       "Expérience",
       "Publié",
@@ -71,6 +78,10 @@ export async function GET(request: NextRequest) {
     const contacts = new Map(
       ((contactData ?? []) as AdminContact[]).map((row) => [row.profile_id, row])
     );
+    const addresses = await loadCandidateAddresses(
+      supabase,
+      rows.filter((row) => row.role === "candidate").map((row) => row.id)
+    );
 
     for (const row of rows) {
       const contact = contacts.get(row.id);
@@ -84,6 +95,7 @@ export async function GET(request: NextRequest) {
           contact?.email,
           row.neighborhoods?.name,
           row.neighborhoods?.cities?.name,
+          addresses?.get(row.id),
           row.candidate_details?.job_title,
           row.candidate_details?.experience,
           row.is_validated ? "oui" : "non",

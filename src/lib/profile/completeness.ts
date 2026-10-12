@@ -10,6 +10,8 @@
 export type CandidateFields = {
   phonePresent: boolean;
   neighborhoodId: string | null | undefined;
+  /** Adresse précise, privée (20261012000000_candidate_address.sql). */
+  address: string | null | undefined;
   jobTitle: string | null | undefined;
   experience: string | null | undefined;
   age: number | null | undefined;
@@ -29,6 +31,7 @@ const filled = (value: unknown) =>
 const RULES: [keyof CandidateFields, string][] = [
   ["phonePresent", "Téléphone"],
   ["neighborhoodId", "Quartier"],
+  ["address", "Adresse précise"],
   ["jobTitle", "Poste recherché"],
   ["experience", "Années d'expérience"],
   ["age", "Âge"],
@@ -59,3 +62,12 @@ export const EXPERIENCE_OPTIONS = [
   ...Array.from({ length: 14 }, (_, i) => `${i + 2} ans`),
   "Plus de 15 ans",
 ];
+
+/**
+ * Une table pas encore créée en base, lue par l'API : PostgREST répond
+ * PGRST205, Postgres 42P01. Sert à ne pas bloquer le site entre le
+ * déploiement du code et le passage de la migration.
+ */
+export function isMissingTable(error: { code?: string } | null | undefined) {
+  return error?.code === "PGRST205" || error?.code === "42P01";
+}

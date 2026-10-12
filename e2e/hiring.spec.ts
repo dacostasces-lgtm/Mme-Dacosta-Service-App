@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { register, completeCandidateProfile, addEmployerPhone } from "./helpers";
+import { register, completeCandidateProfile, addEmployerPhone, chooseOtherMetier } from "./helpers";
 
 test.describe("offre et candidature", () => {
   /**
@@ -28,7 +28,9 @@ test.describe("offre et candidature", () => {
     // filtre anti-numéros (20261011050000_block_phone_numbers.sql) prend à
     // juste titre pour un numéro de téléphone, et l'offre est refusée.
     const title = `Nounou temps plein ${Date.now().toString(36)}`;
-    await employer.getByLabel("Intitulé du poste").fill(title);
+    // Le poste se choisit par boutons ; « Autre… » garde un intitulé unique,
+    // que la suite retrouve dans la liste des offres.
+    await chooseOtherMetier(employer, title);
     await employer
       .getByLabel("Description")
       .fill(

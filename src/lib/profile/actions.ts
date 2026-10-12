@@ -1,6 +1,6 @@
 "use server";
 
-import { missingCandidateFields } from "@/lib/profile/completeness";
+import { isMissingTable, missingCandidateFields } from "@/lib/profile/completeness";
 import { containsPhoneNumber, PHONE_NUMBER_REFUSED } from "@/lib/contact/phone-filter";
 import * as z from "zod";
 import { requireUser } from "@/lib/auth/dal";
@@ -54,6 +54,12 @@ const baseSchema = z.object({
 });
 
 const candidateSchema = baseSchema.extend({
+  address: z
+    .string()
+    .trim()
+    .min(3, "Adresse trop courte : indiquez la rue, le numéro ou un repère.")
+    .max(200, "Adresse trop longue (200 caractères maximum).")
+    .optional(),
   jobTitle: z.string().trim().max(80).optional(),
   age: z.number().int().min(16, "Âge minimum : 16 ans.").max(80).optional(),
   gender: z.enum(["F", "M", ""]).optional(),
@@ -167,8 +173,13 @@ export async function updateProfile(
 
     if (error) return { error: `Enregistrement impossible : ${error.message}` };
   } else {
+    // Champ absent quand la page n'a pas pu lire la table des adresses
+    // (migration pas encore passée) : il n'est alors ni exigé ni écrit.
+    const addressEditable = formData.has("address");
+
     const parsed = candidateSchema.safeParse({
       ...shared,
+      address: text(formData, "address"),
       jobTitle: text(formData, "jobTitle"),
       age: integer(formData, "age"),
       gender: String(formData.get("gender") ?? ""),
@@ -193,6 +204,7 @@ export async function updateProfile(
         // fie au numéro déjà enregistré plutôt que de bloquer pour rien.
         phonePresent: contactEditable ? Boolean(parsed.data.phone) : user.hasPhone,
         neighborhoodId: parsed.data.neighborhoodId,
+        address: addressEditable ? parsed.data.address : "?",
         jobTitle: parsed.data.jobTitle,
         experience: parsed.data.experience,
         age: parsed.data.age,
@@ -243,6 +255,22 @@ export async function updateProfile(
     );
 
     if (error) return { error: `Enregistrement impossible : ${error.message}` };
+
+    // L'adresse vit à part, lisible du seul candidat et de l'administration
+    // (20261012000000_candidate_address.sql).
+    if (addressEditable && parsed.data.address) {
+      const { error: addressError } = await supabase.from("candidate_addresses").upsert(
+        {
+          profile_id: user.profileId,
+          address: parsed.data.address,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "profile_id" }
+      );
+      if (addressError && !isMissingTable(addressError)) {
+        return { error: `Adresse non enregistrée : ${addressError.message}` };
+      }
+    }
   }
 
   // Pas de `revalidatePath` : appelé depuis la page du profil, il empêchait

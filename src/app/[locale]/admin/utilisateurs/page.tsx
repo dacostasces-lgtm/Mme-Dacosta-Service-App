@@ -11,6 +11,7 @@ import {
   ROLE_LABELS,
   type AdminContact,
   type DirectoryRow,
+  loadCandidateAddresses,
 } from "@/lib/admin/contacts";
 import { cn } from "@/lib/utils";
 
@@ -58,6 +59,10 @@ export default async function DirectoryPage({
     if (result.error) contactsError = result.error.message;
     for (const row of (result.data ?? []) as AdminContact[]) contacts.set(row.profile_id, row);
   }
+  const addresses = await loadCandidateAddresses(
+    supabase,
+    rows.filter((row) => row.role === "candidate").map((row) => row.id)
+  );
 
   const total = count ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -123,7 +128,7 @@ export default async function DirectoryPage({
                 <th className="px-4 py-3 font-medium">Nom</th>
                 <th className="px-4 py-3 font-medium">Téléphone</th>
                 <th className="px-4 py-3 font-medium">Email</th>
-                <th className="px-4 py-3 font-medium">Quartier</th>
+                <th className="px-4 py-3 font-medium">Quartier et adresse</th>
                 <th className="px-4 py-3 font-medium">Métier</th>
                 <th className="px-4 py-3 font-medium">Statut</th>
                 <th className="px-4 py-3 font-medium">Inscrit le</th>
@@ -177,6 +182,11 @@ export default async function DirectoryPage({
                       {[row.neighborhoods?.name, row.neighborhoods?.cities?.name]
                         .filter(Boolean)
                         .join(", ") || "—"}
+                      {addresses?.get(row.id) && (
+                        <span className="block text-xs text-muted-foreground">
+                          {addresses.get(row.id)}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {row.candidate_details?.job_title ?? "—"}

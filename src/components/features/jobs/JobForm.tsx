@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createJob, type JobFormState } from "@/lib/jobs/actions";
 import { ScheduleFields } from "@/components/features/jobs/ScheduleFields";
+import { MetierPicker } from "@/components/features/jobs/MetierPicker";
 import { JOB_PRICE } from "@/lib/jobs/payment";
 import { formatPrice } from "@/lib/subscriptions/plans";
 
@@ -17,12 +18,14 @@ export function JobForm({ neighborhoods }: { neighborhoods: NeighborhoodOption[]
 
   return (
     <form action={formAction} className="space-y-5">
-      <div>
-        <label htmlFor="title" className="text-sm font-medium mb-1 block">
-          Intitulé du poste
-        </label>
-        <Input id="title" name="title" placeholder="Ex: Nounou à temps plein" required />
-      </div>
+      {/* Le métier se touche plutôt que de s'écrire : un intitulé tapé à la
+          main (« nouno », « menagere ») ne ressort pas dans la recherche. */}
+      <MetierPicker
+        name="title"
+        legend="Poste à pourvoir"
+        required
+        otherPlaceholder="Écrivez l'intitulé du poste"
+      />
 
       <div>
         <label htmlFor="description" className="text-sm font-medium mb-1 block">

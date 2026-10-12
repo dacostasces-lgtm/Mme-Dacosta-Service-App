@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Search, MapPin, Loader2 } from "lucide-react";
 import { WORK_DAYS, WORK_DAY_LABELS } from "@/lib/jobs/schedule";
 import { RHYTHM_OPTIONS } from "@/lib/candidates/availability";
+import { METIERS } from "@/lib/jobs/metiers";
 
 export type SearchFilterValues = {
   q: string;
+  metier: string;
   rayon: string;
   dispo: string;
   lat?: string;
@@ -62,6 +64,28 @@ export function SearchFilters({ values }: { values: SearchFilterValues }) {
             <Input id="q" name="q" className="pl-9" placeholder="Ex: Nounou, Bacongo..." defaultValue={values.q} />
           </div>
         </div>
+
+        {/* Le métier se touche : pas besoin de savoir l'écrire pour filtrer. */}
+        <fieldset>
+          <legend className="text-sm font-medium mb-2">Métier</legend>
+          <div className="flex flex-wrap gap-1.5">
+            {["", ...METIERS].map((metier) => (
+              <label
+                key={metier || "tous"}
+                className="cursor-pointer select-none rounded-full border border-input px-2.5 py-1 text-xs transition-colors hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/50"
+              >
+                <input
+                  type="radio"
+                  name="metier"
+                  value={metier}
+                  defaultChecked={values.metier === metier}
+                  className="sr-only"
+                />
+                {metier || "Tous"}
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
         {/* fieldset/legend, pas un label : « Point de départ » nomme un groupe
             — un bouton et deux champs cachés — et non une saisie. Un label sans

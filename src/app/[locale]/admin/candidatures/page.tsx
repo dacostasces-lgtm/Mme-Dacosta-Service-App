@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { telLink } from "@/lib/contact/unlock";
 import { EMPLOYER_STATUS_LABELS, type ApplicationStatus } from "@/lib/applications/status";
-import type { AdminContact } from "@/lib/admin/contacts";
+import { loadCandidateAddresses, type AdminContact } from "@/lib/admin/contacts";
 
 export const metadata: Metadata = {
   title: "Candidatures",
@@ -21,7 +21,16 @@ type Row = {
   jobs: { title: string; employer: { id: string; full_name: string } | null } | null;
 };
 
-function Contact({ name, contact }: { name: string; contact: AdminContact | undefined }) {
+function Contact({
+  name,
+  contact,
+  address,
+}: {
+  name: string;
+  contact: AdminContact | undefined;
+  /** Adresse précise d'un candidat, quand elle est connue. */
+  address?: string;
+}) {
   return (
     <div>
       <span className="font-medium">{name}</span>
@@ -39,6 +48,7 @@ function Contact({ name, contact }: { name: string; contact: AdminContact | unde
       ) : (
         <span className="block text-xs text-amber-700 dark:text-amber-500">Pas de numéro</span>
       )}
+      {address && <span className="block text-xs text-muted-foreground">{address}</span>}
     </div>
   );
 }
@@ -73,6 +83,10 @@ export default async function AdminApplicationsPage() {
     const result = await supabase.rpc("admin_profile_contacts", { p_ids: ids });
     for (const row of (result.data ?? []) as AdminContact[]) contacts.set(row.profile_id, row);
   }
+  const addresses = await loadCandidateAddresses(
+    supabase,
+    rows.map((row) => row.candidate?.id).filter(Boolean) as string[]
+  );
 
   return (
     <div className="min-h-screen bg-surface">
@@ -112,6 +126,7 @@ export default async function AdminApplicationsPage() {
                     <Contact
                       name={row.candidate?.full_name ?? "Candidat"}
                       contact={row.candidate ? contacts.get(row.candidate.id) : undefined}
+                      address={row.candidate ? addresses?.get(row.candidate.id) : undefined}
                     />
                   </td>
                   <td className="px-4 py-3">

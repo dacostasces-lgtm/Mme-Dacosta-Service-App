@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { availabilityLabel } from "@/lib/candidates/availability";
 import { formatHours, formatWorkDays, isWorkDay, sortWorkDays } from "@/lib/jobs/schedule";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { isMetier, metierSearchTerm } from "@/lib/jobs/metiers";
 import banniere from "@/assets/images/banniere-candidats.jpg";
 
 type Candidate = {
@@ -41,6 +42,7 @@ export default async function CandidatesPage({
 }: {
   searchParams: Promise<{
     q?: string;
+    metier?: string;
     rayon?: string;
     dispo?: string;
     lat?: string;
@@ -57,6 +59,9 @@ export default async function CandidatesPage({
   const debut = params.debut && TIME.test(params.debut) ? params.debut : "";
   const fin = params.fin && TIME.test(params.fin) ? params.fin : "";
   const loge = params.loge === "oui";
+  const metier = isMetier(params.metier) ? params.metier : "";
+  const metierTerm = metier ? metierSearchTerm(metier) : "";
+  const q = params.q?.trim() ?? "";
 
   // Only validated profiles come back: search_candidates runs as SECURITY
   // INVOKER, so the RLS policy on `profiles` filters the rows, not this page.
@@ -67,7 +72,9 @@ export default async function CandidatesPage({
         origin_lat: toNumber(params.lat) ?? null,
         origin_lng: toNumber(params.lng) ?? null,
         max_km: toNumber(params.rayon) ?? null,
-        search: params.q ?? null,
+        // Un seul texte cherché côté base : le métier quand rien n'est tapé,
+        // sinon la saisie, et le métier filtré ensuite sur l'intitulé.
+        search: q || metierTerm || null,
         availability_filter: params.dispo ?? null,
         days_filter: jours.length ? jours : null,
         start_filter: debut || null,
@@ -76,7 +83,12 @@ export default async function CandidatesPage({
       })
     : { data: null, error: { message: MISCONFIGURED } };
 
-  const candidates = (data ?? []) as Candidate[];
+  const candidates = ((data ?? []) as Candidate[]).filter(
+    (candidate) =>
+      !q ||
+      !metierTerm ||
+      (candidate.job_title ?? "").toLocaleLowerCase("fr").includes(metierTerm.toLocaleLowerCase("fr"))
+  );
 
   return (
     <>
@@ -94,6 +106,7 @@ export default async function CandidatesPage({
             <SearchFilters
               values={{
                 q: params.q ?? "",
+                metier,
                 rayon: params.rayon ?? "",
                 dispo: params.dispo ?? "",
                 lat: params.lat,

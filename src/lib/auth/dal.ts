@@ -84,19 +84,31 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     missingProfileFields = ["Téléphone"];
   }
   if (profile?.role === "candidate") {
-    const { data: details, error } = await supabase
-      .from("candidate_details")
-      .select(
-        "job_title, experience, age, gender, availability, desired_salary, skills, languages, " +
-          "work_days, start_time, end_time"
-      )
-      .eq("profile_id", profile.id)
-      .maybeSingle();
+    const [{ data: details, error }, addressResult] = await Promise.all([
+      supabase
+        .from("candidate_details")
+        .select(
+          "job_title, experience, age, gender, availability, desired_salary, skills, languages, " +
+            "work_days, start_time, end_time"
+        )
+        .eq("profile_id", profile.id)
+        .maybeSingle(),
+      supabase
+        .from("candidate_addresses")
+        .select("address")
+        .eq("profile_id", profile.id)
+        .maybeSingle(),
+    ]);
     if (!error) {
       const row = (details ?? {}) as Record<string, unknown>;
       missingProfileFields = missingCandidateFields({
         phonePresent: Boolean(profile.phone_present),
         neighborhoodId: profile.neighborhood_id as string | null,
+        // Lecture impossible (table pas encore créée) : on ne réclame pas une
+        // case que personne ne pourrait remplir.
+        address: addressResult.error
+          ? "?"
+          : ((addressResult.data?.address as string | undefined) ?? null),
         jobTitle: row.job_title as string | null,
         experience: row.experience as string | null,
         age: row.age as number | null,

@@ -51,6 +51,11 @@ type Props = {
   neighborhoodId: string | null;
   neighborhoods: NeighborhoodOption[];
   candidate?: CandidateProfile;
+  /** Adresse précise du candidat, privée (20261012000000_candidate_address.sql). */
+  candidateAddress?: string | null;
+  /** False tant que la table des adresses n'est pas lisible : le champ est
+   *  alors masqué plutôt qu'exigé sans pouvoir être enregistré. */
+  addressEditable?: boolean;
   employer?: EmployerProfile;
   /** Cases encore vides du profil candidat, affichées en tête du formulaire. */
   missing?: string[];
@@ -87,6 +92,8 @@ export function ProfileForm({
   neighborhoodId,
   neighborhoods,
   candidate,
+  candidateAddress = null,
+  addressEditable = false,
   employer,
   missing = [],
 }: Props) {
@@ -191,6 +198,24 @@ export function ProfileForm({
             ))}
           </select>
         </Field>
+
+        {addressEditable && (
+          <Field
+            label="Adresse précise"
+            htmlFor="address"
+            hint="Rue, numéro, repère. Visible seulement par vous et l'équipe Madame Dacosta, jamais sur votre fiche."
+          >
+            <Input
+              id="address"
+              name="address"
+              required={candidateRequired}
+              minLength={3}
+              maxLength={200}
+              defaultValue={candidateAddress ?? ""}
+              placeholder="Ex : 12 rue Mbochi, derrière l'église Saint-Pierre"
+            />
+          </Field>
+        )}
       </section>
 
       {isEmployer ? (

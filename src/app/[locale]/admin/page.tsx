@@ -1,7 +1,7 @@
-import { ShieldCheck, Clock, MapPin, Mail, Undo2, Check, X, UserPlus, Phone, Database, Users } from "lucide-react";
+import { ShieldCheck, Clock, MapPin, Mail, Undo2, Check, X, UserPlus, Phone, Database, Users, Home } from "lucide-react";
 import { missingCandidateFields } from "@/lib/profile/completeness";
 import { telLink, whatsappLink } from "@/lib/contact/unlock";
-import type { AdminContact } from "@/lib/admin/contacts";
+import { loadCandidateAddresses, type AdminContact } from "@/lib/admin/contacts";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/routing";
@@ -54,6 +54,8 @@ type ModerationProfile = {
   phone?: string | null;
   whatsapp?: string | null;
   phone_verified?: boolean;
+  /** Adresse précise d'un candidat ; `undefined` si la table n'est pas lisible. */
+  address?: string | null;
   role: string;
   created_at: string;
   phone_present: boolean | null;
@@ -124,6 +126,9 @@ function MissingFields({ profile }: { profile: ModerationProfile }) {
   const missing = missingCandidateFields({
     phonePresent: Boolean(profile.phone_present),
     neighborhoodId: profile.neighborhood_id,
+    // `undefined` : adresses illisibles (migration pas encore passée), donc
+    // pas réclamées.
+    address: profile.address === undefined ? "?" : profile.address,
     jobTitle: d?.job_title,
     experience: d?.experience,
     age: d?.age,
@@ -211,6 +216,12 @@ function ProfileRow({ profile, validated }: { profile: ModerationProfile; valida
               <span className="flex items-center gap-1">
                 <MapPin className="h-3 w-3 shrink-0" />
                 {place}
+              </span>
+            )}
+            {profile.address && (
+              <span className="flex items-center gap-1 min-w-0">
+                <Home className="h-3 w-3 shrink-0" />
+                <span className="truncate">{profile.address}</span>
               </span>
             )}
             <span className="flex items-center gap-1">
@@ -382,10 +393,13 @@ export default async function AdminPage() {
       }
     }
   }
+  // Adresses précises des candidats, lisibles par l'administration seule.
+  const addresses = await loadCandidateAddresses(supabase, ids);
   const withEmail = (profile: ModerationProfile): ModerationProfile => ({
     ...profile,
     email: null,
     ...contacts.get(profile.id),
+    ...(addresses ? { address: addresses.get(profile.id) ?? null } : {}),
   });
   const declaredPayments = (declared.data ?? []) as unknown as DeclaredPayment[];
   // Kept apart from `error`: until 20260728000000_manual_mobile_money.sql is

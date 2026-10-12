@@ -1,3 +1,5 @@
+import type { createClient } from "@/lib/supabase/server";
+
 /** Une ligne de admin_profile_contacts() (20261011080000_admin_contacts.sql). */
 export type AdminContact = {
   profile_id: string;
@@ -30,3 +32,26 @@ export const ROLE_LABELS: Record<string, string> = {
   employer: "Employeur",
   admin: "Admin",
 };
+
+/**
+ * Les adresses précises des candidats (20261012000000_candidate_address.sql),
+ * lisibles par l'administration seule. `null` tant que la table n'existe pas :
+ * l'écran l'affiche alors sans adresse plutôt qu'en erreur.
+ */
+export async function loadCandidateAddresses(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ids: string[]
+): Promise<Map<string, string> | null> {
+  if (ids.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from("candidate_addresses")
+    .select("profile_id, address")
+    .in("profile_id", ids);
+  if (error) return null;
+  return new Map(
+    ((data ?? []) as { profile_id: string; address: string }[]).map((row) => [
+      row.profile_id,
+      row.address,
+    ])
+  );
+}

@@ -122,15 +122,10 @@ export async function saveProfile(page: Page, timeout = 20_000) {
  *  l'inscription. */
 export async function fillCandidateProfile(page: Page, phone: string) {
   await page.getByLabel("Téléphone").fill(phone);
-  // Le choix du métier est un composant React : touché avant l'hydratation de
-  // la page, le bouton ne réagit pas, le métier reste vide et le navigateur
-  // refuse ensuite d'envoyer le formulaire (case obligatoire). On recommence
-  // jusqu'à ce que le bouton soit bien enfoncé.
-  const nounou = page.getByRole("button", { name: "Nounou", exact: true });
-  await expect(async () => {
-    await nounou.click();
-    await expect(nounou).toHaveAttribute("aria-pressed", "true", { timeout: 1_000 });
-  }).toPass({ timeout: 15_000 });
+  // Le métier d'abord : chooseMetier attend que la page réagisse, et un métier
+  // resté vide bloquerait l'envoi du formulaire (case obligatoire).
+  await chooseMetier(page, "Nounou");
+  await page.getByLabel("Adresse précise").fill("12 rue Mbochi, derrière l'école");
   await page.getByLabel("Années d'expérience").selectOption("6 ans");
   await page.getByLabel("Âge").fill("32");
   await page.getByLabel("Sexe").selectOption("F");
@@ -217,4 +212,23 @@ export async function registerByPhone(page: Page, role: Role, fullName: string, 
   await page.waitForURL(new RegExp(`/fr${dashboard}`), { timeout: 30_000 });
 
   return { phone, password: PASSWORD };
+}
+
+/**
+ * Touche un métier dans le choix par boutons (MetierPicker). Le composant est
+ * React : touché avant que la page soit prête, le bouton ne réagit pas. On
+ * recommence jusqu'à ce qu'il soit bien enfoncé.
+ */
+export async function chooseMetier(page: Page, metier: string) {
+  const button = page.getByRole("button", { name: metier, exact: true });
+  await expect(async () => {
+    await button.click();
+    await expect(button).toHaveAttribute("aria-pressed", "true", { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
+}
+
+/** « Autre… » puis un intitulé écrit, pour un métier hors de la liste. */
+export async function chooseOtherMetier(page: Page, text: string) {
+  await chooseMetier(page, "Autre…");
+  await page.getByLabel("Autre métier").fill(text);
 }
