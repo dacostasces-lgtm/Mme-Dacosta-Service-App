@@ -10,6 +10,13 @@ name: Sauvegarde de la base
 # aussi — on perd jusqu'à vingt-quatre heures d'écritures, les artefacts ne se
 # gardent que quatre-vingt-dix jours, et les fichiers des buckets n'y sont pas.
 # Mais c'est la différence entre « reconstruire le schéma » et « tout a disparu ».
+#
+# L'archive est CHIFFRÉE avant d'être déposée : le dépôt est public, et les
+# artefacts d'un dépôt public se téléchargent par n'importe quel compte GitHub.
+# Jusqu'au 12 octobre 2026 ils partaient en clair — noms, numéros, positions,
+# mots de passe chiffrés et jetons de connexion de tous les inscrits (audit de
+# sécurité de ce jour). Sans le secret BACKUP_PASSPHRASE, le job échoue au
+# lieu de déposer quoi que ce soit.
 
 on:
   schedule:
@@ -66,8 +73,9 @@ jobs:
 
       # Trois exports, parce qu'une restauration les rejoue dans cet ordre.
       # `auth` est inclus délibérément : sans lui on restaure des profils dont
-      # aucun compte ne peut plus se connecter. Les mots de passe chiffrés en
-      # font partie, donc l'artefact est sensible — d'où un dépôt privé.
+      # aucun compte ne peut plus se connecter. Les mots de passe chiffrés et
+      # les jetons de connexion en font partie : l'archive n'est déposée que
+      # chiffrée, voir plus bas.
       # `URL` vient de l'étape précédente, par GITHUB_ENV.
       - name: Exporter
         run: |
@@ -91,10 +99,18 @@ jobs:
 
       - name: Mode d'emploi joint à l'archive
         run: |
-          cat > sauvegarde/LIRE-MOI.md <<'TXT'
+          mkdir -p depot
+          cat > depot/LIRE-MOI.md <<'TXT'
           # Restaurer cette sauvegarde
 
-          Rejouer dans l'ordre, contre le bon projet :
+          L'archive est chiffrée. La phrase secrète est celle du secret GitHub
+          BACKUP_PASSPHRASE (GitHub ne la réaffiche pas : gardez-en une copie
+          hors de GitHub). Pour la déchiffrer :
+
+              gpg --decrypt sauvegarde.tar.gz.gpg > sauvegarde.tar.gz
+              tar -xzf sauvegarde.tar.gz
+
+          Puis rejouer dans l'ordre, contre le bon projet :
 
               ./scripts/verifier-projet.sh
               psql "$SUPABASE_DB_URL" -f 1-roles.sql
@@ -111,9 +127,30 @@ jobs:
             hors de la base et survivent de toute façon à un effacement.
           TXT
 
+      # Chiffrement symétrique AES-256 : seule la phrase secrète rouvre
+      # l'archive. Rien n'est déposé si elle manque ou si elle est trop courte
+      # pour résister à une recherche par force brute.
+      - name: Chiffrer l'archive
+        env:
+          PHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ "${#PHRASE}" -lt 20 ]; then
+            echo "::error::Le secret BACKUP_PASSPHRASE est absent ou fait moins de 20 caractères. Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          tar -czf sauvegarde.tar.gz sauvegarde
+          printf '%s' "$PHRASE" | gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 0 --symmetric --cipher-algo AES256 \
+            -o depot/sauvegarde.tar.gz.gpg sauvegarde.tar.gz
+          rm -rf sauvegarde sauvegarde.tar.gz
+          # Contrôle : rien d'autre que l'archive chiffrée et le mode d'emploi.
+          ls -la depot
+          test "$(ls depot | sort | tr '\n' ' ')" = "LIRE-MOI.md sauvegarde.tar.gz.gpg "
+
       - uses: actions/upload-artifact@v7
         with:
           name: sauvegarde-${{ github.run_id }}
-          path: sauvegarde/
+          path: depot/
           # Le maximum autorisé. Au-delà, il faut sortir l'archive de GitHub.
           retention-days: 90

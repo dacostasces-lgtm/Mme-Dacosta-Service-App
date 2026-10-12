@@ -48,24 +48,11 @@ export async function startSubscription(
 
   const supabase = await createClient();
 
-  // One open request at a time: a second would leave the admin with two rows
-  // for the same payment and no way to tell which the transaction belongs to.
-  const { data: existing } = await supabase
-    .from("subscriptions")
-    .select("id")
-    .eq("profile_id", user.profileId)
-    .eq("status", "pending_payment")
-    .maybeSingle();
-
-  if (!existing) {
-    const { error } = await supabase.from("subscriptions").insert({
-      profile_id: user.profileId,
-      plan_name: plan.name,
-      price: plan.price,
-    });
-
-    if (error) return { error: `Demande impossible : ${error.message}` };
-  }
+  // Le prix et la formule sont fixés en base, qui vérifie aussi le rôle et
+  // renvoie la demande déjà ouverte s'il y en a une : l'insertion directe
+  // laissait l'acheteur choisir son prix (20261012010000_security_fixes.sql).
+  const { error } = await supabase.rpc("request_subscription", { p_plan: plan.id });
+  if (error) return { error: `Demande impossible : ${error.message}` };
 
   revalidatePath("/", "layout");
   return redirect({ href: "/premium", locale });
