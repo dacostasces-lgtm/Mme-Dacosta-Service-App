@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth/dal";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalisePhone } from "@/lib/phone";
 import { AVAILABILITY_VALUES } from "@/lib/candidates/availability";
+import { isMissingTable } from "@/lib/profile/completeness";
 import {
   SCHEDULE_ORDER_MESSAGE,
   readSchedule,
@@ -19,6 +20,12 @@ const schema = z.object({
   phone: z.string().trim().min(1, "Le numéro est obligatoire."),
   email: z.string().trim().email("Adresse invalide.").optional().or(z.literal("")),
   neighborhoodId: z.string().uuid("Choisissez un quartier."),
+  address: z
+    .string()
+    .trim()
+    .max(200, "Adresse trop longue (200 caractères maximum).")
+    .refine((value) => value === "" || value.length >= 3, "Adresse trop courte.")
+    .optional(),
   jobTitle: z.string().trim().min(2, "Indiquez le métier."),
   experience: z.string().trim().max(60).optional(),
   availability: z.enum(AVAILABILITY_VALUES).optional(),
@@ -70,6 +77,7 @@ export async function createCandidate(
     phone: formData.get("phone"),
     email: formData.get("email") ?? "",
     neighborhoodId: formData.get("neighborhoodId"),
+    address: formData.get("address") ?? undefined,
     jobTitle: formData.get("jobTitle"),
     experience: formData.get("experience") ?? undefined,
     availability: formData.get("availability") || undefined,
@@ -195,6 +203,18 @@ export async function createCandidate(
 
   if (detailsError) {
     return { error: `Profil publié mais incomplet : ${detailsError.message}` };
+  }
+
+  // Facultative ici : la modération ne la connaît pas toujours, le candidat
+  // la complétera depuis son profil. Table absente (migration pas encore
+  // passée) : la fiche reste créée.
+  if (parsed.data.address) {
+    const { error: addressError } = await admin
+      .from("candidate_addresses")
+      .upsert({ profile_id: profile.id, address: parsed.data.address }, { onConflict: "profile_id" });
+    if (addressError && !isMissingTable(addressError)) {
+      return { error: `Profil publié, mais l'adresse n'a pas été enregistrée : ${addressError.message}` };
+    }
   }
 
   // Pas de `revalidatePath` ici : mesuré sur ce dépôt, un appel depuis une

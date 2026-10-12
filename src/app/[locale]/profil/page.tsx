@@ -32,7 +32,7 @@ export default async function ProfilePage() {
   const supabase = await createClient();
   const isEmployer = user.role === "employer";
 
-  const [profileResult, neighborhoodResult, contactResult, detailsResult] = await Promise.all([
+  const [profileResult, neighborhoodResult, contactResult, detailsResult, addressResult] = await Promise.all([
     supabase
       .from("profiles")
       .select("full_name, neighborhood_id, avatar_url, phone_verified_at")
@@ -54,6 +54,16 @@ export default async function ProfilePage() {
             "job_title, age, gender, experience, desired_salary, availability, description, " +
               "languages, skills, cv_url, work_days, start_time, end_time, live_in"
           )
+          .eq("profile_id", user.profileId ?? "")
+          .maybeSingle(),
+    // Adresse précise du candidat, dans sa table privée. Erreur tant que
+    // 20261012000000_candidate_address.sql n'est pas passée : le champ est
+    // alors simplement masqué.
+    isEmployer
+      ? Promise.resolve({ data: null, error: null })
+      : supabase
+          .from("candidate_addresses")
+          .select("address")
           .eq("profile_id", user.profileId ?? "")
           .maybeSingle(),
   ]);
@@ -139,6 +149,8 @@ export default async function ProfilePage() {
             neighborhoodId={(profileResult.data?.neighborhood_id as string) ?? null}
             neighborhoods={neighborhoods}
             candidate={candidate}
+            candidateAddress={(addressResult.data?.address as string | undefined) ?? null}
+            addressEditable={!isEmployer && !addressResult.error}
             employer={employer}
             missing={user.missingProfileFields}
           />

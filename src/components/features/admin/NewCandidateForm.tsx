@@ -8,6 +8,8 @@ import { Link } from "@/i18n/routing";
 import { createCandidate, type NewCandidateState } from "@/lib/admin/candidates";
 import { RHYTHM_OPTIONS } from "@/lib/candidates/availability";
 import { ScheduleFields } from "@/components/features/jobs/ScheduleFields";
+import { MetierPicker } from "@/components/features/jobs/MetierPicker";
+import { EXPERIENCE_OPTIONS } from "@/lib/profile/completeness";
 import { PHONE_HINT } from "@/lib/phone";
 import type { CityRef } from "@/lib/geo/locations";
 
@@ -108,20 +110,41 @@ export function NewCandidateForm({ cities }: { cities: CityRef[] }) {
               ))}
             </select>
           </div>
+
+          <div className="sm:col-span-2">
+            <Label
+              htmlFor="address"
+              hint="Rue, numéro, repère. Visible seulement par le candidat et l'administration."
+            >
+              Adresse précise
+            </Label>
+            <Input
+              id="address"
+              name="address"
+              maxLength={200}
+              placeholder="Ex : 12 rue Mbochi, derrière l'église Saint-Pierre"
+            />
+          </div>
         </div>
       </section>
 
       <section className="bg-card border border-border rounded-3xl shadow-soft p-6 sm:p-7">
         <h2 className="font-semibold mb-5">Métier</h2>
         <div className="grid sm:grid-cols-2 gap-5">
-          <div>
-            <Label htmlFor="jobTitle">Métier</Label>
-            <Input id="jobTitle" name="jobTitle" required maxLength={80} placeholder="Ex : Nounou expérimentée" />
+          {/* Les mêmes choix que sur le profil du candidat : une fiche saisie
+              ici doit ressortir dans la recherche comme les autres. */}
+          <div className="sm:col-span-2">
+            <MetierPicker name="jobTitle" legend="Métier" required />
           </div>
 
           <div>
-            <Label htmlFor="experience" hint="Texte libre : « 5 ans », « depuis 2019 »">Expérience</Label>
-            <Input id="experience" name="experience" maxLength={60} placeholder="Ex : 5 ans" />
+            <Label htmlFor="experience">Années d&apos;expérience</Label>
+            <select id="experience" name="experience" className={FIELD} defaultValue="">
+              <option value="">Choisir</option>
+              {EXPERIENCE_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
           </div>
 
           <div>

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { PASSWORD, uniqueEmail } from "./helpers";
+import { PASSWORD, chooseMetier, chooseOtherMetier, uniqueEmail } from "./helpers";
 
 /**
  * La modération saisit elle-même la fiche d'un candidat rencontré hors ligne.
@@ -75,8 +75,11 @@ test.describe("ajout d'un candidat par la modération", () => {
     await page.getByLabel("Téléphone").fill(phone);
     await page.getByLabel("Ville").selectOption({ label: "Brazzaville" });
     await page.getByLabel("Quartier").selectOption({ label: "Bacongo" });
-    await page.getByLabel("Métier").fill("Nounou expérimentée");
-    await page.getByLabel("Expérience").fill("12 ans");
+    await page.getByLabel("Adresse précise").fill("12 rue Mbochi, derrière l'école");
+    // Un métier hors liste, pour un intitulé qu'on retrouve sans ambiguïté
+    // (« Nounou » est aussi un bouton des filtres de la recherche).
+    await chooseOtherMetier(page, "Nounou expérimentée");
+    await page.getByLabel("Années d'expérience").selectOption("12 ans");
     await page.getByLabel("Disponibilité").selectOption("full_time");
     await page.getByLabel("Langues parlées").fill("Français, lingala");
 
@@ -111,7 +114,7 @@ test.describe("ajout d'un candidat par la modération", () => {
       await page.getByLabel("Téléphone").fill(phone);
       await page.getByLabel("Ville").selectOption({ label: "Brazzaville" });
       await page.getByLabel("Quartier").selectOption({ label: "Bacongo" });
-      await page.getByLabel("Métier").fill("Ménagère");
+      await chooseMetier(page, "Ménagère");
       await page.getByRole("button", { name: "Publier le profil" }).click();
     };
 
