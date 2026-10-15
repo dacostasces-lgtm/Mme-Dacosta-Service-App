@@ -84,6 +84,13 @@ GRANT EXECUTE ON FUNCTION public.has_active_premium(UUID) TO authenticated, serv
 --   none      → rien
 -- `has_number` est renvoyé à tous, pour ne jamais faire payer un numéro qui
 -- n'existe pas.
+-- Supprimée d'abord, sans quoi ce fichier n'est pas rejouable : une migration
+-- ultérieure (20261011070000) lui ajoute une colonne, et `CREATE OR REPLACE`
+-- refuse alors de changer le type de retour (42P13). Rejouer ce fichier sur une
+-- base déjà avancée échouait donc — ce qui s'est produit le 15 octobre 2026.
+-- Sur une base neuve, appliquée dans l'ordre, le DROP ne trouve rien.
+DROP FUNCTION IF EXISTS public.job_contact(UUID);
+
 CREATE OR REPLACE FUNCTION public.job_contact(p_job_id UUID)
 RETURNS TABLE (
   has_number BOOLEAN,
@@ -276,6 +283,10 @@ GRANT EXECUTE ON FUNCTION public.settle_contact_unlock(UUID, BOOLEAN)
 -- Pour son tableau de bord. Une offre fermée ou échue n'est plus lisible par
 -- l'API, mais un numéro payé reste acquis : le titre de l'offre est donc
 -- renvoyé ici plutôt que lu par une jointure que la RLS viderait.
+-- Même raison que job_contact ci-dessus : 20261011070000 lui ajoute une
+-- colonne, et `CREATE OR REPLACE` refuse de changer le type de retour.
+DROP FUNCTION IF EXISTS public.my_unlocked_contacts();
+
 CREATE OR REPLACE FUNCTION public.my_unlocked_contacts()
 RETURNS TABLE (
   job_id    UUID,

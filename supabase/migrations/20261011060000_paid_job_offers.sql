@@ -67,6 +67,13 @@ GRANT EXECUTE ON FUNCTION public.job_is_paid(UUID) TO authenticated, service_rol
 -- Pour chaque candidature reçue par l'appelant : le numéro du candidat si
 -- l'offre est payante, rien sinon. Seules les offres de l'appelant comptent,
 -- admin compris — l'administration lit les profils autrement.
+-- Supprimée d'abord, sans quoi ce fichier n'est pas rejouable : une migration
+-- ultérieure (20261011070000) lui ajoute une colonne, et `CREATE OR REPLACE`
+-- refuse alors de changer le type de retour (42P13). Rejouer ce fichier sur une
+-- base déjà avancée échouait donc — ce qui s'est produit le 15 octobre 2026.
+-- Sur une base neuve, appliquée dans l'ordre, le DROP ne trouve rien.
+DROP FUNCTION IF EXISTS public.my_applicant_contacts();
+
 CREATE OR REPLACE FUNCTION public.my_applicant_contacts()
 RETURNS TABLE (
   application_id UUID,
