@@ -22,6 +22,16 @@ ALTER TABLE public.candidate_details
 DROP FUNCTION IF EXISTS public.search_candidates(
   DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, TEXT, TEXT
 );
+-- Et la nouvelle signature, sans quoi ce fichier n'est pas rejouable : le DROP
+-- ci-dessus ne vise que l'ancienne, et le CREATE plus bas bute alors sur
+-- « function already exists » (42723) dès la seconde exécution. C'est
+-- exactement ce qui s'est produit le 15 octobre 2026, en recollant ce fichier
+-- sur une base qui l'avait déjà reçu — l'historique des migrations distant
+-- ayant perdu la trace de son application.
+DROP FUNCTION IF EXISTS public.search_candidates(
+  DOUBLE PRECISION, DOUBLE PRECISION, DOUBLE PRECISION, TEXT, TEXT,
+  TEXT[], TIME, TIME, BOOLEAN
+);
 DROP FUNCTION IF EXISTS public.get_candidate(UUID, DOUBLE PRECISION, DOUBLE PRECISION);
 
 CREATE FUNCTION public.search_candidates(

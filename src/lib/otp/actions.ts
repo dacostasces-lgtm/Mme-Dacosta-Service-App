@@ -115,6 +115,15 @@ export async function verifyPhoneOtp(
 export async function skipPhoneVerification(): Promise<OtpState> {
   await requireUser({ allowUnverifiedPhone: true });
   await rememberSkip();
-  revalidatePath("/", "layout");
+  // Pas de `revalidatePath` : mesuré trois fois sur ce dépôt, un appel depuis
+  // une action rendue par la page courante empêche sa réponse d'atteindre le
+  // client. L'action aboutit côté serveur, mais le `await` du composant ne se
+  // résout jamais — ici, la navigation qui suit le clic sur « Continuer sans
+  // vérifier » n'avait donc jamais lieu, et la porte de secours enfermait
+  // justement les gens qu'elle devait libérer.
+  //
+  // Le report est écrit dans un cookie par `rememberSkip`, que la navigation
+  // suivante relit : rien à revalider pour que la porte de requireUser laisse
+  // passer.
   return { ok: true } as OtpState;
 }

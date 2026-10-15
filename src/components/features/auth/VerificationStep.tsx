@@ -58,6 +58,10 @@ export function VerificationStep({ phone, dashboardPath }: Props) {
         const maj = await updatePhoneOnly(numero);
         if (maj.error) {
           setErreur(maj.error);
+          // La porte de secours s'ouvre ici aussi : un numéro qui ne
+          // s'enregistre pas enferme tout autant qu'un SMS qui n'arrive pas,
+          // et la personne n'y peut rien de plus.
+          setBloque(true);
           return;
         }
       }

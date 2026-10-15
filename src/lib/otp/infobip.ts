@@ -61,6 +61,9 @@ export async function accountBalance(): Promise<BalanceResult> {
       // Un écran de modération ne doit pas dépendre de la fraîcheur d'un
       // solde : une minute de cache évite un appel par affichage.
       next: { revalidate: 60 },
+      // Même raison que pour `call` : sans délai, la page de modération
+      // entière attendrait un Infobip muet.
+      signal: AbortSignal.timeout(DELAI_MS),
     });
 
     if (!response.ok) {
@@ -92,6 +95,18 @@ function toInfobipFormat(phone: string): string | null {
   return digits ? `242${digits}` : null;
 }
 
+/**
+ * Au-delà, on considère Infobip injoignable.
+ *
+ * `fetch` n'a aucun délai par défaut : une connexion qui n'est ni acceptée ni
+ * refusée pend indéfiniment. L'écran de vérification restait alors bloqué sur
+ * « Envoi du code... », bouton désactivé, sans message ni porte de secours —
+ * exactement la situation que cette porte existe pour éviter. Dix secondes
+ * suffisent largement à un envoi de SMS ; au-delà, mieux vaut une erreur
+ * franche, qui elle ouvre l'échappatoire.
+ */
+const DELAI_MS = 10_000;
+
 async function call(path: string, apiKey: string, body: unknown) {
   const response = await fetch(`${BASE_URL}${path}`, {
     method: "POST",
@@ -101,6 +116,7 @@ async function call(path: string, apiKey: string, body: unknown) {
       Accept: "application/json",
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(DELAI_MS),
   });
 
   const payload = await response.json().catch(() => ({}));

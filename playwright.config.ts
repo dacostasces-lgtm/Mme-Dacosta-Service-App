@@ -32,7 +32,13 @@ export default defineConfig({
   workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"]],
-  timeout: 60_000,
+  // 60 s étaient trop justes. Les parcours à deux contextes — embauche,
+  // réservation, inscription par numéro — prennent 17 à 30 s lancés seuls, et
+  // davantage en fin de suite, la base locale s'étant remplie au fil des
+  // specs. Deux d'entre eux échouaient donc en suite complète tout en passant
+  // isolément : un échec qui ne dit rien du produit, et que `retries` en CI
+  // transformait parfois en vert, ce qui est pire.
+  timeout: 120_000,
   expect: { timeout: 10_000 },
 
   use: {
