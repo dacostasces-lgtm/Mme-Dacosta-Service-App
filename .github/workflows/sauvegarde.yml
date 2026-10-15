@@ -11,12 +11,26 @@ name: Sauvegarde de la base
 # gardent que quatre-vingt-dix jours, et les fichiers des buckets n'y sont pas.
 # Mais c'est la différence entre « reconstruire le schéma » et « tout a disparu ».
 
+# ⚠️ EXPORT NOCTURNE SUSPENDU — 15 octobre 2026
+#
+# Ce dépôt est public. Les artefacts d'un dépôt public sont téléchargeables par
+# n'importe quel titulaire d'un compte GitHub, et chaque exécution y déposait un
+# export complet de la base : noms, emails, numéros, positions GPS, empreintes
+# de mots de passe et jetons de session.
+#
+# Dix exports sont ainsi exposés depuis le 7 octobre, et expirent en janvier
+# 2027. Les supprimer demande un accès à GitHub que je n'ai pas — c'est à faire
+# à la main, onglet Actions, puis dans chaque exécution, section Artifacts.
+#
+# Le déclenchement planifié est retiré pour que plus aucun export ne parte.
+# `workflow_dispatch` reste : une exécution manuelle demeure possible, mais
+# seulement pour qui sait ce qu'il fait.
+#
+# À rétablir une fois que l'export sera chiffré par une phrase secrète
+# (BACKUP_PASSPHRASE), ou que le dépôt sera passé en privé — et pas avant.
 on:
-  schedule:
-    # 02h00 UTC, soit 03h00 à Brazzaville. Décalé des tâches pg_cron de la base,
-    # planifiées à 03h17 et 03h41 UTC, pour ne pas exporter pendant qu'elles
-    # écrivent.
-    - cron: "0 2 * * *"
+  # schedule:
+  #   - cron: "0 2 * * *"
   workflow_dispatch:
 
 jobs:
