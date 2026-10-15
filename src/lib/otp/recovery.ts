@@ -4,7 +4,8 @@ import { cookies } from "next/headers";
 import * as z from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalisePhone } from "@/lib/phone";
-import { rateLimit, tooManyRequestsMessage } from "@/lib/rate-limit";
+import { tooManyRequestsMessage } from "@/lib/rate-limit";
+import { consumeDurableLimit, consumeSmsBudget } from "@/lib/rate-limit-durable";
 import { sendPin, verifyPin, isOtpConfigured } from "@/lib/otp/infobip";
 
 /**
@@ -39,8 +40,13 @@ export async function startPhoneRecovery(
 
   // Deux plafonds : Infobip limite par numéro, celui-ci protège des crédits
   // brûlés en visant beaucoup de numéros différents depuis un même endroit.
-  const limit = rateLimit(`recovery:${phone}`, { limit: 3, windowSeconds: 3600 });
+  const limit = await consumeDurableLimit(`recovery:${phone}`, 3, 3600);
   if (!limit.ok) return { error: tooManyRequestsMessage(limit.retryAfterSeconds) };
+
+  const budget = await consumeSmsBudget();
+  if (!budget.ok) {
+    return { error: "Trop d'envois de SMS aujourd'hui. Réessayez demain, ou écrivez-nous." };
+  }
 
   const supabase = createAdminClient();
   if (!supabase) return { error: "Service indisponible." };

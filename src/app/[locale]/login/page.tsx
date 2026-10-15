@@ -1,5 +1,6 @@
 import { getLocale } from "next-intl/server";
 import { LoginForm } from "@/components/features/auth/LoginForm";
+import { messageConnexion } from "@/lib/auth/messages-connexion";
 import { AuthShell } from "@/components/shared/AuthShell";
 import { redirect } from "@/i18n/routing";
 import { getCurrentUser, dashboardPathFor } from "@/lib/auth/dal";
@@ -27,7 +28,8 @@ export default async function LoginPage({
       quote="Une maison bien tenue, c'est d'abord quelqu'un en qui on a confiance."
       author="Madame Dacosta Services"
     >
-      <LoginForm initialError={error} />
+      {/* Jamais le paramètre brut : seul un code connu donne un message. */}
+      <LoginForm initialError={messageConnexion(error)} />
     </AuthShell>
   );
 }

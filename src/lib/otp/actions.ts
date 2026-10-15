@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, tooManyRequestsMessage } from "@/lib/rate-limit";
+import { consumeDurableLimit, consumeSmsBudget } from "@/lib/rate-limit-durable";
 import { sendPin, verifyPin } from "@/lib/otp/infobip";
 import { rememberSkip, forgetSkip } from "@/lib/otp/skip";
 
@@ -28,8 +29,20 @@ export async function sendPhoneOtp(): Promise<OtpState> {
 
   // Infobip limite déjà par numéro ; cette barrière-ci protège nos crédits
   // contre un compte qui viserait plusieurs numéros à la suite.
-  const limit = rateLimit(`otp-send:${user.id}`, { limit: 5, windowSeconds: 900 });
+  //
+  // Durable, et non en mémoire : sur un hébergement sans état, chaque instance
+  // comptait pour elle et un démarrage à froid remettait tout à zéro.
+  const limit = await consumeDurableLimit(`otp-send:${user.id}`, 5, 900);
   if (!limit.ok) return { error: tooManyRequestsMessage(limit.retryAfterSeconds) };
+
+  // Le plafond que des comptes multiples ne contournent pas : les limites par
+  // utilisateur se multiplient avec eux, celle-ci non. Sans elle, ouvrir des
+  // comptes en boucle vidait le crédit SMS, après quoi plus personne ne
+  // pouvait s'inscrire ni récupérer son mot de passe.
+  const budget = await consumeSmsBudget();
+  if (!budget.ok) {
+    return { error: "Trop d'envois de SMS aujourd'hui. Réessayez demain, ou écrivez-nous." };
+  }
 
   const supabase = await createClient();
   const { data: contact } = await supabase.rpc("my_contact");

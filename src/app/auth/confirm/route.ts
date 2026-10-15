@@ -25,14 +25,15 @@ export async function GET(request: NextRequest) {
   // which tells the user their link is broken when it merely aged out.
   const errorCode = searchParams.get('error_code')
   if (errorCode || searchParams.get('error')) {
-    const message =
-      errorCode === 'otp_expired'
-        ? 'Ce lien de confirmation a expiré. Demandez-en un nouveau pour activer votre compte.'
-        : searchParams.get('error_description') ?? 'Lien de confirmation refusé.'
+    // Un code, jamais `error_description` : ce paramètre vient de l'URL, et la
+    // page de connexion l'affichait tel quel. La distinction « expiré » contre
+    // « refusé » est conservée, elle, parce qu'elle dit à la personne si elle
+    // doit redemander un lien ou s'inquiéter.
+    const code = errorCode === 'otp_expired' ? 'lien_expire' : 'lien_refuse'
 
     const loginPath = getPathname({ href: '/login', locale })
     return NextResponse.redirect(
-      new URL(`${loginPath}?error=${encodeURIComponent(message)}`, request.url)
+      new URL(`${loginPath}?error=${code}`, request.url)
     )
   }
 
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
   if (errorMessage) {
     const loginPath = getPathname({ href: '/login', locale })
     return NextResponse.redirect(
-      new URL(`${loginPath}?error=${encodeURIComponent(errorMessage)}`, request.url)
+      new URL(`${loginPath}?error=lien_invalide`, request.url)
     )
   }
 
