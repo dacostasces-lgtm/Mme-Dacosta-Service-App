@@ -5,19 +5,6 @@ const withNextIntl = createNextIntlPlugin(
   './src/i18n/request.ts'
 );
 
-// Avatars are served from the project's storage bucket, whose host changes
-// between local, preview and production. Derived rather than hard-coded so a
-// new Supabase project doesn't silently break every image and every fetch.
-const supabaseHost = (() => {
-  try {
-    return process.env.NEXT_PUBLIC_SUPABASE_URL
-      ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
-      : null;
-  } catch {
-    return null;
-  }
-})();
-
 // The Content-Security-Policy is NOT here: it carries a per-request nonce and
 // is therefore built in `src/proxy.ts`. Setting a second, static one at this
 // level would leave two policies on the same response — the browser enforces
@@ -105,16 +92,12 @@ const ANCIENNES_URLS_WIX = [
 ] as const;
 
 const nextConfig: NextConfig = {
+  // Aucune image distante par l'optimiseur : toutes les <Image> viennent de
+  // src/assets, et les photos de profil s'affichent en <img> simple. Ouvrir
+  // le bucket public des avatars à l'optimiseur exposait celui-ci à des
+  // fichiers envoyés par n'importe quel utilisateur (audit du 12 octobre 2026).
   images: {
-    remotePatterns: supabaseHost
-      ? [
-          {
-            protocol: "https" as const,
-            hostname: supabaseHost,
-            pathname: "/storage/v1/object/public/**",
-          },
-        ]
-      : [],
+    remotePatterns: [],
   },
   async headers() {
     return [

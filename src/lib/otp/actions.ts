@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, tooManyRequestsMessage } from "@/lib/rate-limit";
 import { sendPin, verifyPin } from "@/lib/otp/infobip";
 import { rememberSkip, forgetSkip } from "@/lib/otp/skip";
@@ -38,10 +39,25 @@ export async function sendPhoneOtp(): Promise<OtpState> {
     return { error: "Aucun numéro enregistré. Renseignez-le dans votre profil d'abord." };
   }
 
+  // Les fonctions qui écrivent la demande et la confirmation ne s'appellent
+  // plus qu'avec la clé de service (20261012010000_security_fixes.sql) :
+  // ouvertes à tout compte, elles laissaient marquer son numéro « vérifié »
+  // sans recevoir de SMS.
+  const admin = createAdminClient();
+  if (!admin) {
+    return { error: "Vérification indisponible : SUPABASE_SERVICE_ROLE_KEY absente sur ce déploiement." };
+  }
+
   const sent = await sendPin(phone);
   if (!sent.ok) return { error: sent.error };
 
-  const { error } = await supabase.rpc("start_phone_verification", { p_pin_id: sent.pinId });
+  // Le numéro est repassé : si le profil a changé de numéro pendant l'envoi,
+  // la demande est refusée plutôt que de valider le nouveau avec ce code.
+  const { error } = await admin.rpc("start_phone_verification", {
+    p_profile_id: user.profileId,
+    p_phone: phone,
+    p_pin_id: sent.pinId,
+  });
   if (error) return { error: `Enregistrement impossible : ${error.message}` };
 
   revalidatePath("/[locale]/profil", "page");
@@ -97,7 +113,15 @@ export async function verifyPhoneOtp(
   const result = await verifyPin(pinId, parsed.data.code);
   if (!result.ok) return { error: result.error };
 
-  const { error } = await supabase.rpc("confirm_phone_verification", { p_pin_id: pinId });
+  // Seulement après qu'Infobip a validé le code, et avec la clé de service.
+  const admin = createAdminClient();
+  if (!admin) {
+    return { error: "Vérification indisponible : SUPABASE_SERVICE_ROLE_KEY absente sur ce déploiement." };
+  }
+  const { error } = await admin.rpc("confirm_phone_verification", {
+    p_profile_id: user.profileId,
+    p_pin_id: pinId,
+  });
   if (error) return { error: `Enregistrement impossible : ${error.message}` };
 
   await forgetSkip();
