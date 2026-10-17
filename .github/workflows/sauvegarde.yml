@@ -169,6 +169,28 @@ jobs:
           ls -la depot
           test "$(ls depot | sort | tr '\n' ' ')" = "LIRE-MOI.md sauvegarde.tar.gz.gpg "
 
+      # Une archive chiffrée qu'on ne peut pas rouvrir ne vaut rien, et cela ne
+      # se découvre qu'au moment où l'on en a besoin — c'est-à-dire trop tard.
+      # Elle est donc déchiffrée ici même, avec la phrase du secret, et son
+      # contenu revérifié après l'aller-retour. Une phrase que GitHub aurait
+      # tronquée, un chiffrement muet, une archive corrompue : tout cela fait
+      # échouer l'export au lieu de déposer un fichier inutile qu'on croirait
+      # bon pendant des mois.
+      - name: Vérifier que l'archive se rouvre
+        env:
+          PHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$PHRASE" | gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 0 --decrypt depot/sauvegarde.tar.gz.gpg > controle.tar.gz
+          tar -xzf controle.tar.gz
+          # Les mêmes contrôles que sur l'export brut, mais de l'autre côté du
+          # chiffrement : c'est le chemin qu'une restauration empruntera.
+          grep -q 'CREATE TABLE IF NOT EXISTS "public"."profiles"' sauvegarde/2-schema.sql
+          grep -q 'COPY "auth"."users"' sauvegarde/3-donnees.sql
+          echo "L'archive se rouvre : schéma et comptes retrouvés après déchiffrement."
+          rm -rf controle.tar.gz sauvegarde
+
       - uses: actions/upload-artifact@v7
         with:
           name: sauvegarde-${{ github.run_id }}
