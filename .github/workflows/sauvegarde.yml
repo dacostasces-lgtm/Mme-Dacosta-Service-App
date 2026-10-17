@@ -29,15 +29,21 @@ name: Sauvegarde de la base
 # 2027. Les supprimer demande un accès à GitHub que je n'ai pas — c'est à faire
 # à la main, onglet Actions, puis dans chaque exécution, section Artifacts.
 #
-# Le déclenchement planifié est retiré pour que plus aucun export ne parte.
-# `workflow_dispatch` reste : une exécution manuelle demeure possible, mais
-# seulement pour qui sait ce qu'il fait.
+# Le déclenchement nocturne est rétabli le 17 octobre 2026, la condition posée
+# ici étant remplie : l'archive est chiffrée en AES-256 par la phrase du secret
+# BACKUP_PASSPHRASE, et l'export la déchiffre lui-même avant de la déposer, donc
+# une archive illisible fait échouer l'export au lieu d'être publiée.
 #
-# À rétablir une fois que l'export sera chiffré par une phrase secrète
-# (BACKUP_PASSPHRASE), ou que le dépôt sera passé en privé — et pas avant.
+# Le dépôt, lui, est resté public. C'est donc le chiffrement seul qui protège
+# ces archives, et non le contrôle d'accès : n'importe qui peut télécharger le
+# fichier, personne ne peut l'ouvrir. Passer le dépôt en privé reste souhaitable
+# — ce serait une seconde barrière — mais ce n'est plus ce qui tient.
+#
+# Export de contrôle avant rétablissement : exécution 39039465389, 54 tables,
+# 49 politiques, archive rouverte après déchiffrement.
 on:
-  # schedule:
-  #   - cron: "0 2 * * *"
+  schedule:
+    - cron: "0 2 * * *"
   workflow_dispatch:
 
 jobs:
