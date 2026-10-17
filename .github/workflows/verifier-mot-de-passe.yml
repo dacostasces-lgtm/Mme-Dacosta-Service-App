@@ -37,11 +37,11 @@ jobs:
           # « password authentication failed » indiscernable d'un mauvais mot de
           # passe. C'est l'erreur qu'avait faite la première version de
           # sauvegarde.yml.
-          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          MDP: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
 
-          if [ -z "${PGPASSWORD:-}" ]; then
+          if [ -z "${MDP:-}" ]; then
             echo "::error::Le secret SUPABASE_DB_PASSWORD est absent. Settings > Secrets and variables > Actions."
             exit 1
           fi
@@ -49,20 +49,43 @@ jobs:
           REF=$(tr -d '[:space:]' < supabase/projet-production)
           echo "Projet visé : $REF"
 
+          # Deux essais, parce que les deux échecs se ressemblent et ne se
+          # corrigent pas de la même façon. Un secret collé avec le retour à la
+          # ligne de la sélection donne le même « password authentication
+          # failed » qu'un mot de passe faux : le premier se répare en
+          # nettoyant ici, le second demande de recoller le secret.
+          #
           # Par le pooler : l'hôte direct du projet est en IPv6 seulement, et
           # injoignable depuis un runner GitHub.
           #
           # `ON_ERROR_STOP=1` n'est pas décoratif : sans lui psql sort en 0
           # malgré une erreur, et le workflow annoncerait « vérifié » sur un
-          # échec d'authentification.
-          psql \
-            -h aws-0-eu-west-1.pooler.supabase.com \
-            -p 5432 \
-            -U "postgres.$REF" \
-            -d postgres \
-            -v ON_ERROR_STOP=1 \
-            -t -A \
-            -c "SELECT 'Connexion établie. Tables dans public : ' || count(*) FROM pg_tables WHERE schemaname = 'public';"
+          # refus d'authentification.
+          essayer() {
+            PGPASSWORD="$1" psql \
+              -h aws-0-eu-west-1.pooler.supabase.com \
+              -p 5432 \
+              -U "postgres.$REF" \
+              -d postgres \
+              -v ON_ERROR_STOP=1 \
+              -t -A \
+              -c "SELECT 'Tables dans public : ' || count(*) FROM pg_tables WHERE schemaname = 'public';" \
+              2>&1
+          }
 
-      - name: Verdict
-        run: echo "::notice::Le secret SUPABASE_DB_PASSWORD ouvre bien la base de production. Les sauvegardes pourront s'exécuter."
+          if sortie=$(essayer "$MDP"); then
+            echo "$sortie"
+            echo "::notice::Le secret ouvre la base, tel quel. Les sauvegardes pourront s'exécuter."
+            exit 0
+          fi
+
+          NETTOYE=$(printf '%s' "$MDP" | tr -d '[:space:]')
+          if sortie=$(essayer "$NETTOYE"); then
+            echo "$sortie"
+            echo "::error::Le secret porte le bon mot de passe, mais entouré d'espaces ou d'un retour à la ligne. Recollez-le sans, ou nettoyez-le dans sauvegarde.yml."
+            exit 1
+          fi
+
+          echo "$sortie"
+          echo "::error::Le secret SUPABASE_DB_PASSWORD n'ouvre pas la base, même nettoyé. L'hôte et l'utilisateur sont bien ceux du projet : c'est la valeur du mot de passe qui ne correspond pas. Réinitialisez-le dans Supabase (Project Settings > Database > Reset database password) et recollez-le dans le secret."
+          exit 1
