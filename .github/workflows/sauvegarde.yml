@@ -78,7 +78,14 @@ jobs:
             exit 1
           fi
           REF=$(tr -d '[:space:]' < supabase/projet-production)
-          MDP_ENCODE=$(python3 -c 'import os,urllib.parse;print(urllib.parse.quote(os.environ["MDP"], safe=""))')
+          # Le secret est débarrassé de ce qui l'entoure avant d'être encodé.
+          # Un copier-coller emporte volontiers le retour à la ligne de la
+          # sélection, et `quote()` le transforme alors en %0A : la connexion
+          # échoue en « password authentication failed », indiscernable d'un
+          # mauvais mot de passe. C'est arrivé deux fois ici. Aucun mot de passe
+          # Supabase ne commence ni ne finit par une espace, donc rien de
+          # légitime n'est perdu.
+          MDP_ENCODE=$(python3 -c 'import os,urllib.parse;print(urllib.parse.quote(os.environ["MDP"].strip(), safe=""))')
           # Dans l'environnement du job et masqué dans les journaux : il porte
           # le mot de passe.
           echo "::add-mask::$MDP_ENCODE"

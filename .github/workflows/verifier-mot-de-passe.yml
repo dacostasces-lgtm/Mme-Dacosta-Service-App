@@ -79,11 +79,18 @@ jobs:
             exit 0
           fi
 
-          NETTOYE=$(printf '%s' "$MDP" | tr -d '[:space:]')
+          # `strip` et non `tr -d` : la même opération que sauvegarde.yml, qui
+          # retire ce qui entoure sans toucher à une espace intérieure. Un mot
+          # de passe peut en contenir une.
+          NETTOYE=$(printf '%s' "$MDP" | python3 -c 'import sys;print(sys.stdin.read().strip(), end="")')
           if sortie=$(essayer "$NETTOYE"); then
             echo "$sortie"
-            echo "::error::Le secret porte le bon mot de passe, mais entouré d'espaces ou d'un retour à la ligne. Recollez-le sans, ou nettoyez-le dans sauvegarde.yml."
-            exit 1
+            # Pas un échec : l'export nettoie le secret de la même façon, donc
+            # les sauvegardes passeront. Signalé quand même, parce que c'est la
+            # deuxième fois que le collage emporte un retour à la ligne, et que
+            # toute autre lecture du secret buterait dessus.
+            echo "::warning::Le secret porte le bon mot de passe, mais entouré d'espaces ou d'un retour à la ligne. L'export le nettoie, donc les sauvegardes fonctionneront. Le recoller sans éviterait de s'y fier."
+            exit 0
           fi
 
           echo "$sortie"
