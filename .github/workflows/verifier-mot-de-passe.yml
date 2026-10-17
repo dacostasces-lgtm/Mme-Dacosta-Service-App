@@ -1,0 +1,68 @@
+name: Vérifier le mot de passe de la base
+
+# Éprouve le secret SUPABASE_DB_PASSWORD contre la base de production, sans que
+# sa valeur apparaisse où que ce soit.
+#
+# À quoi cela sert. Un secret GitHub ne se relit pas : une fois collé, rien ne
+# dit s'il porte le bon mot de passe. Son seul consommateur est l'export de
+# sauvegarde.yml, suspendu depuis l'incident du 15 octobre — un mot de passe
+# faux ne se découvrirait donc qu'au moment de rétablir les sauvegardes, c'est-à-
+# dire précisément quand on compte sur elles.
+#
+# À relancer après chaque réinitialisation du mot de passe dans Supabase
+# (Project Settings > Database > Reset database password), qui invalide le
+# secret jusqu'à ce qu'on le recolle.
+#
+# Ne lit rien. Compte les tables de `public` et s'arrête là.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verifier:
+    name: Connexion à la base de production
+    # Figé comme dans sauvegarde.yml : GitHub bascule `ubuntu-latest` sur
+    # Ubuntu 26 le 19 octobre 2026, et un changement d'image sous une
+    # vérification d'identifiants rendrait son verdict illisible.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Se connecter avec le secret
+        env:
+          # Passé par PGPASSWORD, et non dans une chaîne de connexion : les mots
+          # de passe générés par Supabase contiennent des caractères comme @, /
+          # ou #, qui découpent une URL au mauvais endroit et donnent un
+          # « password authentication failed » indiscernable d'un mauvais mot de
+          # passe. C'est l'erreur qu'avait faite la première version de
+          # sauvegarde.yml.
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${PGPASSWORD:-}" ]; then
+            echo "::error::Le secret SUPABASE_DB_PASSWORD est absent. Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+          REF=$(tr -d '[:space:]' < supabase/projet-production)
+          echo "Projet visé : $REF"
+
+          # Par le pooler : l'hôte direct du projet est en IPv6 seulement, et
+          # injoignable depuis un runner GitHub.
+          #
+          # `ON_ERROR_STOP=1` n'est pas décoratif : sans lui psql sort en 0
+          # malgré une erreur, et le workflow annoncerait « vérifié » sur un
+          # échec d'authentification.
+          psql \
+            -h aws-0-eu-west-1.pooler.supabase.com \
+            -p 5432 \
+            -U "postgres.$REF" \
+            -d postgres \
+            -v ON_ERROR_STOP=1 \
+            -t -A \
+            -c "SELECT 'Connexion établie. Tables dans public : ' || count(*) FROM pg_tables WHERE schemaname = 'public';"
+
+      - name: Verdict
+        run: echo "::notice::Le secret SUPABASE_DB_PASSWORD ouvre bien la base de production. Les sauvegardes pourront s'exécuter."
