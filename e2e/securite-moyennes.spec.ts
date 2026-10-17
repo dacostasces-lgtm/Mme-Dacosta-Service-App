@@ -168,4 +168,59 @@ test.describe("audit de sécurité : failles moyennes", () => {
     const { error } = await anon.rpc("consume_rate_limit", { p_cle: cle, p_limite: 999, p_fenetre: 60 });
     expect(error).not.toBeNull();
   });
+
+  test("la récupération exige un numéro confirmé, et un seul compte le porte", async () => {
+    const admin = service();
+    const victime = await compte("candidate", true);
+    const squatteur = await compte("candidate");
+    const numero = `+242 06 ${String(Date.now()).slice(-3)} 44 55`;
+
+    // La victime confirme son numéro.
+    const premier = await admin
+      .from("profiles")
+      .update({ phone: numero, phone_verified_at: new Date().toISOString() })
+      .eq("id", victime.profileId);
+    expect(premier.error).toBeNull();
+
+    // Le squatteur ne peut pas confirmer le même : sans cette unicité, la
+    // recherche de récupération renvoyait deux lignes et échouait pour les
+    // deux — de quoi condamner la porte de secours de quelqu'un d'autre.
+    const second = await admin
+      .from("profiles")
+      .update({ phone: numero, phone_verified_at: new Date().toISOString() })
+      .eq("id", squatteur.profileId);
+    expect(second.error).not.toBeNull();
+
+    // Le porter sans l'avoir confirmé reste permis : c'est une saisie, pas une
+    // preuve, et l'interdire empêcherait une correction de faute de frappe.
+    const saisie = await admin
+      .from("profiles")
+      .update({ phone: numero, phone_verified_at: null })
+      .eq("id", squatteur.profileId);
+    expect(saisie.error).toBeNull();
+  });
+
+  test("un numéro ne se glisse ni dans le nom ni dans les compétences", async () => {
+    const admin = service();
+    const candidat = await compte("candidate", true);
+
+    const nom = await candidat.client
+      .from("profiles").update({ full_name: "Awa 06 12 34 56 78" }).eq("id", candidat.profileId);
+    expect(nom.error).not.toBeNull();
+
+    const competences = await candidat.client
+      .from("candidate_details")
+      .update({ skills: ["Repassage", "06 12 34 56 78"] })
+      .eq("profile_id", candidat.profileId);
+    expect(competences.error).not.toBeNull();
+
+    // L'usage normal n'est pas gêné.
+    const normal = await candidat.client
+      .from("candidate_details")
+      .update({ skills: ["Repassage", "Cuisine congolaise"] })
+      .eq("profile_id", candidat.profileId);
+    expect(normal.error).toBeNull();
+
+    void admin;
+  });
 });

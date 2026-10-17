@@ -51,10 +51,17 @@ export async function startPhoneRecovery(
   const supabase = createAdminClient();
   if (!supabase) return { error: "Service indisponible." };
 
+  // Seulement un numéro confirmé : sans ce filtre, on récupérait un compte par
+  // un numéro que personne n'avait prouvé posséder — s'inscrire avec celui d'un
+  // autre suffisait. L'index partiel posé par
+  // 20261015160000_recuperation_numero_verifie garantit qu'au plus un compte
+  // porte un numéro confirmé donné, donc que cette recherche ne peut plus
+  // renvoyer deux lignes et échouer.
   const { data: profile } = await supabase
     .from("profiles")
     .select("id")
     .eq("phone", phone)
+    .not("phone_verified_at", "is", null)
     .maybeSingle();
 
   // Aucun compte : on s'arrête, sans le dire. Le SMS n'est pas envoyé, ce qui
