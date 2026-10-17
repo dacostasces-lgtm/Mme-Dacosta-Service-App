@@ -49,12 +49,6 @@ jobs:
           REF=$(tr -d '[:space:]' < supabase/projet-production)
           echo "Projet visé : $REF"
 
-          # Deux essais, parce que les deux échecs se ressemblent et ne se
-          # corrigent pas de la même façon. Un secret collé avec le retour à la
-          # ligne de la sélection donne le même « password authentication
-          # failed » qu'un mot de passe faux : le premier se répare en
-          # nettoyant ici, le second demande de recoller le secret.
-          #
           # Par le pooler : l'hôte direct du projet est en IPv6 seulement, et
           # injoignable depuis un runner GitHub.
           #
@@ -73,26 +67,54 @@ jobs:
               2>&1
           }
 
-          if sortie=$(essayer "$MDP"); then
-            echo "$sortie"
-            echo "::notice::Le secret ouvre la base, tel quel. Les sauvegardes pourront s'exécuter."
-            exit 0
+          # Un échec n'est pas l'autre, et la première version de ce fichier les
+          # a confondus : elle enchaînait deux essais, gardait la sortie du
+          # second et jetait celle du premier. Une panne passagère du pooler a
+          # donc été rapportée comme « mot de passe entouré d'espaces », alors
+          # que le secret était juste et propre. Trois règles en sont sorties :
+          #
+          #   - la sortie de chaque essai est imprimée, toujours ;
+          #   - un échec de connexion est retenté, un refus d'authentification
+          #     ne l'est pas — réessayer un mauvais mot de passe ne le corrige
+          #     pas ;
+          #   - la valeur nettoyée n'est essayée que si elle diffère vraiment de
+          #     celle du secret. Sans cela, l'essai « nettoyé » refaisait le même
+          #     essai et ses succès devenaient un diagnostic imaginaire.
+          verdict=""
+          for tentative in 1 2 3; do
+            if sortie=$(essayer "$MDP"); then
+              echo "$sortie"
+              echo "::notice::Le secret ouvre la base, tel quel. Les sauvegardes pourront s'exécuter."
+              exit 0
+            fi
+            echo "Tentative $tentative : $sortie"
+            case "$sortie" in
+              *"password authentication failed"*) verdict="refus" ; break ;;
+              *)                                  verdict="injoignable" ;;
+            esac
+            sleep 5
+          done
+
+          if [ "$verdict" = "injoignable" ]; then
+            echo "::error::La base n'a pas répondu après trois tentatives. Ce n'est pas le mot de passe : il n'a jamais été refusé. Relancez, et regardez l'état du projet sur Supabase."
+            exit 1
           fi
 
           # `strip` et non `tr -d` : la même opération que sauvegarde.yml, qui
           # retire ce qui entoure sans toucher à une espace intérieure. Un mot
           # de passe peut en contenir une.
           NETTOYE=$(printf '%s' "$MDP" | python3 -c 'import sys;print(sys.stdin.read().strip(), end="")')
-          if sortie=$(essayer "$NETTOYE"); then
-            echo "$sortie"
-            # Pas un échec : l'export nettoie le secret de la même façon, donc
-            # les sauvegardes passeront. Signalé quand même, parce que c'est la
-            # deuxième fois que le collage emporte un retour à la ligne, et que
-            # toute autre lecture du secret buterait dessus.
-            echo "::warning::Le secret porte le bon mot de passe, mais entouré d'espaces ou d'un retour à la ligne. L'export le nettoie, donc les sauvegardes fonctionneront. Le recoller sans éviterait de s'y fier."
-            exit 0
+          if [ "$NETTOYE" != "$MDP" ]; then
+            if sortie=$(essayer "$NETTOYE"); then
+              echo "$sortie"
+              # Pas un échec : l'export nettoie le secret de la même façon, donc
+              # les sauvegardes passeront. Signalé quand même, parce que toute
+              # autre lecture du secret buterait dessus.
+              echo "::warning::Le secret porte le bon mot de passe, mais entouré d'espaces ou d'un retour à la ligne. L'export le nettoie, donc les sauvegardes fonctionneront. Le recoller sans éviterait de s'y fier."
+              exit 0
+            fi
+            echo "Nettoyé : $sortie"
           fi
 
-          echo "$sortie"
-          echo "::error::Le secret SUPABASE_DB_PASSWORD n'ouvre pas la base, même nettoyé. L'hôte et l'utilisateur sont bien ceux du projet : c'est la valeur du mot de passe qui ne correspond pas. Réinitialisez-le dans Supabase (Project Settings > Database > Reset database password) et recollez-le dans le secret."
+          echo "::error::Le secret SUPABASE_DB_PASSWORD est refusé par la base. L'hôte et l'utilisateur sont bien ceux du projet : c'est la valeur du mot de passe qui ne correspond pas. Réinitialisez-le dans Supabase (Project Settings > Database > Reset database password) et recollez-le dans le secret."
           exit 1
