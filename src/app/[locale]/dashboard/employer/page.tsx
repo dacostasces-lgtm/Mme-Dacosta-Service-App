@@ -22,7 +22,11 @@ import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
-import { BookingList, type BookingRow } from "@/components/features/booking/BookingList";
+import {
+  BookingList,
+  type BookingRow,
+  type MyReviews,
+} from "@/components/features/booking/BookingList";
 import {
   ApplicantContact,
   type ApplicantContactRow,
@@ -65,7 +69,7 @@ export default async function EmployerDashboard() {
   // Scoped by RLS — except jobs: the jobs policy also shows every *public*
   // offer, so they are filtered on the employer explicitly. Without it the
   // « Offres actives » counter counted the whole site's offers.
-  const [jobs, applications, unread, received, bookings, contacts] = await Promise.all([
+  const [jobs, applications, unread, received, bookings, contacts, avisLaisses] = await Promise.all([
     supabase
       .from("jobs")
       .select(
@@ -111,7 +115,19 @@ export default async function EmployerDashboard() {
       .limit(20),
     // Le numéro de chaque candidat, pour les offres payantes seulement.
     supabase.rpc("my_applicant_contacts"),
+    // Les avis que cet employeur a déjà laissés, pour que le formulaire se
+    // rouvre sur ce qu'il a écrit plutôt que vide. Filtré sur `reviewer_id` :
+    // ce ne sont pas les avis reçus.
+    supabase
+      .from("reviews")
+      .select("reviewee_id, rating, comment")
+      .eq("reviewer_id", user.profileId ?? ""),
   ]);
+
+  const mesAvis: MyReviews = Object.fromEntries(
+    ((avisLaisses.data ?? []) as { reviewee_id: string; rating: number; comment: string | null }[])
+      .map((avis) => [avis.reviewee_id, { rating: avis.rating, comment: avis.comment }])
+  );
 
   const receivedApplications = (received.data ?? []) as unknown as ReceivedApplication[];
   const myJobs = (jobs.data ?? []) as unknown as MyJobRow[];
@@ -293,6 +309,7 @@ export default async function EmployerDashboard() {
           <BookingList
             bookings={(bookings.data ?? []) as unknown as BookingRow[]}
             role="employer"
+            reviews={mesAvis}
           />
         </section>
 

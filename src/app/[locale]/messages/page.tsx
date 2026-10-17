@@ -3,6 +3,7 @@ import { Link } from "@/i18n/routing";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { MessageComposer } from "@/components/features/messages/MessageComposer";
+import { RafraichissementAuto } from "@/components/features/messages/RafraichissementAuto";
 
 type Conversation = {
   profile_id: string;
@@ -76,6 +77,11 @@ export default async function MessagesPage({
 
   return (
     <div className="h-[calc(100vh-4rem)] bg-background flex overflow-hidden">
+      {/* Monté pour toute la page, pas seulement pour le fil ouvert : la
+          liste des conversations et ses compteurs de non-lus doivent eux
+          aussi se mettre à jour. */}
+      <RafraichissementAuto />
+
       <aside
         className={`w-full md:w-80 lg:w-96 border-r border-border bg-surface flex flex-col h-full ${avec ? "hidden md:flex" : ""}`}
       >

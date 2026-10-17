@@ -6,6 +6,7 @@ import { Link } from "@/i18n/routing";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { Badge } from "@/components/ui/badge";
 import { ShareButton } from "@/components/shared/ShareButton";
+import { ReviewList, type ReviewRow } from "@/components/features/reviews/ReviewList";
 import {
   CandidateNumber,
   CandidateNumberPayment,
@@ -114,7 +115,17 @@ export default async function CandidateProfilePage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data } = await supabase.rpc("get_candidate", { candidate_id: id });
+  // Les avis en même temps que la fiche : la note moyenne vient de
+  // `get_candidate`, mais pas les textes, et une note sans son avis ne dit rien.
+  const [{ data }, avis] = await Promise.all([
+    supabase.rpc("get_candidate", { candidate_id: id }),
+    supabase
+      .from("reviews")
+      .select("id, rating, comment, created_at")
+      .eq("reviewee_id", id)
+      .order("created_at", { ascending: false })
+      .limit(20),
+  ]);
   const profile = (data?.[0] ?? null) as Candidate | null;
 
   // Unknown id, not a candidate, or still awaiting moderation: RLS returns
@@ -328,6 +339,8 @@ export default async function CandidateProfilePage({
                 </div>
               </section>
             )}
+
+              <ReviewList reviews={(avis.data ?? []) as ReviewRow[]} />
           </div>
 
           {/* Sidebar */}

@@ -4,7 +4,11 @@ import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
-import { BookingList, type BookingRow } from "@/components/features/booking/BookingList";
+import {
+  BookingList,
+  type BookingRow,
+  type MyReviews,
+} from "@/components/features/booking/BookingList";
 import {
   UnlockedContacts,
   type UnlockedContact,
@@ -43,7 +47,7 @@ export default async function CandidateDashboard() {
   const supabase = await createClient();
 
   // RLS scopes these to the candidate: their own applications, their own inbox.
-  const [applications, unread, reviews, profile, bookings, unlocked] = await Promise.all([
+  const [applications, unread, reviews, profile, bookings, unlocked, avisLaisses] = await Promise.all([
     // Ses candidatures et leur étape. La RLS limite aux siennes ; le titre
     // d'une offre fermée ou échue revient vide, la jointure étant filtrée.
     supabase
@@ -75,7 +79,18 @@ export default async function CandidateDashboard() {
       .limit(20),
     // Vide (et sans erreur affichée) tant que la migration n'est pas passée.
     supabase.rpc("my_unlocked_contacts"),
+    // Les avis que cette candidate a laissés, sur `reviewer_id` : `reviews`
+    // juste au-dessus porte l'inverse, ceux qu'elle a reçus.
+    supabase
+      .from("reviews")
+      .select("reviewee_id, rating, comment")
+      .eq("reviewer_id", user.profileId ?? ""),
   ]);
+
+  const mesAvis: MyReviews = Object.fromEntries(
+    ((avisLaisses.data ?? []) as { reviewee_id: string; rating: number; comment: string | null }[])
+      .map((avis) => [avis.reviewee_id, { rating: avis.rating, comment: avis.comment }])
+  );
 
   const ratings = (reviews.data ?? []) as { rating: number }[];
   const averageRating =
@@ -184,6 +199,7 @@ export default async function CandidateDashboard() {
           <BookingList
             bookings={(bookings.data ?? []) as unknown as BookingRow[]}
             role="candidate"
+            reviews={mesAvis}
           />
         </section>
 

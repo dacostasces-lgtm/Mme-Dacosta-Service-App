@@ -1,7 +1,8 @@
-import { CalendarCheck, Clock, MapPin, Wallet } from "lucide-react";
+import { CalendarCheck, Clock, MapPin, Star, Wallet } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { PaymentInstructions } from "@/components/features/booking/PaymentInstructions";
+import { ReviewForm } from "@/components/features/reviews/ReviewForm";
 import {
   bookingStage,
   contractLabel,
@@ -13,6 +14,9 @@ export type BookingRow = BookingView & {
   /** L'autre partie : le candidat côté employeur, l'employeur côté candidat. */
   contrepartie: { id: string; full_name: string } | null;
 };
+
+/** Les avis déjà laissés par la personne qui regarde, par profil noté. */
+export type MyReviews = Record<string, { rating: number; comment: string | null }>;
 
 const ETATS = {
   a_payer: { label: "À régler", ton: "bg-amber-500/10 text-amber-700 dark:text-amber-500" },
@@ -37,10 +41,12 @@ function formatDate(iso: string | null) {
 export function BookingList({
   bookings,
   role,
+  reviews = {},
 }: {
   bookings: BookingRow[];
   /** Côté employeur on peut encore payer ; côté candidat la liste est en lecture. */
   role: "employer" | "candidate";
+  reviews?: MyReviews;
 }) {
   if (bookings.length === 0) {
     return (
@@ -136,6 +142,36 @@ export function BookingList({
               >
                 Échanger avec {booking.contrepartie.full_name}
               </Link>
+            )}
+
+            {/* L'avis s'ouvre dès que la mission est réglée, et non seulement
+                une fois terminée : c'est la condition que la base impose
+                (`ont_travaille_ensemble` accepte « réglée » comme
+                « terminée »), et un placement qui dure des mois ne doit pas
+                attendre sa fin pour être raconté. */}
+            {(etape === "payee" || etape === "terminee") && booking.contrepartie && (
+              <details className="mt-4 border-t border-border pt-4">
+                <summary className="cursor-pointer text-sm font-medium text-primary flex items-center gap-1.5">
+                  <Star
+                    className={`h-4 w-4 ${
+                      reviews[booking.contrepartie.id]
+                        ? "fill-amber-400 text-amber-400"
+                        : "text-primary"
+                    }`}
+                    aria-hidden
+                  />
+                  {reviews[booking.contrepartie.id]
+                    ? `Votre avis : ${reviews[booking.contrepartie.id].rating}/5 — le modifier`
+                    : `Laisser un avis sur ${booking.contrepartie.full_name}`}
+                </summary>
+                <div className="mt-4">
+                  <ReviewForm
+                    revieweeId={booking.contrepartie.id}
+                    revieweeName={booking.contrepartie.full_name}
+                    existing={reviews[booking.contrepartie.id]}
+                  />
+                </div>
+              </details>
             )}
           </li>
         );
