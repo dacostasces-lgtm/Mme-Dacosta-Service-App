@@ -2,7 +2,6 @@ import { type EmailOtpType } from '@supabase/supabase-js'
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getPathname, routing } from '@/i18n/routing'
-import { dashboardPathFor, type UserRole } from '@/lib/auth/dal'
 
 // Lands here from the Supabase confirmation email. Supports both link styles:
 // `token_hash` + `type` (custom email template) and `code` (default PKCE template).
@@ -73,18 +72,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL(target, request.url))
   }
 
-  const { data } = await supabase.auth.getUser()
+  // Confirmer une adresse ne connecte personne.
+  //
+  // `verifyOtp` ouvre une session dans le navigateur qui suit le lien, et ce
+  // chemin — contrairement à `exchangeCodeForSession`, lié par PKCE au cookie
+  // du navigateur qui l'a demandé — n'est rattaché à personne. Envoyer son
+  // propre lien de confirmation à quelqu'un le connectait donc au compte de
+  // l'expéditeur : la victime naviguait, saisissait ses informations et payait
+  // dans un compte qui ne lui appartient pas.
+  //
+  // La session est refermée aussitôt et la personne renvoyée vers la connexion.
+  // Elle entre son mot de passe, qu'elle seule connaît ; c'est ce qui rattache
+  // la session à la bonne personne. Le coût est une étape de plus après
+  // l'inscription, payée une fois.
+  await supabase.auth.signOut()
 
-  // Same authority as everywhere else: the profile row, which the signup
-  // trigger has already written by the time a confirmation link is followed.
-  // Metadata stays as the fallback for the rare case where it hasn't.
-  const { data: profile } = data.user
-    ? await supabase.from('profiles').select('role').eq('user_id', data.user.id).maybeSingle()
-    : { data: null }
-
-  const role = (profile?.role ??
-    data.user?.user_metadata?.role ??
-    'candidate') as UserRole
-  const destination = getPathname({ href: dashboardPathFor(role), locale })
-  return NextResponse.redirect(new URL(destination, request.url))
+  const loginPath = getPathname({ href: '/login', locale })
+  return NextResponse.redirect(
+    new URL(`${loginPath}?confirme=1`, request.url)
+  )
 }

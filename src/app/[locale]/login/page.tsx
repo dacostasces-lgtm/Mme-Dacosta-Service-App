@@ -9,9 +9,9 @@ import illustration from "@/assets/images/metier-gouvernante.jpg";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; confirme?: string }>;
 }) {
-  const [{ error }, user, locale] = await Promise.all([
+  const [{ error, confirme }, user, locale] = await Promise.all([
     searchParams,
     getCurrentUser(),
     getLocale(),
@@ -29,7 +29,10 @@ export default async function LoginPage({
       author="Madame Dacosta Services"
     >
       {/* Jamais le paramètre brut : seul un code connu donne un message. */}
-      <LoginForm initialError={messageConnexion(error)} />
+      <LoginForm
+        initialError={messageConnexion(error)}
+        initialNotice={confirme === "1" ? messageConnexion("compte_confirme") : undefined}
+      />
     </AuthShell>
   );
 }

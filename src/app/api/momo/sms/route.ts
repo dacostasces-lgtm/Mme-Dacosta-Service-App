@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isTrustedSender, looksLikeCredit, parseSms } from "@/lib/payments/sms";
 import { rateLimit } from "@/lib/rate-limit";
+import { consumeDurableLimit } from "@/lib/rate-limit-durable";
 
 /**
  * Receives Mobile Money confirmation SMS relayed from the phone holding the
@@ -96,6 +97,27 @@ export async function POST(request: Request) {
       { error: "SUPABASE_SERVICE_ROLE_KEY absent sur ce déploiement." },
       { status: 503 }
     );
+  }
+
+  // Plafond quotidien des règlements automatiques.
+  //
+  // Un SMS peut arriver sous un nom d'expéditeur usurpé : n'importe qui peut
+  // écrire à la SIM marchand en se faisant passer pour l'opérateur, et le
+  // relais le transmet de bonne foi. Le montant et la référence doivent certes
+  // correspondre exactement — il faut donc connaître une réservation en
+  // attente —, mais rien ne bornait le nombre de règlements ainsi obtenus.
+  //
+  // Ce plafond ne rend pas l'attaque impossible ; il en borne le coût. Au-delà,
+  // les SMS sont enregistrés sans régler, et la modération tranche — ce qu'elle
+  // ferait de toute façon devant une série inhabituelle.
+  const plafond = Number(process.env.MOMO_PLAFOND_AUTO_QUOTIDIEN ?? 10);
+  const budget = await consumeDurableLimit("sms-settle:daily", plafond, 86_400);
+  if (!budget.ok) {
+    return NextResponse.json({
+      outcome: "ignored",
+      reason: "daily_cap",
+      detail: "Plafond de règlements automatiques atteint ; à vérifier à la main.",
+    });
   }
 
   const parsed = parseSms(body);

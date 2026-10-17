@@ -15,6 +15,7 @@ export const MESSAGES_CONNEXION = {
   lien_expire: "Ce lien a expiré. Demandez-en un nouveau.",
   lien_invalide: "Ce lien n'est plus valable. Demandez-en un nouveau.",
   session_expiree: "Votre session a expiré. Reconnectez-vous.",
+  compte_confirme: "Votre adresse est confirmée. Connectez-vous pour entrer.",
 } as const;
 
 export type CodeConnexion = keyof typeof MESSAGES_CONNEXION;

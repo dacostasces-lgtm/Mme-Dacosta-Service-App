@@ -29,7 +29,14 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-export function LoginForm({ initialError }: { initialError?: string }) {
+export function LoginForm({
+  initialError,
+  initialNotice,
+}: {
+  initialError?: string;
+  /** Message neutre, pas une erreur : « votre adresse est confirmée ». */
+  initialNotice?: string;
+}) {
   const router = useRouter();
   const [submitError, setSubmitError] = useState(initialError ?? "");
 
@@ -139,6 +146,12 @@ export function LoginForm({ initialError }: { initialError?: string }) {
           />
           {form.formState.errors.password && <p className="text-xs text-destructive mt-1">{form.formState.errors.password.message}</p>}
         </div>
+
+        {initialNotice && !submitError && (
+          <p className="text-sm text-green-700 dark:text-green-500 bg-green-500/10 rounded-lg p-3">
+            {initialNotice}
+          </p>
+        )}
 
         {submitError && (
           <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">{submitError}</p>
