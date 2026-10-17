@@ -236,23 +236,28 @@ export async function updateProfile(
     const profileError = await saveShared(supabase, user.profileId, parsed.data, contactEditable);
     if (profileError) return { error: profileError };
 
-    const { error } = await supabase.from("candidate_details").upsert(
-      {
-        profile_id: user.profileId,
-        job_title: parsed.data.jobTitle ?? null,
-        age: parsed.data.age ?? null,
-        gender: parsed.data.gender || null,
-        experience: parsed.data.experience ?? null,
-        desired_salary: parsed.data.desiredSalary ?? null,
-        availability: parsed.data.availability || null,
-        // Pas de `description` : le champ a été retiré du profil candidat, et
-        // l'écrire ici effacerait à chaque enregistrement celles déjà saisies.
-        languages: parsed.data.languages,
-        skills: parsed.data.skills,
-        ...scheduleColumns(parsed.data),
-      },
-      { onConflict: "profile_id" }
-    );
+    // Par la fonction, pas par un `upsert` : `INSERT … ON CONFLICT DO UPDATE`
+    // réclame le SELECT sur toute la table, que 20261017110000 a retiré pour
+    // fermer la lecture directe de l'âge et du sexe. La fonction fait l'UPDATE
+    // puis l'INSERT si besoin, et reste en `SECURITY INVOKER` : RLS et le
+    // filtre anti-numéros s'appliquent comme avant (20261017140000).
+    const schedule = scheduleColumns(parsed.data);
+    const { error } = await supabase.rpc("save_my_candidate_details", {
+      p_job_title: parsed.data.jobTitle ?? null,
+      p_age: parsed.data.age ?? null,
+      p_gender: parsed.data.gender || null,
+      p_experience: parsed.data.experience ?? null,
+      p_desired_salary: parsed.data.desiredSalary ?? null,
+      p_availability: parsed.data.availability || null,
+      // Pas de `description` : le champ a été retiré du profil candidat, et
+      // l'écrire ici effacerait à chaque enregistrement celles déjà saisies.
+      p_languages: parsed.data.languages,
+      p_skills: parsed.data.skills,
+      p_work_days: schedule.work_days,
+      p_start_time: schedule.start_time,
+      p_end_time: schedule.end_time,
+      p_live_in: schedule.live_in,
+    });
 
     if (error) return { error: `Enregistrement impossible : ${error.message}` };
 

@@ -84,15 +84,15 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     missingProfileFields = ["Téléphone"];
   }
   if (profile?.role === "candidate") {
+    // Par la fonction, pas par la table : `age` et `gender` n'y sont plus
+    // lisibles depuis 20261017110000, et la lecture directe échouait donc en
+    // entier. L'échec étant avalé par le `if (!error)` ci-dessous, la complétude
+    // paraissait acquise et personne n'était plus averti d'un profil à finir.
     const [{ data: details, error }, addressResult] = await Promise.all([
-      supabase
-        .from("candidate_details")
-        .select(
-          "job_title, experience, age, gender, availability, desired_salary, skills, languages, " +
-            "work_days, start_time, end_time"
-        )
-        .eq("profile_id", profile.id)
-        .maybeSingle(),
+      supabase.rpc("my_candidate_details").then((result) => ({
+        data: result.data?.[0] ?? null,
+        error: result.error,
+      })),
       supabase
         .from("candidate_addresses")
         .select("address")

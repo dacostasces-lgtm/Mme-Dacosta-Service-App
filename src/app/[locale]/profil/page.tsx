@@ -48,14 +48,14 @@ export default async function ProfilePage() {
           .select("company_name, address, description")
           .eq("profile_id", user.profileId ?? "")
           .maybeSingle()
-      : supabase
-          .from("candidate_details")
-          .select(
-            "job_title, age, gender, experience, desired_salary, availability, description, " +
-              "languages, skills, cv_url, work_days, start_time, end_time, live_in"
-          )
-          .eq("profile_id", user.profileId ?? "")
-          .maybeSingle(),
+      : // Par fonction, et non par la table : depuis
+        // 20261017110000_details_candidat_prives, l'âge, le sexe et le CV ne
+        // sont plus lisibles par colonne — ils l'étaient pour tout le monde dès
+        // que le profil était publié.
+        supabase.rpc("my_candidate_details").then((r) => ({
+          ...r,
+          data: (r.data as unknown[] | null)?.[0] ?? null,
+        })),
     // Adresse précise du candidat, dans sa table privée. Erreur tant que
     // 20261012000000_candidate_address.sql n'est pas passée : le champ est
     // alors simplement masqué.

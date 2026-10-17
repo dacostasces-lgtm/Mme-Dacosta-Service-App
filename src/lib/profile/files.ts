@@ -60,9 +60,10 @@ export async function setCv(objectPath: string): Promise<FileState> {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("candidate_details")
-    .upsert({ profile_id: user.profileId, cv_url: objectPath }, { onConflict: "profile_id" });
+  // Même raison qu'au formulaire de profil : l'`upsert` exigeait le SELECT de
+  // table, retiré en 20261017110000. Cette fonction n'écrit que `cv_url` et
+  // laisse le reste du profil intact (20261017140000).
+  const { error } = await supabase.rpc("save_my_cv", { p_cv_url: objectPath });
 
   if (error) return { error: `Enregistrement impossible : ${error.message}` };
 

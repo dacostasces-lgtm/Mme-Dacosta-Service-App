@@ -75,8 +75,12 @@ type ModerationProfile = {
 const SELECT =
   "id, full_name, role, created_at, phone_present, neighborhood_id, " +
   "neighborhoods(name, cities(name, country)), " +
+  // `age` et `gender` sont absents : 20261017110000 les a retirés de la
+  // lecture par colonne — ils étaient publics dès qu'un profil l'était, et ce
+  // sont les critères mêmes sur lesquels on discrimine. Ils reviennent par
+  // admin_candidate_private() ci-dessous, qui refuse à qui n'est pas admin.
   "candidate_details!candidate_details_profile_id_fkey(job_title, experience, " +
-  "age, gender, availability, desired_salary, skills, languages, work_days, start_time, end_time, " +
+  "availability, desired_salary, skills, languages, work_days, start_time, end_time, " +
   "identity_checked_at, criminal_record_checked_at, interview_passed_at)";
 
 const CHECKS: { key: CandidateCheck; label: string; field: keyof CandidateDetails }[] = [
@@ -393,6 +397,26 @@ export default async function AdminPage() {
       }
     }
   }
+  // Âge et sexe, réservés à la modération, qui en a besoin pour juger un
+  // dossier complet — sans qu'ils soient lisibles par le premier venu.
+  const prives = new Map<string, { age: number | null; gender: string | null }>();
+  if (ids.length > 0) {
+    const { data, error: erreurPrives } = await supabase.rpc("admin_candidate_private", {
+      p_ids: ids,
+    });
+    // Une erreur ici (migration pas encore passée) laisse simplement ces deux
+    // champs vides : la file de modération doit continuer de s'afficher.
+    if (!erreurPrives) {
+      for (const row of (data ?? []) as {
+        profile_id: string;
+        age: number | null;
+        gender: string | null;
+      }[]) {
+        prives.set(row.profile_id, { age: row.age, gender: row.gender });
+      }
+    }
+  }
+
   // Adresses précises des candidats, lisibles par l'administration seule.
   const addresses = await loadCandidateAddresses(supabase, ids);
   const withEmail = (profile: ModerationProfile): ModerationProfile => ({
@@ -400,6 +424,9 @@ export default async function AdminPage() {
     email: null,
     ...contacts.get(profile.id),
     ...(addresses ? { address: addresses.get(profile.id) ?? null } : {}),
+    candidate_details: profile.candidate_details
+      ? { ...profile.candidate_details, ...prives.get(profile.id) }
+      : profile.candidate_details,
   });
   const declaredPayments = (declared.data ?? []) as unknown as DeclaredPayment[];
   // Kept apart from `error`: until 20260728000000_manual_mobile_money.sql is
