@@ -1,4 +1,4 @@
-import { ShieldCheck, Clock, MapPin, Mail, Undo2, Check, X, UserPlus, Phone, Database, Users, Home, PhoneCall } from "lucide-react";
+import { Clock, MapPin, Mail, Check, X, UserPlus, Phone, Database, Users, Home } from "lucide-react";
 import { missingCandidateFields, situationFromRow } from "@/lib/profile/completeness";
 import { childrenSummary, maritalStatusLabel } from "@/lib/candidates/family";
 import { telLink, whatsappLink } from "@/lib/contact/unlock";
@@ -21,12 +21,8 @@ import {
   type DeclaredCandidateUnlock,
 } from "@/components/features/admin/CandidateUnlockQueue";
 import { createClient } from "@/lib/supabase/server";
-import {
-  confirmPhoneByCall,
-  setProfileValidation,
-  setCandidateCheck,
-  type CandidateCheck,
-} from "@/lib/admin/actions";
+import { setCandidateCheck, type CandidateCheck } from "@/lib/admin/actions";
+import { ConfirmPhoneButton, PublishButton } from "@/components/features/admin/ProfileDecision";
 import { PaymentQueue, type DeclaredPayment } from "@/components/features/admin/PaymentQueue";
 import { AdminOverview } from "@/components/features/admin/AdminOverview";
 import { SmsCredit } from "@/components/features/admin/SmsCredit";
@@ -315,30 +311,9 @@ function ProfileRow({
           // Seul le SMS manque : l'équipe peut appeler la personne et valoir
           // confirmation. Une case vide, elle, ne se remplit qu'au profil.
           readiness(profile).missing.length === 0 &&
-          readiness(profile).phoneUnconfirmed && (
-            <form action={confirmPhoneByCall.bind(null, profile.id)} className="shrink-0">
-              <Button type="submit" variant="outline" className="h-10 rounded-full px-4 gap-2">
-                <PhoneCall className="h-4 w-4" />
-                Numéro confirmé par appel
-              </Button>
-            </form>
-          )
+          readiness(profile).phoneUnconfirmed && <ConfirmPhoneButton profileId={profile.id} />
         ) : (
-          <form action={setProfileValidation.bind(null, profile.id, !validated)} className="shrink-0">
-            <Button type="submit" variant={validated ? "outline" : "default"} className="h-10 rounded-full px-4 gap-2">
-              {validated ? (
-                <>
-                  <Undo2 className="h-4 w-4" />
-                  Retirer
-                </>
-              ) : (
-                <>
-                  <ShieldCheck className="h-4 w-4" />
-                  Publier
-                </>
-              )}
-            </Button>
-          </form>
+          <PublishButton profileId={profile.id} validated={validated} />
         )}
       </div>
 

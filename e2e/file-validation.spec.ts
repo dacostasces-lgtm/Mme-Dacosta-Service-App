@@ -27,6 +27,16 @@ function uniquePhone() {
 }
 
 /**
+ * Un nom unique, sans chiffres : les 13 de `Date.now()` passent pour un numéro
+ * de téléphone (9 chiffres ou plus), et reject_phone_numbers refuse alors
+ * d'enregistrer le profil que la candidate soumet sous ce nom.
+ */
+function uniqueName(prefix: string) {
+  const letters = String(Date.now()).replace(/\d/g, (digit) => "abcdefghij"[Number(digit)]);
+  return `${prefix} ${letters}`;
+}
+
+/**
  * Un compte prêt à se connecter. Le rôle admin se pose après coup, par la clé
  * de service : `handle_new_user` ne connaît que candidat et employeur.
  */
@@ -71,7 +81,7 @@ test.describe("file de modération et situation familiale", () => {
   test("seule une inscription terminée attend une décision, et la fiche montre la situation aux familles", async ({
     browser,
   }) => {
-    const nom = `Clarisse File ${Date.now()}`;
+    const nom = uniqueName("Clarisse File");
 
     // --- l'inscription seule ne suffit pas -------------------------------------
     const ctxCandidate = await browser.newContext();

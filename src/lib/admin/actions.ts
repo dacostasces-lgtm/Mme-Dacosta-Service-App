@@ -1,11 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import * as z from "zod";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyProfileValidated } from "@/lib/email/send";
 import { absoluteUrl, DEFAULT_LOCALE } from "@/lib/site";
+
+/** Réponse des boutons de la file de modération (ProfileDecision.tsx). */
+export type ProfileDecisionState = { error?: string; ok?: boolean };
+
+const profileIdSchema = z.string().uuid();
 
 /**
  * Publishes a profile, or takes it back off the listing.
@@ -14,33 +20,41 @@ import { absoluteUrl, DEFAULT_LOCALE } from "@/lib/site";
  * the role is re-checked here, and the database keeps two further backstops —
  * the profiles UPDATE policy, and the `protect_profile_columns` trigger, which
  * silently reverts `is_validated` for anyone who isn't an admin.
+ *
+ * Pas de `revalidatePath` : appelé depuis la page de modération, il empêche la
+ * réponse d'atteindre le client (voir src/lib/bookings/actions.ts). Le bouton
+ * rafraîchit la page lui-même une fois la réponse reçue ; les pages publiques
+ * qui listent les profils se rendent à la demande.
  */
-export async function setProfileValidation(profileId: string, validated: boolean) {
+export async function setProfileValidation(
+  _previous: ProfileDecisionState,
+  formData: FormData
+): Promise<ProfileDecisionState> {
   await requireUser({ role: "admin" });
+
+  const profileId = profileIdSchema.safeParse(formData.get("profileId"));
+  if (!profileId.success) return { error: "Profil introuvable." };
+  const validated = formData.get("validated") === "true";
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("profiles")
     .update({ is_validated: validated })
-    .eq("id", profileId);
+    .eq("id", profileId.data);
 
-  if (error) {
-    throw new Error(`Impossible de mettre à jour le profil : ${error.message}`);
-  }
+  if (error) return { error: `Impossible de mettre à jour le profil : ${error.message}` };
 
   // Only on publication, and only once the write succeeded. Being told your
   // profile is live is the moment the platform becomes useful to a candidate,
   // and nothing else in the app tells them.
   if (validated) {
     await notifyProfileValidated({
-      profileId,
+      profileId: profileId.data,
       url: absoluteUrl(`/${DEFAULT_LOCALE}/dashboard/candidate`),
     });
   }
 
-  // The moderation queue and the public listing both change; revalidating the
-  // layout covers every locale prefix without enumerating them.
-  revalidatePath("/", "layout");
+  return { ok: true };
 }
 
 /**
@@ -50,30 +64,35 @@ export async function setProfileValidation(profileId: string, validated: boolean
  * laisse alors entrer sans confirmer, et le profil reste dans les inscriptions
  * non terminées de la modération. Un appel de l'équipe vaut confirmation.
  *
- * Par la clé de service : `phone_verified_at` est figée pour tous les comptes
- * par protect_profile_columns, et ne s'écrit plus que depuis le serveur
- * (20261012010000_security_fixes.sql).
+ * Par la clé de service, comme la confirmation par SMS
+ * (confirm_phone_verification, 20261012010000_security_fixes.sql) :
+ * `phone_verified_at` ne s'écrit que depuis le serveur. Pas de
+ * `revalidatePath`, pour la même raison que setProfileValidation.
  */
-export async function confirmPhoneByCall(profileId: string) {
+export async function confirmPhoneByCall(
+  _previous: ProfileDecisionState,
+  formData: FormData
+): Promise<ProfileDecisionState> {
   await requireUser({ role: "admin" });
+
+  const profileId = profileIdSchema.safeParse(formData.get("profileId"));
+  if (!profileId.success) return { error: "Profil introuvable." };
 
   const admin = createAdminClient();
   if (!admin) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY absente sur ce déploiement.");
+    return { error: "Confirmation indisponible : SUPABASE_SERVICE_ROLE_KEY absente sur ce déploiement." };
   }
 
-  const { error } = await admin
+  const { data, error } = await admin
     .from("profiles")
     .update({ phone_verified_at: new Date().toISOString(), phone_otp_pin_id: null })
-    .eq("id", profileId)
-    .not("phone", "is", null);
+    .eq("id", profileId.data)
+    .not("phone", "is", null)
+    .select("id");
 
-  if (error) {
-    throw new Error(`Impossible de confirmer le numéro : ${error.message}`);
-  }
-
-  // Même usage que setProfileValidation : un formulaire sans état côté client.
-  revalidatePath("/", "layout");
+  if (error) return { error: `Impossible de confirmer le numéro : ${error.message}` };
+  if (!data?.length) return { error: "Ce profil n'a pas de numéro à confirmer." };
+  return { ok: true };
 }
 
 export type CandidateCheck = "identity" | "criminal_record" | "interview";
