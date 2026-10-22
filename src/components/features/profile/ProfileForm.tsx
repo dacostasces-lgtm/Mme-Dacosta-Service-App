@@ -3,7 +3,12 @@
 import { EXPERIENCE_OPTIONS } from "@/lib/profile/completeness";
 import { availabilityLabel, RHYTHM_OPTIONS } from "@/lib/candidates/availability";
 import { MetierPicker } from "@/components/features/jobs/MetierPicker";
-import { useActionState, useEffect } from "react";
+import {
+  CHILDREN_OPTIONS,
+  MARITAL_STATUS_OPTIONS,
+  YOUNGEST_CHILD_AGE_OPTIONS,
+} from "@/lib/candidates/family";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "@/i18n/routing";
 import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -32,6 +37,9 @@ export type CandidateProfile = {
   startTime: string | null;
   endTime: string | null;
   liveIn: boolean;
+  maritalStatus: string | null;
+  childrenCount: number | null;
+  youngestChildAge: number | null;
 };
 
 export type EmployerProfile = {
@@ -56,6 +64,8 @@ type Props = {
   /** False tant que la table des adresses n'est pas lisible : le champ est
    *  alors masqué plutôt qu'exigé sans pouvoir être enregistré. */
   addressEditable?: boolean;
+  /** Même règle pour la situation familiale (20261022000000). */
+  familyEditable?: boolean;
   employer?: EmployerProfile;
   /** Cases encore vides du profil candidat, affichées en tête du formulaire. */
   missing?: string[];
@@ -94,6 +104,7 @@ export function ProfileForm({
   candidate,
   candidateAddress = null,
   addressEditable = false,
+  familyEditable = false,
   employer,
   missing = [],
 }: Props) {
@@ -340,6 +351,15 @@ export function ProfileForm({
             </Field>
           </div>
 
+          {familyEditable && (
+            <FamilySituation
+              required={candidateRequired}
+              maritalStatus={candidate?.maritalStatus ?? null}
+              childrenCount={candidate?.childrenCount ?? null}
+              youngestChildAge={candidate?.youngestChildAge ?? null}
+            />
+          )}
+
           <div className="space-y-5 rounded-2xl border border-border p-4">
             <div>
               <h3 className="font-medium">Jours et horaires de disponibilité</h3>
@@ -419,5 +439,95 @@ export function ProfileForm({
         {pending ? "Enregistrement..." : "Enregistrer mon profil"}
       </Button>
     </form>
+  );
+}
+
+/**
+ * Situation matrimoniale et enfants : trois listes à toucher. L'âge du dernier
+ * enfant n'apparaît qu'avec au moins un enfant — sans quoi la question n'a pas
+ * de sens, et une case obligatoire vide bloquerait l'enregistrement.
+ */
+function FamilySituation({
+  required,
+  maritalStatus,
+  childrenCount,
+  youngestChildAge,
+}: {
+  required: boolean;
+  maritalStatus: string | null;
+  childrenCount: number | null;
+  youngestChildAge: number | null;
+}) {
+  const [children, setChildren] = useState<string>(
+    childrenCount === null ? "" : String(childrenCount)
+  );
+  const hasChildren = children !== "" && Number(children) > 0;
+
+  return (
+    <div className="space-y-4 rounded-2xl border border-border p-4">
+      <div>
+        <h3 className="font-medium">Situation familiale</h3>
+        <p className="text-xs text-muted-foreground">
+          Les familles le demandent souvent pour garder des enfants ou tenir une maison. Visible
+          seulement des employeurs inscrits et de notre équipe, jamais du public.
+        </p>
+      </div>
+
+      <Field label="Situation matrimoniale" htmlFor="maritalStatus">
+        <select
+          id="maritalStatus"
+          name="maritalStatus"
+          required={required}
+          defaultValue={maritalStatus ?? ""}
+          className={SELECT}
+        >
+          <option value="">Choisir</option>
+          {MARITAL_STATUS_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label="Nombre d'enfants" htmlFor="childrenCount">
+          <select
+            id="childrenCount"
+            name="childrenCount"
+            required={required}
+            value={children}
+            onChange={(event) => setChildren(event.target.value)}
+            className={SELECT}
+          >
+            <option value="">Choisir</option>
+            {CHILDREN_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        {hasChildren && (
+          <Field label="Âge du dernier enfant" htmlFor="youngestChildAge">
+            <select
+              id="youngestChildAge"
+              name="youngestChildAge"
+              required={required}
+              defaultValue={youngestChildAge ?? ""}
+              className={SELECT}
+            >
+              <option value="">Choisir</option>
+              {YOUNGEST_CHILD_AGE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+      </div>
+    </div>
   );
 }

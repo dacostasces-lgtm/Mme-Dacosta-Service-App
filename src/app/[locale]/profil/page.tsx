@@ -98,6 +98,9 @@ export default async function ProfilePage() {
         startTime: (details?.start_time as string) ?? null,
         endTime: (details?.end_time as string) ?? null,
         liveIn: Boolean(details?.live_in),
+        maritalStatus: (details?.marital_status as string) ?? null,
+        childrenCount: (details?.children_count as number) ?? null,
+        youngestChildAge: (details?.youngest_child_age as number) ?? null,
       };
 
   const employer: EmployerProfile | undefined = isEmployer
@@ -151,6 +154,10 @@ export default async function ProfilePage() {
             candidate={candidate}
             candidateAddress={(addressResult.data?.address as string | undefined) ?? null}
             addressEditable={!isEmployer && !addressResult.error}
+            // Les colonnes n'arrivent qu'avec 20261022000000 : tant que la
+            // fonction ne les renvoie pas, les cases restent masquées plutôt
+            // qu'exigées sans pouvoir être enregistrées.
+            familyEditable={!isEmployer && (details === null || "marital_status" in (details ?? {}))}
             employer={employer}
             missing={user.missingProfileFields}
           />

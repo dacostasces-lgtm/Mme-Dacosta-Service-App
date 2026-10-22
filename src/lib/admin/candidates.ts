@@ -6,6 +6,11 @@ import { requireUser } from "@/lib/auth/dal";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalisePhone } from "@/lib/phone";
 import { AVAILABILITY_VALUES } from "@/lib/candidates/availability";
+import {
+  MARITAL_STATUS_VALUES,
+  MAX_CHILDREN_OPTION,
+  MAX_CHILD_AGE_OPTION,
+} from "@/lib/candidates/family";
 import { isMissingTable } from "@/lib/profile/completeness";
 import {
   SCHEDULE_ORDER_MESSAGE,
@@ -28,6 +33,10 @@ const schema = z.object({
     .optional(),
   jobTitle: z.string().trim().min(2, "Indiquez le métier."),
   experience: z.string().trim().max(60).optional(),
+  age: z.coerce.number().int().min(16, "Âge minimum : 16 ans.").max(80).optional(),
+  maritalStatus: z.enum(MARITAL_STATUS_VALUES).optional(),
+  childrenCount: z.coerce.number().int().min(0).max(MAX_CHILDREN_OPTION).optional(),
+  youngestChildAge: z.coerce.number().int().min(0).max(MAX_CHILD_AGE_OPTION).optional(),
   availability: z.enum(AVAILABILITY_VALUES).optional(),
   desiredSalary: z.coerce.number().int().min(0).max(100_000_000).optional(),
   languages: z.string().trim().max(200).optional(),
@@ -80,6 +89,11 @@ export async function createCandidate(
     address: formData.get("address") ?? undefined,
     jobTitle: formData.get("jobTitle"),
     experience: formData.get("experience") ?? undefined,
+    // Une liste laissée sur « Choisir » envoie "" : ni âge ni situation.
+    age: formData.get("age") || undefined,
+    maritalStatus: formData.get("maritalStatus") || undefined,
+    childrenCount: formData.get("childrenCount") || undefined,
+    youngestChildAge: formData.get("youngestChildAge") || undefined,
     availability: formData.get("availability") || undefined,
     desiredSalary: formData.get("desiredSalary") || undefined,
     languages: formData.get("languages") ?? undefined,
@@ -192,6 +206,19 @@ export async function createCandidate(
     .update({
       job_title: parsed.data.jobTitle,
       experience: parsed.data.experience || null,
+      age: parsed.data.age ?? null,
+      // La situation familiale n'est écrite que si elle a été donnée : les
+      // colonnes n'existent qu'avec 20261022000000, et une fiche saisie sans
+      // elles ne doit pas échouer pour autant.
+      ...(parsed.data.maritalStatus !== undefined || parsed.data.childrenCount !== undefined
+        ? {
+            marital_status: parsed.data.maritalStatus ?? null,
+            children_count: parsed.data.childrenCount ?? null,
+            youngest_child_age: parsed.data.childrenCount
+              ? (parsed.data.youngestChildAge ?? null)
+              : null,
+          }
+        : {}),
       availability: parsed.data.availability ?? null,
       desired_salary: parsed.data.desiredSalary ?? null,
       languages: toList(parsed.data.languages),

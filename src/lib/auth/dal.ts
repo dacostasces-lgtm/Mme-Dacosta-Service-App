@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isOtpConfigured } from "@/lib/otp/infobip";
 import { hasSkippedVerification } from "@/lib/otp/skip";
 import { dashboardPathFor, type UserRole } from "@/lib/auth/roles";
-import { missingCandidateFields } from "@/lib/profile/completeness";
+import { missingCandidateFields, situationFromRow } from "@/lib/profile/completeness";
 
 // Re-exported so the existing call sites keep importing from the DAL, while the
 // login form — which cannot touch a `server-only` module — shares the same
@@ -113,6 +113,9 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
         experience: row.experience as string | null,
         age: row.age as number | null,
         gender: row.gender as string | null,
+        // « ? » tant que la fonction ne renvoie pas encore ces colonnes
+        // (20261022000000_situation_familiale.sql pas encore passée).
+        ...situationFromRow(details as Record<string, unknown> | null),
         availability: row.availability as string | null,
         desiredSalary: row.desired_salary as number | null,
         skills: row.skills,
