@@ -46,6 +46,10 @@ export default function PrivacyPage() {
             <strong>Profil professionnel</strong> (Candidats) : métier, expérience, compétences,
             langues, prétention salariale, présentation, photo, CV.
           </li>
+          <li>
+            <strong>Situation personnelle</strong> (Candidats) : âge, sexe, situation
+            matrimoniale, nombre d&apos;enfants et âge du dernier enfant, adresse précise.
+          </li>
           <li><strong>Échanges</strong> : le contenu des messages envoyés via la messagerie.</li>
           <li>
             <strong>Réservations et paiements</strong> : mission concernée, montant, moyen de
@@ -89,6 +93,13 @@ export default function PrivacyPage() {
           Les autres utilisateurs ne voient que ce que le service affiche : nom, quartier,
           distance, et pour les Candidats publiés leur profil professionnel. Votre adresse email
           et votre position exacte ne sont visibles que de vous et de nos administrateurs.
+        </p>
+        <p>
+          L&apos;<strong>âge et la situation familiale</strong> d&apos;un Candidat (situation
+          matrimoniale, nombre d&apos;enfants, âge du dernier enfant) sont montrés aux seuls
+          Employeurs inscrits, sur sa fiche, et à nos administrateurs : jamais aux visiteurs sans
+          compte ni aux moteurs de recherche. Son sexe et son adresse précise ne sont visibles
+          que de lui et de nos administrateurs.
         </p>
         <p>
           <strong>Votre numéro de téléphone</strong> (et WhatsApp) est communiqué, en plus de nos

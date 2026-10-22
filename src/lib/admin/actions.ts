@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyProfileValidated } from "@/lib/email/send";
 import { absoluteUrl, DEFAULT_LOCALE } from "@/lib/site";
 
@@ -39,6 +40,39 @@ export async function setProfileValidation(profileId: string, validated: boolean
 
   // The moderation queue and the public listing both change; revalidating the
   // layout covers every locale prefix without enumerating them.
+  revalidatePath("/", "layout");
+}
+
+/**
+ * Confirme à la main le numéro d'un inscrit, que l'équipe vient d'appeler.
+ *
+ * Le SMS n'arrive pas toujours (crédit épuisé, réseau) : la porte de secours
+ * laisse alors entrer sans confirmer, et le profil reste dans les inscriptions
+ * non terminées de la modération. Un appel de l'équipe vaut confirmation.
+ *
+ * Par la clé de service : `phone_verified_at` est figée pour tous les comptes
+ * par protect_profile_columns, et ne s'écrit plus que depuis le serveur
+ * (20261012010000_security_fixes.sql).
+ */
+export async function confirmPhoneByCall(profileId: string) {
+  await requireUser({ role: "admin" });
+
+  const admin = createAdminClient();
+  if (!admin) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY absente sur ce déploiement.");
+  }
+
+  const { error } = await admin
+    .from("profiles")
+    .update({ phone_verified_at: new Date().toISOString(), phone_otp_pin_id: null })
+    .eq("id", profileId)
+    .not("phone", "is", null);
+
+  if (error) {
+    throw new Error(`Impossible de confirmer le numéro : ${error.message}`);
+  }
+
+  // Même usage que setProfileValidation : un formulaire sans état côté client.
   revalidatePath("/", "layout");
 }
 

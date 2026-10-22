@@ -127,8 +127,17 @@ export async function fillCandidateProfile(page: Page, phone: string) {
   await chooseMetier(page, "Nounou");
   await page.getByLabel("Adresse précise").fill("12 rue Mbochi, derrière l'école");
   await page.getByLabel("Années d'expérience").selectOption("6 ans");
-  await page.getByLabel("Âge").fill("32");
+  // `exact` : « Âge du dernier enfant » contient aussi « Âge ».
+  await page.getByLabel("Âge", { exact: true }).fill("32");
   await page.getByLabel("Sexe").selectOption("F");
+  await page.getByLabel("Situation matrimoniale").selectOption("marie");
+  // La case de l'âge du dernier enfant n'apparaît qu'avec au moins un enfant :
+  // elle attend que la page ait réagi au choix.
+  await expect(async () => {
+    await page.getByLabel("Nombre d'enfants").selectOption("2");
+    await expect(page.getByLabel("Âge du dernier enfant")).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
+  await page.getByLabel("Âge du dernier enfant").selectOption("4");
   await page.getByLabel("Disponibilité").selectOption("full_time");
   // Les jours sont des cases cachées dans leur étiquette : on touche le texte,
   // comme le ferait une candidate.

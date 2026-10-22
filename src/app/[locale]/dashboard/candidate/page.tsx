@@ -4,6 +4,7 @@ import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import { isOtpConfigured } from "@/lib/otp/infobip";
 import {
   BookingList,
   type BookingRow,
@@ -103,6 +104,12 @@ export default async function CandidateDashboard() {
   // même règle que celle qui bloque l'enregistrement, la candidature et le
   // déblocage d'un numéro.
   const profileComplete = user.missingProfileFields.length === 0;
+  // La modération ne voit une inscription qu'une fois terminée : profil
+  // complet et numéro confirmé par SMS. Avant, dire « vous n'avez rien à
+  // faire » laissait attendre quelqu'un qui n'arriverait jamais dans la file.
+  // Sans envoi de SMS configuré, /verification renvoie ici : ne pas la proposer.
+  const phoneUnconfirmed = isOtpConfigured() && user.hasPhone && !user.phoneVerifiedAt;
+  const readyForReview = profileComplete && !phoneUnconfirmed;
 
   return (
     <div className="flex-1 bg-surface bg-grain">
@@ -124,13 +131,39 @@ export default async function CandidateDashboard() {
           )}
           <div>
             <p className="font-semibold">
-              {published ? "Votre profil est en ligne" : "Votre profil est en cours de vérification"}
+              {published
+                ? "Votre profil est en ligne"
+                : readyForReview
+                  ? "Votre profil est en cours de vérification"
+                  : "Votre profil n'est pas encore envoyé à notre équipe"}
             </p>
             <p className="text-sm text-muted-foreground">
               {published
                 ? "Les employeurs peuvent vous trouver dans la recherche par proximité."
-                : "Il n'apparaîtra dans la recherche qu'une fois vérifié par notre équipe. Vous n'avez rien à faire, nous vous préviendrons."}
+                : readyForReview
+                  ? "Il n'apparaîtra dans la recherche qu'une fois vérifié par notre équipe. Vous n'avez rien à faire, nous vous préviendrons."
+                  : "Notre équipe ne l'examinera qu'une fois ces étapes terminées :"}
             </p>
+            {!published && !readyForReview && (
+              <ul className="mt-2 space-y-1 text-sm">
+                {!profileComplete && (
+                  <li>
+                    •{" "}
+                    <Link href="/profil" className="font-medium text-primary hover:underline">
+                      Remplir toutes les cases de mon profil
+                    </Link>
+                  </li>
+                )}
+                {phoneUnconfirmed && (
+                  <li>
+                    •{" "}
+                    <Link href="/verification" className="font-medium text-primary hover:underline">
+                      Confirmer mon numéro par SMS
+                    </Link>
+                  </li>
+                )}
+              </ul>
+            )}
           </div>
         </div>
 

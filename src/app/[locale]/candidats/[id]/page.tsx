@@ -1,6 +1,18 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { MapPin, Star, BadgeCheck, CheckCircle2, Circle, FileText, Award, Clock, Languages } from "lucide-react";
+import {
+  MapPin,
+  Star,
+  BadgeCheck,
+  CheckCircle2,
+  Circle,
+  FileText,
+  Award,
+  Clock,
+  Languages,
+  Cake,
+  Users,
+} from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/routing";
 import { getCurrentUser } from "@/lib/auth/dal";
@@ -14,6 +26,7 @@ import {
 } from "@/components/features/contact/CandidateContact";
 import { localisedUrl } from "@/lib/site";
 import { availabilityLabel } from "@/lib/candidates/availability";
+import { childrenSummary, maritalStatusLabel } from "@/lib/candidates/family";
 import { formatHours, formatWorkDays } from "@/lib/jobs/schedule";
 import { createClient } from "@/lib/supabase/server";
 
@@ -42,6 +55,14 @@ type Candidate = {
   start_time: string | null;
   end_time: string | null;
   live_in: boolean | null;
+};
+
+/** Une ligne de candidate_situation() (20261022000000_situation_familiale.sql). */
+type SituationRow = {
+  age: number | null;
+  marital_status: string | null;
+  children_count: number | null;
+  youngest_child_age: number | null;
 };
 
 function formatDate(iso: string) {
@@ -162,6 +183,17 @@ export default async function CandidateProfilePage({
         | CandidateContactRow
         | undefined);
 
+  // Âge et situation familiale : pour un employeur connecté, l'administration
+  // ou la candidate elle-même — candidate_situation() en décide et ne renvoie
+  // rien aux autres (20261022000000). Un visiteur voit de quoi se connecter.
+  const voitSituation =
+    estSoiMeme || visiteur?.role === "employer" || visiteur?.role === "admin";
+  const situation = voitSituation
+    ? ((await supabase.rpc("candidate_situation", { p_candidate_id: profile.id })).data?.[0] as
+        | SituationRow
+        | undefined)
+    : undefined;
+
   const initials = profile.full_name
     .split(/\s+/)
     .filter(Boolean)
@@ -241,6 +273,12 @@ export default async function CandidateProfilePage({
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
                     {profile.experience} d&apos;expérience
+                  </div>
+                )}
+                {situation?.age && (
+                  <div className="flex items-center gap-1">
+                    <Cake className="h-4 w-4" />
+                    {situation.age} ans
                   </div>
                 )}
               </div>
@@ -345,6 +383,50 @@ export default async function CandidateProfilePage({
 
           {/* Sidebar */}
           <div className="space-y-8">
+            {situation ? (
+              <section className="bg-card rounded-3xl p-6 border border-border shadow-soft">
+                <h3 className="font-bold mb-4 flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" />
+                  Situation familiale
+                </h3>
+                <h4 className="text-sm font-semibold text-muted-foreground mb-1">Âge</h4>
+                <p className="font-medium mb-4">
+                  {situation.age ? `${situation.age} ans` : "Non renseigné"}
+                </p>
+                <h4 className="text-sm font-semibold text-muted-foreground mb-1">
+                  Situation matrimoniale
+                </h4>
+                <p className="font-medium mb-4">
+                  {maritalStatusLabel(situation.marital_status) ?? "Non renseignée"}
+                </p>
+                <h4 className="text-sm font-semibold text-muted-foreground mb-1">Enfants</h4>
+                <p className="font-medium">
+                  {childrenSummary(situation.children_count, situation.youngest_child_age) ??
+                    "Non renseigné"}
+                </p>
+                {estSoiMeme && (
+                  <p className="text-xs text-muted-foreground mt-4">
+                    Visible des employeurs inscrits et de notre équipe, pas du public.
+                  </p>
+                )}
+              </section>
+            ) : (
+              !visiteur && (
+                <section className="bg-surface rounded-3xl p-6 border border-border">
+                  <h3 className="font-bold mb-2 flex items-center gap-2">
+                    <Users className="h-5 w-5 text-primary" />
+                    Âge et situation familiale
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Visibles par les employeurs inscrits.
+                  </p>
+                  <Link href="/login" className="text-sm font-medium text-primary hover:underline">
+                    Se connecter →
+                  </Link>
+                </section>
+              )
+            )}
+
             <section className="bg-surface rounded-3xl p-6 border border-border">
               <h3 className="font-bold mb-4 flex items-center gap-2">
                 <Award className="h-5 w-5 text-primary" />

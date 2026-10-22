@@ -16,6 +16,11 @@ export type CandidateFields = {
   experience: string | null | undefined;
   age: number | null | undefined;
   gender: string | null | undefined;
+  /** Situation familiale (20261022000000_situation_familiale.sql). « ? »
+   *  quand elle n'a pas pu être lue : elle n'est alors pas réclamée. */
+  maritalStatus: string | null | undefined;
+  childrenCount: number | string | null | undefined;
+  youngestChildAge: number | string | null | undefined;
   availability: string | null | undefined;
   desiredSalary: number | null | undefined;
   skills: unknown;
@@ -36,6 +41,9 @@ const RULES: [keyof CandidateFields, string][] = [
   ["experience", "Années d'expérience"],
   ["age", "Âge"],
   ["gender", "Sexe"],
+  ["maritalStatus", "Situation matrimoniale"],
+  ["childrenCount", "Nombre d'enfants"],
+  ["youngestChildAge", "Âge du dernier enfant"],
   ["availability", "Disponibilité"],
   ["desiredSalary", "Salaire souhaité"],
   ["skills", "Compétences"],
@@ -47,9 +55,34 @@ const RULES: [keyof CandidateFields, string][] = [
 
 /** Les libellés des cases encore vides, dans l'ordre du formulaire. */
 export function missingCandidateFields(fields: CandidateFields): string[] {
-  return RULES.filter(([key]) =>
-    key === "phonePresent" ? !fields.phonePresent : !filled(fields[key])
-  ).map(([, label]) => label);
+  return RULES.filter(([key]) => {
+    if (key === "phonePresent") return !fields.phonePresent;
+    // L'âge du dernier enfant ne se demande qu'à qui en a au moins un.
+    if (key === "youngestChildAge") {
+      return (
+        typeof fields.childrenCount === "number" &&
+        fields.childrenCount > 0 &&
+        !filled(fields.youngestChildAge)
+      );
+    }
+    return !filled(fields[key]);
+  }).map(([, label]) => label);
+}
+
+/**
+ * La situation familiale telle que la renvoient my_candidate_details() et
+ * admin_candidate_private(). Une colonne absente du résultat (fonction pas
+ * encore mise à jour en base) donne « ? » : personne n'est bloqué pour une
+ * case qu'il ne pourrait pas encore remplir.
+ */
+export function situationFromRow(row: Record<string, unknown> | null | undefined) {
+  const read = (key: string) =>
+    row && key in row ? (row[key] as string | number | null) : "?";
+  return {
+    maritalStatus: read("marital_status") as string | null,
+    childrenCount: read("children_count"),
+    youngestChildAge: read("youngest_child_age"),
+  };
 }
 
 export const INCOMPLETE_PROFILE_MESSAGE =
@@ -70,4 +103,10 @@ export const EXPERIENCE_OPTIONS = [
  */
 export function isMissingTable(error: { code?: string } | null | undefined) {
   return error?.code === "PGRST205" || error?.code === "42P01";
+}
+
+/** Une fonction pas encore créée en base : PGRST202 côté PostgREST, 42883
+ *  côté Postgres. Même usage qu'isMissingTable. */
+export function isMissingFunction(error: { code?: string } | null | undefined) {
+  return error?.code === "PGRST202" || error?.code === "42883";
 }

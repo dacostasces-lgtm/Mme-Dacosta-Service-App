@@ -1,5 +1,6 @@
-import { ShieldCheck, Clock, MapPin, Mail, Undo2, Check, X, UserPlus, Phone, Database, Users, Home } from "lucide-react";
-import { missingCandidateFields } from "@/lib/profile/completeness";
+import { ShieldCheck, Clock, MapPin, Mail, Undo2, Check, X, UserPlus, Phone, Database, Users, Home, PhoneCall } from "lucide-react";
+import { missingCandidateFields, situationFromRow } from "@/lib/profile/completeness";
+import { childrenSummary, maritalStatusLabel } from "@/lib/candidates/family";
 import { telLink, whatsappLink } from "@/lib/contact/unlock";
 import { loadCandidateAddresses, type AdminContact } from "@/lib/admin/contacts";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -20,7 +21,12 @@ import {
   type DeclaredCandidateUnlock,
 } from "@/components/features/admin/CandidateUnlockQueue";
 import { createClient } from "@/lib/supabase/server";
-import { setProfileValidation, setCandidateCheck, type CandidateCheck } from "@/lib/admin/actions";
+import {
+  confirmPhoneByCall,
+  setProfileValidation,
+  setCandidateCheck,
+  type CandidateCheck,
+} from "@/lib/admin/actions";
 import { PaymentQueue, type DeclaredPayment } from "@/components/features/admin/PaymentQueue";
 import { AdminOverview } from "@/components/features/admin/AdminOverview";
 import { SmsCredit } from "@/components/features/admin/SmsCredit";
@@ -35,6 +41,11 @@ type CandidateDetails = {
   experience: string | null;
   age: number | null;
   gender: string | null;
+  /** Ces trois-là, comme l'âge, ne viennent que d'admin_candidate_private() ;
+   *  absents tant que 20261022000000_situation_familiale.sql n'est pas passée. */
+  marital_status?: string | null;
+  children_count?: number | null;
+  youngest_child_age?: number | null;
   availability: string | null;
   desired_salary: number | null;
   skills: unknown;
@@ -124,10 +135,30 @@ function VerificationToggles({ profile }: { profile: ModerationProfile }) {
   );
 }
 
-/** Les cases vides d'un profil candidat, pour décider avant de publier. */
-function MissingFields({ profile }: { profile: ModerationProfile }) {
+/**
+ * Ce qui manque encore à une inscription pour être examinée : les cases vides
+ * d'un profil candidat (le numéro seul pour un employeur), et la confirmation
+ * du numéro par SMS. Seules les inscriptions où rien ne manque arrivent dans
+ * « En attente » ; les autres restent à part, sans bouton « Publier ».
+ */
+function readiness(profile: ModerationProfile) {
+  const missing =
+    profile.role === "candidate"
+      ? candidateMissing(profile)
+      : profile.phone_present
+        ? []
+        : ["Téléphone"];
+  // `undefined` quand admin_profile_contacts() n'a pas répondu : inconnu, donc
+  // pas retenu contre l'inscription. Sans envoi de SMS configuré, personne ne
+  // pourrait confirmer : la condition tombe d'elle-même.
+  const phoneUnconfirmed =
+    isOtpConfigured() && Boolean(profile.phone_present) && profile.phone_verified === false;
+  return { missing, phoneUnconfirmed, ready: missing.length === 0 && !phoneUnconfirmed };
+}
+
+function candidateMissing(profile: ModerationProfile) {
   const d = profile.candidate_details;
-  const missing = missingCandidateFields({
+  return missingCandidateFields({
     phonePresent: Boolean(profile.phone_present),
     neighborhoodId: profile.neighborhood_id,
     // `undefined` : adresses illisibles (migration pas encore passée), donc
@@ -144,18 +175,61 @@ function MissingFields({ profile }: { profile: ModerationProfile }) {
     workDays: d?.work_days,
     startTime: d?.start_time,
     endTime: d?.end_time,
+    // Absents du résultat (migration pas encore passée) : « ? », pas réclamés.
+    ...situationFromRow(d as Record<string, unknown> | null),
   });
-  if (missing.length === 0) {
-    return <p className="text-xs text-green-700 dark:text-green-400">Profil complet</p>;
-  }
+}
+
+/** Les cases vides d'un profil candidat, pour décider avant de publier. */
+function MissingFields({ profile }: { profile: ModerationProfile }) {
+  const { missing, phoneUnconfirmed } = readiness(profile);
   return (
-    <p className="text-xs text-amber-700 dark:text-amber-500">
-      Profil incomplet — manque : {missing.join(", ")}
-    </p>
+    <>
+      {profile.role === "candidate" &&
+        (missing.length === 0 ? (
+          <p className="text-xs text-green-700 dark:text-green-400">Profil complet</p>
+        ) : (
+          <p className="text-xs text-amber-700 dark:text-amber-500">
+            Profil incomplet — manque : {missing.join(", ")}
+          </p>
+        ))}
+      {profile.role !== "candidate" && missing.length > 0 && (
+        <p className="text-xs text-amber-700 dark:text-amber-500">
+          Incomplet — manque : {missing.join(", ")}
+        </p>
+      )}
+      {phoneUnconfirmed && (
+        <p className="text-xs text-amber-700 dark:text-amber-500">
+          Numéro pas encore confirmé par SMS
+        </p>
+      )}
+    </>
   );
 }
 
-function ProfileRow({ profile, validated }: { profile: ModerationProfile; validated: boolean }) {
+/** Âge et situation familiale, que la modération lit avant de publier. */
+function Situation({ details }: { details: CandidateDetails | null }) {
+  if (!details) return null;
+  const parts = [
+    details.age ? `${details.age} ans` : null,
+    maritalStatusLabel(details.marital_status),
+    childrenSummary(details.children_count, details.youngest_child_age),
+  ].filter(Boolean);
+  if (parts.length === 0) return null;
+  return <p className="text-xs text-muted-foreground">{parts.join(" · ")}</p>;
+}
+
+function ProfileRow({
+  profile,
+  validated,
+  unfinished = false,
+}: {
+  profile: ModerationProfile;
+  validated: boolean;
+  /** Inscription non terminée : pas de « Publier », seulement, quand le SMS
+   *  est la seule chose qui manque, la confirmation par appel. */
+  unfinished?: boolean;
+}) {
   const city = profile.neighborhoods?.cities;
   const place = [profile.neighborhoods?.name, city?.name].filter(Boolean).join(", ");
   const isCandidate = profile.role === "candidate";
@@ -175,7 +249,9 @@ function ProfileRow({ profile, validated }: { profile: ModerationProfile; valida
             </span>
           </div>
 
-          {isCandidate && <MissingFields profile={profile} />}
+          {(isCandidate || unfinished) && <MissingFields profile={profile} />}
+
+          {isCandidate && <Situation details={profile.candidate_details} />}
 
           {profile.candidate_details?.job_title && (
             <p className="text-sm text-muted-foreground truncate">
@@ -235,21 +311,35 @@ function ProfileRow({ profile, validated }: { profile: ModerationProfile; valida
           </div>
         </div>
 
-        <form action={setProfileValidation.bind(null, profile.id, !validated)} className="shrink-0">
-          <Button type="submit" variant={validated ? "outline" : "default"} className="h-10 rounded-full px-4 gap-2">
-            {validated ? (
-              <>
-                <Undo2 className="h-4 w-4" />
-                Retirer
-              </>
-            ) : (
-              <>
-                <ShieldCheck className="h-4 w-4" />
-                Publier
-              </>
-            )}
-          </Button>
-        </form>
+        {unfinished ? (
+          // Seul le SMS manque : l'équipe peut appeler la personne et valoir
+          // confirmation. Une case vide, elle, ne se remplit qu'au profil.
+          readiness(profile).missing.length === 0 &&
+          readiness(profile).phoneUnconfirmed && (
+            <form action={confirmPhoneByCall.bind(null, profile.id)} className="shrink-0">
+              <Button type="submit" variant="outline" className="h-10 rounded-full px-4 gap-2">
+                <PhoneCall className="h-4 w-4" />
+                Numéro confirmé par appel
+              </Button>
+            </form>
+          )
+        ) : (
+          <form action={setProfileValidation.bind(null, profile.id, !validated)} className="shrink-0">
+            <Button type="submit" variant={validated ? "outline" : "default"} className="h-10 rounded-full px-4 gap-2">
+              {validated ? (
+                <>
+                  <Undo2 className="h-4 w-4" />
+                  Retirer
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="h-4 w-4" />
+                  Publier
+                </>
+              )}
+            </Button>
+          </form>
+        )}
       </div>
 
       {isCandidate && <VerificationToggles profile={profile} />}
@@ -399,7 +489,7 @@ export default async function AdminPage() {
   }
   // Âge et sexe, réservés à la modération, qui en a besoin pour juger un
   // dossier complet — sans qu'ils soient lisibles par le premier venu.
-  const prives = new Map<string, { age: number | null; gender: string | null }>();
+  const prives = new Map<string, Partial<CandidateDetails>>();
   if (ids.length > 0) {
     const { data, error: erreurPrives } = await supabase.rpc("admin_candidate_private", {
       p_ids: ids,
@@ -407,12 +497,12 @@ export default async function AdminPage() {
     // Une erreur ici (migration pas encore passée) laisse simplement ces deux
     // champs vides : la file de modération doit continuer de s'afficher.
     if (!erreurPrives) {
-      for (const row of (data ?? []) as {
-        profile_id: string;
-        age: number | null;
-        gender: string | null;
-      }[]) {
-        prives.set(row.profile_id, { age: row.age, gender: row.gender });
+      // La ligne entière, situation familiale comprise quand la fonction la
+      // renvoie (20261022000000) : une colonne absente reste absente, et n'est
+      // alors pas réclamée (situationFromRow).
+      for (const row of (data ?? []) as ({ profile_id: string } & Partial<CandidateDetails>)[]) {
+        const { profile_id, ...rest } = row;
+        prives.set(profile_id, rest);
       }
     }
   }
@@ -428,6 +518,13 @@ export default async function AdminPage() {
       ? { ...profile.candidate_details, ...prives.get(profile.id) }
       : profile.candidate_details,
   });
+  // Seules les inscriptions terminées — profil complet, numéro confirmé par
+  // SMS — attendent une décision. Les autres restent à part : elles arrivent
+  // d'elles-mêmes dans « En attente » une fois terminées.
+  const pendingEnriched = pendingProfiles.map(withEmail);
+  const readyProfiles = pendingEnriched.filter((profile) => readiness(profile).ready);
+  const unfinishedProfiles = pendingEnriched.filter((profile) => !readiness(profile).ready);
+
   const declaredPayments = (declared.data ?? []) as unknown as DeclaredPayment[];
   // Kept apart from `error`: until 20260728000000_manual_mobile_money.sql is
   // applied the payment columns don't exist, and folding this in would hide the
@@ -505,7 +602,7 @@ export default async function AdminPage() {
               : (unlocks.data ?? []).length + (candidateUnlocks.data ?? []).length
           }
           jobPayments={jobPayments.error ? null : (jobPayments.data ?? []).length}
-          profiles={pendingProfiles.length}
+          profiles={readyProfiles.length}
         />
 
         <div className="mb-12">
@@ -554,21 +651,44 @@ export default async function AdminPage() {
         <section id="profils" className="mb-12 scroll-mt-24">
           <h2 className="text-lg font-semibold mb-4">
             En attente{" "}
-            <span className="text-muted-foreground font-normal">({pendingProfiles.length})</span>
+            <span className="text-muted-foreground font-normal">({readyProfiles.length})</span>
           </h2>
 
-          {pendingProfiles.length === 0 ? (
+          {readyProfiles.length === 0 ? (
             <p className="text-sm text-muted-foreground bg-card border border-border rounded-2xl p-6 text-center">
               Aucun profil en attente.
             </p>
           ) : (
             <div className="space-y-3">
-              {pendingProfiles.map((profile) => (
-                <ProfileRow key={profile.id} profile={withEmail(profile)} validated={false} />
+              {readyProfiles.map((profile) => (
+                <ProfileRow key={profile.id} profile={profile} validated={false} />
               ))}
             </div>
           )}
         </section>
+
+        {/* Repliée : ce n'est pas du travail de modération, seulement de quoi
+            relancer quelqu'un qui n'a pas fini — ou confirmer son numéro par
+            appel quand le SMS n'arrive pas. */}
+        {unfinishedProfiles.length > 0 && (
+          <details id="inscriptions-non-terminees" className="mb-12 scroll-mt-24 group">
+            <summary className="cursor-pointer list-none rounded-2xl border border-dashed border-border bg-card/60 p-4">
+              <span className="font-semibold">
+                Inscriptions non terminées{" "}
+                <span className="text-muted-foreground font-normal">({unfinishedProfiles.length})</span>
+              </span>
+              <span className="block text-xs text-muted-foreground mt-1">
+                Profil incomplet ou numéro pas confirmé par SMS. Elles passent d&apos;elles-mêmes
+                dans « En attente » une fois terminées. Toucher pour les afficher.
+              </span>
+            </summary>
+            <div className="space-y-3 mt-3">
+              {unfinishedProfiles.map((profile) => (
+                <ProfileRow key={profile.id} profile={profile} validated={false} unfinished />
+              ))}
+            </div>
+          </details>
+        )}
 
         <section>
           <h2 className="text-lg font-semibold mb-4">

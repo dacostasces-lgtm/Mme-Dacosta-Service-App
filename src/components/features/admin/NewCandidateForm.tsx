@@ -10,6 +10,11 @@ import { RHYTHM_OPTIONS } from "@/lib/candidates/availability";
 import { ScheduleFields } from "@/components/features/jobs/ScheduleFields";
 import { MetierPicker } from "@/components/features/jobs/MetierPicker";
 import { EXPERIENCE_OPTIONS } from "@/lib/profile/completeness";
+import {
+  CHILDREN_OPTIONS,
+  MARITAL_STATUS_OPTIONS,
+  YOUNGEST_CHILD_AGE_OPTIONS,
+} from "@/lib/candidates/family";
 import { PHONE_HINT } from "@/lib/phone";
 import type { CityRef } from "@/lib/geo/locations";
 
@@ -31,6 +36,7 @@ export function NewCandidateForm({ cities }: { cities: CityRef[] }) {
     {}
   );
   const [cityId, setCityId] = useState(cities[0]?.id ?? "");
+  const [children, setChildren] = useState("");
   const city = cities.find((c) => c.id === cityId) ?? cities[0];
 
   if (state.profileId) {
@@ -146,6 +152,50 @@ export function NewCandidateForm({ cities }: { cities: CityRef[] }) {
               ))}
             </select>
           </div>
+
+          <div>
+            <Label htmlFor="age">Âge</Label>
+            <Input id="age" name="age" type="number" min={16} max={80} placeholder="Ex : 32" />
+          </div>
+
+          <div>
+            <Label htmlFor="maritalStatus">Situation matrimoniale</Label>
+            <select id="maritalStatus" name="maritalStatus" className={FIELD} defaultValue="">
+              <option value="">Choisir</option>
+              {MARITAL_STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <Label htmlFor="childrenCount">Nombre d&apos;enfants</Label>
+            <select
+              id="childrenCount"
+              name="childrenCount"
+              className={FIELD}
+              value={children}
+              onChange={(event) => setChildren(event.target.value)}
+            >
+              <option value="">Choisir</option>
+              {CHILDREN_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Seulement avec au moins un enfant : sans quoi la question n'a pas de sens. */}
+          {children !== "" && Number(children) > 0 && (
+            <div>
+              <Label htmlFor="youngestChildAge">Âge du dernier enfant</Label>
+              <select id="youngestChildAge" name="youngestChildAge" className={FIELD} defaultValue="">
+                <option value="">Choisir</option>
+                {YOUNGEST_CHILD_AGE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <Label htmlFor="availability">Disponibilité</Label>

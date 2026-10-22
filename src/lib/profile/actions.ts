@@ -1,11 +1,16 @@
 "use server";
 
-import { isMissingTable, missingCandidateFields } from "@/lib/profile/completeness";
+import { isMissingTable, missingCandidateFields, isMissingFunction } from "@/lib/profile/completeness";
 import { containsPhoneNumber, PHONE_NUMBER_REFUSED } from "@/lib/contact/phone-filter";
 import * as z from "zod";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { normalisePhone } from "@/lib/phone";
+import {
+  MARITAL_STATUS_VALUES,
+  MAX_CHILDREN_OPTION,
+  MAX_CHILD_AGE_OPTION,
+} from "@/lib/candidates/family";
 import {
   SCHEDULE_ORDER_MESSAGE,
   readSchedule,
@@ -63,6 +68,9 @@ const candidateSchema = baseSchema.extend({
   jobTitle: z.string().trim().max(80).optional(),
   age: z.number().int().min(16, "Âge minimum : 16 ans.").max(80).optional(),
   gender: z.enum(["F", "M", ""]).optional(),
+  maritalStatus: z.enum(MARITAL_STATUS_VALUES).optional(),
+  childrenCount: z.number().int().min(0).max(MAX_CHILDREN_OPTION).optional(),
+  youngestChildAge: z.number().int().min(0).max(MAX_CHILD_AGE_OPTION).optional(),
   experience: z.string().trim().max(120).optional(),
   desiredSalary: z.number().int().positive().max(10_000_000).optional(),
   availability: z.enum(["full_time", "part_time", "internal", "external", ""]).optional(),
@@ -81,6 +89,14 @@ const employerSchema = baseSchema.extend({
 function text(formData: FormData, key: string) {
   const value = String(formData.get(key) ?? "").trim();
   return value || undefined;
+}
+
+/** Un entier positif ou nul (0 enfant est une réponse, pas une case vide). */
+function wholeNumber(formData: FormData, key: string) {
+  const value = text(formData, key);
+  if (!value) return undefined;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
 function integer(formData: FormData, key: string) {
@@ -176,6 +192,9 @@ export async function updateProfile(
     // Champ absent quand la page n'a pas pu lire la table des adresses
     // (migration pas encore passée) : il n'est alors ni exigé ni écrit.
     const addressEditable = formData.has("address");
+    // Même règle pour la situation familiale (20261022000000).
+    const familyEditable = formData.has("maritalStatus");
+    const childrenCount = wholeNumber(formData, "childrenCount");
 
     const parsed = candidateSchema.safeParse({
       ...shared,
@@ -183,6 +202,10 @@ export async function updateProfile(
       jobTitle: text(formData, "jobTitle"),
       age: integer(formData, "age"),
       gender: String(formData.get("gender") ?? ""),
+      maritalStatus: text(formData, "maritalStatus"),
+      childrenCount,
+      // Sans enfant, la case est masquée et sa valeur ignorée.
+      youngestChildAge: childrenCount ? wholeNumber(formData, "youngestChildAge") : undefined,
       experience: text(formData, "experience"),
       desiredSalary: integer(formData, "desiredSalary"),
       availability: String(formData.get("availability") ?? ""),
@@ -209,6 +232,9 @@ export async function updateProfile(
         experience: parsed.data.experience,
         age: parsed.data.age,
         gender: parsed.data.gender,
+        maritalStatus: familyEditable ? parsed.data.maritalStatus : "?",
+        childrenCount: familyEditable ? parsed.data.childrenCount : "?",
+        youngestChildAge: familyEditable ? parsed.data.youngestChildAge : "?",
         availability: parsed.data.availability,
         desiredSalary: parsed.data.desiredSalary,
         skills: parsed.data.skills,
@@ -260,6 +286,21 @@ export async function updateProfile(
     });
 
     if (error) return { error: `Enregistrement impossible : ${error.message}` };
+
+    // La situation familiale, par sa propre fonction : save_my_candidate_details
+    // garde sa signature, que l'application déjà en ligne appelle encore pendant
+    // le passage de la migration. Fonction absente (migration pas encore
+    // passée) : rien à écrire, le reste du profil est enregistré.
+    if (familyEditable) {
+      const { error: familyError } = await supabase.rpc("save_my_family_situation", {
+        p_marital_status: parsed.data.maritalStatus ?? null,
+        p_children_count: parsed.data.childrenCount ?? null,
+        p_youngest_child_age: parsed.data.childrenCount ? (parsed.data.youngestChildAge ?? null) : null,
+      });
+      if (familyError && !isMissingFunction(familyError)) {
+        return { error: `Situation familiale non enregistrée : ${familyError.message}` };
+      }
+    }
 
     // L'adresse vit à part, lisible du seul candidat et de l'administration
     // (20261012000000_candidate_address.sql).
