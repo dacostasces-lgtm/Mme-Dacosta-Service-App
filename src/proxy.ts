@@ -28,7 +28,6 @@ const PROTECTED = [
   // The password *change* screen, not `/mot-de-passe-oublie`, which has to stay
   // reachable precisely because the visitor cannot sign in.
   /^\/mot-de-passe(\/|$)/,
-  /^\/candidats\/[^/]+\/reserver(\/|$)/,
 ];
 
 function pathWithoutLocale(pathname: string) {

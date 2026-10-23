@@ -6,7 +6,6 @@ import {
   BadgeCheck,
   CheckCircle2,
   Circle,
-  FileText,
   Award,
   Clock,
   Languages,
@@ -166,13 +165,6 @@ export default async function CandidateProfilePage({
 
   const visiteur = await getCurrentUser();
   const estSoiMeme = visiteur?.profileId === profile.id;
-  // Un candidat qui en consulte un autre ne doit pas voir « Réserver » : le
-  // tunnel exige le rôle employeur et le renverrait vers son propre tableau de
-  // bord, ce qui se lit comme une panne. Un visiteur anonyme le voit, car
-  // requireUser l'enverra se connecter puis le ramènera — on ne sait pas encore
-  // quel rôle il a.
-  const peutReserver =
-    !visiteur || visiteur.role === "employer" || visiteur.role === "admin";
 
   // Le numéro, ou ce qu'il faut payer pour l'avoir : candidate_contact()
   // décide seule qui y a droit. Une erreur (migration pas encore appliquée)
@@ -311,16 +303,11 @@ export default async function CandidateProfilePage({
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-3">
-                  {peutReserver && (
-                    <Link
-                      href={`/candidats/${profile.id}/reserver`}
-                      className={buttonVariants({
-                        className: "h-12 rounded-full px-8 shadow-glow",
-                      })}
-                    >
-                      <FileText className="mr-2 h-4 w-4" /> Réserver ce candidat
-                    </Link>
-                  )}
+                  {/* Plus de « Réserver ce candidat » : la réservation
+                      facturait 15 000 FCFA une mise en relation que le
+                      déblocage ci-dessous facture 500. Deux chemins vers le
+                      même service, à trente fois l'écart, et celui-ci est le
+                      seul que la grille tarifaire annonce. */}
                   {/* À la place de « Contacter », qui ouvrait une messagerie
                       vide : le numéro, ou le paiement qui l'ouvre. */}
                   <CandidateNumber

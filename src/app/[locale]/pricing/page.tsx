@@ -6,7 +6,6 @@ import { ChoosePlanButton } from "@/components/features/subscriptions/ChoosePlan
 import { PLANS as PRICES, formatPrice, type PlanId } from "@/lib/subscriptions/plans";
 import { CANDIDATE_UNLOCK_PRICE, UNLOCK_PRICE } from "@/lib/contact/unlock";
 import { JOB_PRICE } from "@/lib/jobs/payment";
-import { BOOKING_FEE_XAF } from "@/lib/bookings/constants";
 import { cn } from "@/lib/utils";
 
 // Les montants viennent des fichiers qui servent à facturer (plans.ts,
@@ -83,11 +82,17 @@ const ONE_OFF = [
     price: JOB_PRICE,
     detail: "Le numéro de chaque candidat qui postule à cette offre, pour toute sa durée.",
   },
+  // La réservation à 15 000 FCFA a été retirée : elle facturait une mise en
+  // relation que le déblocage de numéro facture 500, soit trente fois moins
+  // pour le même service.
   {
-    label: "Réservation d'un candidat",
+    label: "Placement et gestion de personnel",
     audience: "Employeur",
-    price: BOOKING_FEE_XAF,
-    detail: "Frais de mise en relation pour réserver un candidat à une date de début.",
+    // Pas de montant : la prestation se chiffre au cas par cas, et afficher un
+    // prix d'appel ici obligerait à le démentir au premier échange.
+    price: null,
+    detail:
+      "Vous nous confiez votre besoin, nous vous adressons une proposition adaptée.",
   },
 ];
 
@@ -197,7 +202,10 @@ export default async function PricingPage() {
                   <p className="text-sm text-muted-foreground">{item.detail}</p>
                 </div>
                 <p className="font-display text-xl font-bold text-primary shrink-0">
-                  {formatPrice(item.price)}
+                  {/* `null` vaut « sur devis » : la prestation de placement se
+                      chiffre au cas par cas. Afficher 0 FCFA la ferait passer
+                      pour gratuite. */}
+                  {item.price === null ? "Sur devis" : formatPrice(item.price)}
                 </p>
               </li>
             ))}
