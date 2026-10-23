@@ -19,13 +19,13 @@ export const PLANS: Record<PlanId, Plan> = {
   premium_candidate: {
     id: "premium_candidate",
     name: "Premium Candidat",
-    price: 5000,
+    price: 2500,
     role: "candidate",
   },
   premium_employer: {
     id: "premium_employer",
     name: "Premium Employeur",
-    price: 25000,
+    price: 15000,
     role: "employer",
   },
 };

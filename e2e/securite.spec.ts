@@ -156,9 +156,13 @@ test.describe("audit de sécurité : failles graves", () => {
       .select("plan_name, price, status, is_active")
       .eq("id", demande.data as string)
       .single();
+    // Ce montant doit suivre les deux sources qui le fixent, et elles seules :
+    // request_subscription() en base — qui est l'autorité, l'insertion directe
+    // étant révoquée — et la copie d'affichage de src/lib/subscriptions/plans.ts.
+    // Les laisser diverger annoncerait un prix et en encaisserait un autre.
     expect(data).toEqual({
       plan_name: "Premium Employeur",
-      price: 25000,
+      price: 15000,
       status: "pending_payment",
       is_active: false,
     });
