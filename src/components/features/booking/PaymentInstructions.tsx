@@ -43,6 +43,7 @@ export function PaymentInstructions({ bookingId, amountLabel, dejaDeclare }: Pro
 
   const reference = paymentReference(bookingId);
   const operators = MOMO_OPERATORS.filter((operator) => operator.number);
+  const lienRecu = whatsappReceiptLink(reference, amountLabel);
 
   if (state.ok || dejaDeclare) {
     return (
@@ -132,17 +133,21 @@ export function PaymentInstructions({ bookingId, amountLabel, dejaDeclare }: Pro
         </Button>
       </form>
 
-      <p className="text-xs text-muted-foreground text-center">
-        Un souci ?{" "}
-        <a
-          href={whatsappReceiptLink(reference, amountLabel)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary hover:underline font-medium"
-        >
-          Envoyez-nous le reçu par WhatsApp
-        </a>
-      </p>
+      {/* Rien sans NEXT_PUBLIC_WHATSAPP_NUMBER : un lien vers un numéro non
+          vérifié vaut moins que pas de lien. */}
+      {lienRecu && (
+        <p className="text-xs text-muted-foreground text-center">
+          Un souci ?{" "}
+          <a
+            href={lienRecu}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline font-medium"
+          >
+            Envoyez-nous le reçu par WhatsApp
+          </a>
+        </p>
+      )}
     </div>
   );
 }

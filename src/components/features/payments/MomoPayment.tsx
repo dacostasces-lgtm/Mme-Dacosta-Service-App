@@ -60,6 +60,9 @@ export function MomoPayment({
   // one reference format for everything the platform charges for.
   const reference = paymentReference(id);
   const operators = MOMO_OPERATORS.filter((operator) => operator.number);
+  // Null sans NEXT_PUBLIC_WHATSAPP_NUMBER : on n'affiche alors aucun lien plutôt
+  // qu'un lien vers un numéro que personne n'a vérifié.
+  const lienRecu = whatsappReceiptLink(reference, amountLabel, purpose);
 
   if (state.ok || declared) {
     return (
@@ -150,34 +153,43 @@ export function MomoPayment({
             </li>
           </ol>
 
-          <p className="text-xs text-muted-foreground border-t border-border pt-4">
-            Un souci ?{" "}
-            <a
-              href={whatsappReceiptLink(reference, amountLabel, purpose)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary font-medium hover:underline"
-            >
-              Envoyez-nous le reçu sur WhatsApp
-            </a>
-            .
-          </p>
+          {lienRecu && (
+            <p className="text-xs text-muted-foreground border-t border-border pt-4">
+              Un souci ?{" "}
+              <a
+                href={lienRecu}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary font-medium hover:underline"
+              >
+                Envoyez-nous le reçu sur WhatsApp
+              </a>
+              .
+            </p>
+          )}
         </>
       ) : (
         // Better an honest gap than a plausible-looking wrong number.
         <div className="flex gap-3 text-sm bg-secondary/10 border border-secondary/40 rounded-lg p-4">
           <AlertTriangle className="h-5 w-5 text-secondary shrink-0" />
           <p>
-            Aucun numéro Mobile Money n&apos;est configuré pour le moment.{" "}
-            <a
-              href={whatsappReceiptLink(reference, amountLabel, purpose)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary font-medium hover:underline"
-            >
-              Contactez-nous sur WhatsApp
-            </a>{" "}
-            pour régler.
+            Aucun numéro Mobile Money n&apos;est configuré pour le moment.
+            {lienRecu ? (
+              <>
+                {" "}
+                <a
+                  href={lienRecu}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary font-medium hover:underline"
+                >
+                  Contactez-nous sur WhatsApp
+                </a>{" "}
+                pour régler.
+              </>
+            ) : (
+              " Contactez-nous pour régler."
+            )}
           </p>
         </div>
       )}

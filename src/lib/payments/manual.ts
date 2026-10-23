@@ -36,7 +36,17 @@ export const MOMO_OPERATORS: MomoOperator[] = [
   },
 ];
 
-export const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "242067173030";
+/**
+ * Numéro WhatsApp où arrivent les reçus Mobile Money.
+ *
+ * Null quand la variable manque, et non replié sur une valeur écrite ici. Le
+ * repli précédent — un numéro en dur — rendait une variable oubliée invisible :
+ * les reçus partaient vers le numéro figé au moment où cette ligne a été
+ * écrite, et personne ne l'aurait su avant de s'étonner qu'aucun reçu n'arrive.
+ * Mieux vaut ne pas proposer le lien que d'en proposer un vers un numéro que
+ * nul n'a vérifié.
+ */
+export const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || null;
 
 /** True when nothing is configured — the UI then says so instead of inventing a number. */
 export function hasConfiguredOperator() {
@@ -55,12 +65,14 @@ export function paymentReference(bookingId: string) {
 }
 
 /** Pre-filled WhatsApp message so the payer doesn't have to retype anything.
- *  `purpose` names what was paid for: « la réservation », « l'abonnement »… */
+ *  `purpose` names what was paid for: « la réservation », « l'abonnement »…
+ *  Null sans numéro configuré : l'appelant n'affiche alors pas le lien. */
 export function whatsappReceiptLink(
   reference: string,
   amountLabel: string,
   purpose = "la réservation"
-) {
+): string | null {
+  if (!WHATSAPP_NUMBER) return null;
   const text = `Bonjour, je viens d'effectuer le paiement de ${amountLabel} pour ${purpose} ${reference}. Voici le reçu Mobile Money :`;
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
 }

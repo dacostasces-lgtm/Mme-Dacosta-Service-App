@@ -48,3 +48,14 @@ next-env.d.ts
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Sauvegardes de la base, déposées ou déchiffrées ici par mégarde.
+#
+# C'est le dépôt public d'un projet dont dix exports complets ont été
+# téléchargeables pendant huit jours en octobre 2026. Le mode d'emploi joint à
+# chaque archive invite à la déchiffrer, et on le fait volontiers depuis le
+# dossier du projet : sans ces règles, un `git add -A` suffirait à recommencer.
+sauvegarde/
+sauvegarde*.tar.gz
+*.tar.gz.gpg
+depot/

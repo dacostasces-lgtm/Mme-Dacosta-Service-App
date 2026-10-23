@@ -12,6 +12,15 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Les traces et rapports Playwright. Elles embarquent le JavaScript
+    // minifié des pages capturées : sans cette ligne, `npm run lint` passait
+    // de 1 avertissement à 2243 problèmes selon qu'un test avait échoué
+    // depuis — un linter dont le verdict dépend de l'exécution précédente ne
+    // sert plus à rien. `.gitignore` les écarte déjà de git, mais la
+    // configuration à plat d'ESLint ne le lit pas.
+    "test-results/**",
+    "playwright-report/**",
+    "blob-report/**",
   ]),
 ]);
 
