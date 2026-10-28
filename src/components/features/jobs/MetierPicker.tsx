@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { METIERS } from "@/lib/jobs/metiers";
 
@@ -31,6 +31,15 @@ export function MetierPicker({
   const [other, setOther] = useState(known ? "" : initial);
 
   const value = choice === AUTRE ? other.trim() : choice;
+
+  // La validité suit la valeur. `onInput` ne part jamais sur ce champ, que
+  // React remplit lui-même : le message posé par un premier envoi sans métier
+  // restait collé, et le formulaire refusait de partir même une fois le
+  // métier choisi, jusqu'à recharger la page.
+  const hidden = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    hidden.current?.setCustomValidity(required && value === "" ? "Choisissez un métier." : "");
+  }, [required, value]);
 
   return (
     <fieldset>
@@ -69,6 +78,7 @@ export function MetierPicker({
           caché n'est pas validé par le navigateur. Un champ texte invisible
           mais présent l'est, et son message s'affiche sur les boutons. */}
       <input
+        ref={hidden}
         name={name}
         value={value}
         required={required}
@@ -76,10 +86,6 @@ export function MetierPicker({
         tabIndex={-1}
         aria-hidden
         className="sr-only"
-        onInvalid={(event) =>
-          (event.target as HTMLInputElement).setCustomValidity("Choisissez un métier.")
-        }
-        onInput={(event) => (event.target as HTMLInputElement).setCustomValidity("")}
       />
     </fieldset>
   );

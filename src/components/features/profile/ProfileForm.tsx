@@ -3,6 +3,8 @@
 import { EXPERIENCE_OPTIONS } from "@/lib/profile/completeness";
 import { availabilityLabel, RHYTHM_OPTIONS } from "@/lib/candidates/availability";
 import { MetierPicker } from "@/components/features/jobs/MetierPicker";
+import { SkillsPicker } from "@/components/features/profile/SkillsPicker";
+import { submitWithoutReset } from "@/lib/forms";
 import {
   CHILDREN_OPTIONS,
   MARITAL_STATUS_OPTIONS,
@@ -126,7 +128,7 @@ export function ProfileForm({
   const candidateRequired = role === "candidate";
 
   return (
-    <form action={formAction} className="space-y-8">
+    <form action={formAction} onSubmit={submitWithoutReset(formAction)} className="space-y-8">
       {isEmployer && missing.length > 0 && (
         <div className="rounded-2xl border-2 border-secondary bg-secondary/10 p-4 text-sm">
           <p className="font-semibold mb-1">Ajoutez votre numéro de téléphone</p>
@@ -393,19 +395,12 @@ export function ProfileForm({
             />
           </Field>
 
-          <Field
-            label="Compétences"
-            htmlFor="skills"
-            hint="Séparées par des virgules. Ex : cuisine, repassage, garde d'enfants"
-          >
-            <Input
-              id="skills"
-              name="skills"
-              required={candidateRequired}
-              defaultValue={candidate?.skills.join(", ") ?? ""}
-              placeholder="cuisine, repassage, garde d'enfants"
-            />
-          </Field>
+          <SkillsPicker
+            name="skills"
+            legend="Compétences"
+            defaultValue={candidate?.skills ?? []}
+            required={candidateRequired}
+          />
 
           <Field
             label="Langues parlées"
