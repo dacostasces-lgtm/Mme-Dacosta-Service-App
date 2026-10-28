@@ -8,6 +8,8 @@ import {
   type EmployerProfile,
 } from "@/components/features/profile/ProfileForm";
 import { FileUploads } from "@/components/features/profile/FileUploads";
+import { IdentityDocuments } from "@/components/features/profile/IdentityDocuments";
+import type { DocumentsRow } from "@/lib/candidates/documents";
 import { PhoneVerification } from "@/components/features/profile/PhoneVerification";
 import { isOtpConfigured } from "@/lib/otp/infobip";
 
@@ -32,7 +34,7 @@ export default async function ProfilePage() {
   const supabase = await createClient();
   const isEmployer = user.role === "employer";
 
-  const [profileResult, neighborhoodResult, contactResult, detailsResult, addressResult] = await Promise.all([
+  const [profileResult, neighborhoodResult, contactResult, detailsResult, addressResult, documentsResult] = await Promise.all([
     supabase
       .from("profiles")
       .select("full_name, neighborhood_id, avatar_url, phone_verified_at")
@@ -64,6 +66,15 @@ export default async function ProfilePage() {
       : supabase
           .from("candidate_addresses")
           .select("address")
+          .eq("profile_id", user.profileId ?? "")
+          .maybeSingle(),
+    // Pièces justificatives : erreur tant que 20261028100000 n'est pas passée,
+    // et le bloc reste alors masqué.
+    isEmployer
+      ? Promise.resolve({ data: null, error: null })
+      : supabase
+          .from("candidate_documents")
+          .select("identity_type, identity_front, identity_back, driving_license")
           .eq("profile_id", user.profileId ?? "")
           .maybeSingle(),
   ]);
@@ -130,6 +141,17 @@ export default async function ProfilePage() {
             hasCv={Boolean(details?.cv_url)}
           />
         </div>
+
+        {!isEmployer && !documentsResult.error && user.profileId && (
+          <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-soft mb-6">
+            <IdentityDocuments
+              userId={user.id}
+              profileId={user.profileId}
+              documents={(documentsResult.data as DocumentsRow | null) ?? null}
+              jobTitle={(details?.job_title as string | undefined) ?? null}
+            />
+          </div>
+        )}
 
         {/* Avant le formulaire : c'est le numéro déjà enregistré qu'on vérifie,
             pas celui en cours de saisie. Le placer après donnerait à penser

@@ -1,6 +1,11 @@
 "use server";
 
-import { isMissingTable, missingCandidateFields, isMissingFunction } from "@/lib/profile/completeness";
+import {
+  DOCUMENTS_NOT_CHECKED,
+  isMissingTable,
+  missingCandidateFields,
+  isMissingFunction,
+} from "@/lib/profile/completeness";
 import { containsPhoneNumber, PHONE_NUMBER_REFUSED } from "@/lib/contact/phone-filter";
 import * as z from "zod";
 import { requireUser } from "@/lib/auth/dal";
@@ -245,6 +250,9 @@ export async function updateProfile(
         workDays: parsed.data.workDays,
         startTime: parsed.data.startTime,
         endTime: parsed.data.endTime,
+        // Les pièces s'envoient à part, au-dessus du formulaire : elles
+        // comptent pour le profil complet, pas pour enregistrer ces cases.
+        ...DOCUMENTS_NOT_CHECKED,
       });
       if (missing.length > 0) {
         return {

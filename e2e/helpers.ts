@@ -55,19 +55,46 @@ export async function register(
 
 /**
  * Remplit toutes les cases obligatoires du profil candidat
- * (src/lib/profile/completeness.ts), l'enregistre, puis franchit la
- * vérification du numéro par la porte de secours : en test l'envoi SMS pointe
- * vers le vide. Sans profil complet, un candidat ne peut pas postuler.
+ * (src/lib/profile/completeness.ts), l'enregistre, envoie la pièce d'identité,
+ * puis franchit la vérification du numéro par la porte de secours : en test
+ * l'envoi SMS pointe vers le vide. Sans profil complet, un candidat ne peut pas
+ * postuler.
  */
 export async function completeCandidateProfile(page: Page, phone: string) {
   await page.goto("/fr/profil");
   await fillCandidateProfile(page, phone);
   await saveProfile(page);
+  await uploadIdentityDocuments(page);
 
   await page.goto("/fr/verification");
   await page.getByRole("button", { name: /Recevoir mon code/ }).click();
   await page.getByRole("button", { name: "Continuer sans vérifier" }).click({ timeout: 30_000 });
   await page.waitForURL(/\/fr\/dashboard\/candidate/, { timeout: 30_000 });
+}
+
+/**
+ * Choisit « Carte d'identité » puis envoie recto et verso, obligatoires pour un
+ * profil complet (20261028100000_pieces_et_refus.sql). Le choix du type n'agit
+ * qu'une fois la page prête, et grise les envois le temps de l'enregistrer :
+ * on le refait tant que le bouton du recto reste grisé.
+ */
+export async function uploadIdentityDocuments(page: Page) {
+  const front = page.getByRole("button", { name: /^(Envoyer|Remplacer) le recto$/ });
+  await expect(async () => {
+    await page.getByLabel("Type de pièce d'identité").selectOption("cni");
+    await expect(front).toBeEnabled({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
+
+  for (const side of ["recto", "verso"]) {
+    await uploadVia(page, `Envoyer le ${side}`, {
+      name: `${side}.png`,
+      mimeType: "image/png",
+      buffer: PNG_1x1,
+    });
+    await expect(page.getByRole("button", { name: `Remplacer le ${side}` })).toBeVisible({
+      timeout: 20_000,
+    });
+  }
 }
 
 /**

@@ -1,5 +1,11 @@
-import { Clock, MapPin, Mail, Check, X, UserPlus, Phone, Database, Users, Home } from "lucide-react";
-import { missingCandidateFields, situationFromRow } from "@/lib/profile/completeness";
+import { Clock, MapPin, Mail, Check, X, UserPlus, Phone, Database, Users, Home, IdCard, Ban } from "lucide-react";
+import { documentsFromRow, missingCandidateFields, situationFromRow } from "@/lib/profile/completeness";
+import {
+  documentHref,
+  identityTypeLabel,
+  type DocumentKind,
+  type DocumentsRow,
+} from "@/lib/candidates/documents";
 import { childrenSummary, maritalStatusLabel } from "@/lib/candidates/family";
 import { telLink, whatsappLink } from "@/lib/contact/unlock";
 import { loadCandidateAddresses, type AdminContact } from "@/lib/admin/contacts";
@@ -22,7 +28,12 @@ import {
 } from "@/components/features/admin/CandidateUnlockQueue";
 import { createClient } from "@/lib/supabase/server";
 import { setCandidateCheck, type CandidateCheck } from "@/lib/admin/actions";
-import { ConfirmPhoneButton, PublishButton } from "@/components/features/admin/ProfileDecision";
+import {
+  ConfirmPhoneButton,
+  PublishButton,
+  RejectButton,
+  RestoreButton,
+} from "@/components/features/admin/ProfileDecision";
 import { PaymentQueue, type DeclaredPayment } from "@/components/features/admin/PaymentQueue";
 import { AdminOverview } from "@/components/features/admin/AdminOverview";
 import { SmsCredit } from "@/components/features/admin/SmsCredit";
@@ -69,6 +80,11 @@ type ModerationProfile = {
   neighborhood_id: string | null;
   neighborhoods: { name: string; cities: { name: string; country: string } | null } | null;
   candidate_details: CandidateDetails | null;
+  /** Pièces justificatives ; `undefined` si la table n'est pas lisible
+   *  (20261028100000 pas encore passée), `null` si rien n'a été envoyé. */
+  documents?: DocumentsRow | null;
+  /** Écarté par la modération (profile_rejections). */
+  rejection?: { reason: string | null; rejected_at: string } | null;
 };
 
 // `email` is deliberately absent: 20260728010000_restrict_profile_pii.sql
@@ -173,7 +189,52 @@ function candidateMissing(profile: ModerationProfile) {
     endTime: d?.end_time,
     // Absents du résultat (migration pas encore passée) : « ? », pas réclamés.
     ...situationFromRow(d as Record<string, unknown> | null),
+    ...documentsFromRow(profile.documents ?? null, profile.documents !== undefined),
   });
+}
+
+/**
+ * Les pièces envoyées, à ouvrir avant de publier. Chaque lien demande un lien
+ * signé frais (src/app/api/pieces) : elles ne sont lisibles de personne
+ * d'autre que le candidat et la modération.
+ */
+function Documents({ profile }: { profile: ModerationProfile }) {
+  const docs = profile.documents;
+  if (docs === undefined) return null;
+
+  const links: { kind: DocumentKind; label: string }[] = [];
+  if (docs?.identity_front) {
+    links.push({
+      kind: "identity_front",
+      label: docs.identity_type === "passeport" ? "Page du passeport" : "Recto",
+    });
+  }
+  if (docs?.identity_back) links.push({ kind: "identity_back", label: "Verso" });
+  if (docs?.driving_license) links.push({ kind: "driving_license", label: "Permis de conduire" });
+
+  return (
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mt-1">
+      <span className="flex items-center gap-1 text-muted-foreground">
+        <IdCard className="h-3.5 w-3.5 shrink-0" />
+        {identityTypeLabel(docs?.identity_type) ?? "Pièce d'identité"}
+      </span>
+      {links.length === 0 ? (
+        <span className="text-amber-700 dark:text-amber-500">aucune pièce envoyée</span>
+      ) : (
+        links.map((link) => (
+          <a
+            key={link.kind}
+            href={documentHref(profile.id, link.kind)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary underline underline-offset-2"
+          >
+            {link.label}
+          </a>
+        ))
+      )}
+    </p>
+  );
 }
 
 /** Les cases vides d'un profil candidat, pour décider avant de publier. */
@@ -219,12 +280,15 @@ function ProfileRow({
   profile,
   validated,
   unfinished = false,
+  rejected = false,
 }: {
   profile: ModerationProfile;
   validated: boolean;
   /** Inscription non terminée : pas de « Publier », seulement, quand le SMS
    *  est la seule chose qui manque, la confirmation par appel. */
   unfinished?: boolean;
+  /** Écarté par la modération : seulement de quoi le remettre en attente. */
+  rejected?: boolean;
 }) {
   const city = profile.neighborhoods?.cities;
   const place = [profile.neighborhoods?.name, city?.name].filter(Boolean).join(", ");
@@ -248,6 +312,16 @@ function ProfileRow({
           {(isCandidate || unfinished) && <MissingFields profile={profile} />}
 
           {isCandidate && <Situation details={profile.candidate_details} />}
+
+          {isCandidate && <Documents profile={profile} />}
+
+          {rejected && profile.rejection && (
+            <p className="flex items-center gap-1 text-xs text-destructive mt-1">
+              <Ban className="h-3.5 w-3.5 shrink-0" />
+              Refusé le {formatDate(profile.rejection.rejected_at)}
+              {profile.rejection.reason ? ` — « ${profile.rejection.reason} »` : " — sans motif"}
+            </p>
+          )}
 
           {profile.candidate_details?.job_title && (
             <p className="text-sm text-muted-foreground truncate">
@@ -307,14 +381,20 @@ function ProfileRow({
           </div>
         </div>
 
-        {unfinished ? (
-          // Seul le SMS manque : l'équipe peut appeler la personne et valoir
-          // confirmation. Une case vide, elle, ne se remplit qu'au profil.
-          readiness(profile).missing.length === 0 &&
-          readiness(profile).phoneUnconfirmed && <ConfirmPhoneButton profileId={profile.id} />
-        ) : (
-          <PublishButton profileId={profile.id} validated={validated} />
-        )}
+        <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
+          {rejected ? (
+            <RestoreButton profileId={profile.id} />
+          ) : unfinished ? (
+            // Seul le SMS manque : l'équipe peut appeler la personne et valoir
+            // confirmation. Une case vide, elle, ne se remplit qu'au profil.
+            readiness(profile).missing.length === 0 &&
+            readiness(profile).phoneUnconfirmed && <ConfirmPhoneButton profileId={profile.id} />
+          ) : (
+            <PublishButton profileId={profile.id} validated={validated} />
+          )}
+          {/* Avant publication seulement : un profil en ligne se retire. */}
+          {isCandidate && !validated && !rejected && <RejectButton profileId={profile.id} />}
+        </div>
       </div>
 
       {isCandidate && <VerificationToggles profile={profile} />}
@@ -484,11 +564,45 @@ export default async function AdminPage() {
 
   // Adresses précises des candidats, lisibles par l'administration seule.
   const addresses = await loadCandidateAddresses(supabase, ids);
+
+  // Pièces justificatives et refus (20261028100000). Table absente : les pièces
+  // restent `undefined`, donc pas réclamées, et personne n'est refusé.
+  let documents: Map<string, DocumentsRow> | null = null;
+  const rejections = new Map<string, { reason: string | null; rejected_at: string }>();
+  if (ids.length > 0) {
+    const [docs, refus] = await Promise.all([
+      supabase
+        .from("candidate_documents")
+        .select("profile_id, identity_type, identity_front, identity_back, driving_license")
+        .in("profile_id", ids),
+      supabase
+        .from("profile_rejections")
+        .select("profile_id, reason, rejected_at")
+        .in("profile_id", ids),
+    ]);
+    if (!docs.error) {
+      documents = new Map(
+        ((docs.data ?? []) as ({ profile_id: string } & DocumentsRow)[]).map(
+          ({ profile_id, ...row }) => [profile_id, row]
+        )
+      );
+    }
+    for (const row of (refus.error ? [] : (refus.data ?? [])) as {
+      profile_id: string;
+      reason: string | null;
+      rejected_at: string;
+    }[]) {
+      rejections.set(row.profile_id, { reason: row.reason, rejected_at: row.rejected_at });
+    }
+  }
+
   const withEmail = (profile: ModerationProfile): ModerationProfile => ({
     ...profile,
     email: null,
     ...contacts.get(profile.id),
     ...(addresses ? { address: addresses.get(profile.id) ?? null } : {}),
+    ...(documents ? { documents: documents.get(profile.id) ?? null } : {}),
+    rejection: rejections.get(profile.id) ?? null,
     candidate_details: profile.candidate_details
       ? { ...profile.candidate_details, ...prives.get(profile.id) }
       : profile.candidate_details,
@@ -496,9 +610,12 @@ export default async function AdminPage() {
   // Seules les inscriptions terminées — profil complet, numéro confirmé par
   // SMS — attendent une décision. Les autres restent à part : elles arrivent
   // d'elles-mêmes dans « En attente » une fois terminées.
+  // Un profil refusé sort de la file, terminé ou non, jusqu'à sa remise en attente.
   const pendingEnriched = pendingProfiles.map(withEmail);
-  const readyProfiles = pendingEnriched.filter((profile) => readiness(profile).ready);
-  const unfinishedProfiles = pendingEnriched.filter((profile) => !readiness(profile).ready);
+  const rejectedProfiles = pendingEnriched.filter((profile) => profile.rejection);
+  const inQueue = pendingEnriched.filter((profile) => !profile.rejection);
+  const readyProfiles = inQueue.filter((profile) => readiness(profile).ready);
+  const unfinishedProfiles = inQueue.filter((profile) => !readiness(profile).ready);
 
   const declaredPayments = (declared.data ?? []) as unknown as DeclaredPayment[];
   // Kept apart from `error`: until 20260728000000_manual_mobile_money.sql is
@@ -660,6 +777,28 @@ export default async function AdminPage() {
             <div className="space-y-3 mt-3">
               {unfinishedProfiles.map((profile) => (
                 <ProfileRow key={profile.id} profile={profile} validated={false} unfinished />
+              ))}
+            </div>
+          </details>
+        )}
+
+        {/* Repliée elle aussi : des profils écartés, gardés pour pouvoir
+            revenir sur la décision. */}
+        {rejectedProfiles.length > 0 && (
+          <details id="refuses" className="mb-12 scroll-mt-24 group">
+            <summary className="cursor-pointer list-none rounded-2xl border border-dashed border-border bg-card/60 p-4">
+              <span className="font-semibold">
+                Refusés{" "}
+                <span className="text-muted-foreground font-normal">({rejectedProfiles.length})</span>
+              </span>
+              <span className="block text-xs text-muted-foreground mt-1">
+                Ils n&apos;apparaissent nulle part et ne peuvent pas postuler. « Remettre en attente »
+                annule le refus. Toucher pour les afficher.
+              </span>
+            </summary>
+            <div className="space-y-3 mt-3">
+              {rejectedProfiles.map((profile) => (
+                <ProfileRow key={profile.id} profile={profile} validated={false} rejected />
               ))}
             </div>
           </details>

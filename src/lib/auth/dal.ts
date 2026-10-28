@@ -7,7 +7,11 @@ import { createClient } from "@/lib/supabase/server";
 import { isOtpConfigured } from "@/lib/otp/infobip";
 import { hasSkippedVerification } from "@/lib/otp/skip";
 import { dashboardPathFor, type UserRole } from "@/lib/auth/roles";
-import { missingCandidateFields, situationFromRow } from "@/lib/profile/completeness";
+import {
+  documentsFromRow,
+  missingCandidateFields,
+  situationFromRow,
+} from "@/lib/profile/completeness";
 
 // Re-exported so the existing call sites keep importing from the DAL, while the
 // login form — which cannot touch a `server-only` module — shares the same
@@ -40,6 +44,9 @@ export type SessionUser = {
    * Toujours vide pour un admin.
    */
   missingProfileFields: string[];
+  /** Renseigné quand la modération a écarté ce profil (profile_rejections) :
+   *  il ne postule plus, et son tableau de bord dit pourquoi. */
+  rejection: { reason: string | null; rejectedAt: string } | null;
 };
 
 /**
@@ -75,6 +82,17 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   // Signup metadata is the fallback while the profile row is being created.
   const metadata = user.user_metadata ?? {};
 
+  // Un profil écarté par la modération (profile_rejections). Lancée ici pour
+  // partir en même temps que les lectures du profil candidat ci-dessous.
+  const rejectionPromise =
+    profile && profile.role !== "admin"
+      ? supabase
+          .from("profile_rejections")
+          .select("reason, rejected_at")
+          .eq("profile_id", profile.id)
+          .maybeSingle()
+      : null;
+
   // Complétude du profil, pour un candidat seulement. Une lecture qui échoue
   // (colonne absente le temps d'une migration) ne doit enfermer personne :
   // on considère alors le profil complet.
@@ -88,7 +106,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     // lisibles depuis 20261017110000, et la lecture directe échouait donc en
     // entier. L'échec étant avalé par le `if (!error)` ci-dessous, la complétude
     // paraissait acquise et personne n'était plus averti d'un profil à finir.
-    const [{ data: details, error }, addressResult] = await Promise.all([
+    const [{ data: details, error }, addressResult, documentsResult] = await Promise.all([
       supabase.rpc("my_candidate_details").then((result) => ({
         data: result.data?.[0] ?? null,
         error: result.error,
@@ -96,6 +114,11 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
       supabase
         .from("candidate_addresses")
         .select("address")
+        .eq("profile_id", profile.id)
+        .maybeSingle(),
+      supabase
+        .from("candidate_documents")
+        .select("identity_type, identity_front, identity_back, driving_license")
         .eq("profile_id", profile.id)
         .maybeSingle(),
     ]);
@@ -123,9 +146,17 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
         workDays: row.work_days,
         startTime: row.start_time as string | null,
         endTime: row.end_time as string | null,
+        // Table pas encore créée (20261028100000) : « ? », rien de réclamé.
+        ...documentsFromRow(documentsResult.data, !documentsResult.error),
       });
     }
   }
+
+  // Une lecture en échec (table pas encore créée) ne vaut pas refus.
+  const refus = rejectionPromise ? (await rejectionPromise).data : null;
+  const rejection: SessionUser["rejection"] = refus
+    ? { reason: (refus.reason as string | null) ?? null, rejectedAt: refus.rejected_at as string }
+    : null;
 
   return {
     id: user.id,
@@ -147,6 +178,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
       ? ((profile.onboarding_completed_at as string | null) ?? null)
       : new Date(0).toISOString(),
     missingProfileFields,
+    rejection,
   };
 });
 
