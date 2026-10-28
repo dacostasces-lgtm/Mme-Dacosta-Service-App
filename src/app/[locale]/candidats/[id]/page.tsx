@@ -77,6 +77,14 @@ function formatSalary(amount: number | null) {
   return `${new Intl.NumberFormat("fr-FR").format(amount)} FCFA / mois`;
 }
 
+/**
+ * Une étiquette par compétence ou par langue. Celles du composant Badge tiennent
+ * sur une ligne de hauteur fixe : une compétence écrite en phrase sortait alors
+ * de la carte, coupée sous la colonne de droite. Ici le texte revient à la
+ * ligne dans son étiquette.
+ */
+const TAG = "h-auto max-w-full whitespace-normal break-words text-left px-3 py-1.5 text-sm font-normal";
+
 /** Tolerates a jsonb column that holds either a real array or nothing yet. */
 function toList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
@@ -341,7 +349,7 @@ export default async function CandidateProfilePage({
                 <h2 className="text-xl font-bold mb-4">Compétences</h2>
                 <div className="flex flex-wrap gap-2">
                   {skills.map((skill) => (
-                    <Badge key={skill} variant="secondary" className="px-3 py-1.5 text-sm font-normal">
+                    <Badge key={skill} variant="secondary" className={TAG}>
                       {skill}
                     </Badge>
                   ))}
@@ -357,7 +365,7 @@ export default async function CandidateProfilePage({
                 </h2>
                 <div className="flex flex-wrap gap-2">
                   {languages.map((language) => (
-                    <Badge key={language} variant="secondary" className="px-3 py-1.5 text-sm font-normal">
+                    <Badge key={language} variant="secondary" className={TAG}>
                       {language}
                     </Badge>
                   ))}
