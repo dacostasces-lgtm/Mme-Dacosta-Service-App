@@ -9,6 +9,8 @@ import { createCandidate, type NewCandidateState } from "@/lib/admin/candidates"
 import { RHYTHM_OPTIONS } from "@/lib/candidates/availability";
 import { ScheduleFields } from "@/components/features/jobs/ScheduleFields";
 import { MetierPicker } from "@/components/features/jobs/MetierPicker";
+import { SkillsPicker } from "@/components/features/profile/SkillsPicker";
+import { submitWithoutReset } from "@/lib/forms";
 import { EXPERIENCE_OPTIONS } from "@/lib/profile/completeness";
 import {
   CHILDREN_OPTIONS,
@@ -75,7 +77,7 @@ export function NewCandidateForm({ cities }: { cities: CityRef[] }) {
   }
 
   return (
-    <form action={formAction} className="space-y-8">
+    <form action={formAction} onSubmit={submitWithoutReset(formAction)} className="space-y-8">
       <section className="bg-card border border-border rounded-3xl shadow-soft p-6 sm:p-7">
         <h2 className="font-semibold mb-5">Identité</h2>
         <div className="grid sm:grid-cols-2 gap-5">
@@ -224,8 +226,11 @@ export function NewCandidateForm({ cities }: { cities: CityRef[] }) {
           </div>
 
           <div className="sm:col-span-2">
-            <Label htmlFor="skills" hint="Séparées par des virgules">Compétences</Label>
-            <Input id="skills" name="skills" maxLength={400} placeholder="Repassage, cuisine congolaise, garde de nourrisson" />
+            <SkillsPicker
+              name="skills"
+              legend="Compétences"
+              hint="Touchez tout ce que le candidat sait faire."
+            />
           </div>
 
 

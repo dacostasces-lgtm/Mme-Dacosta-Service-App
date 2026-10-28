@@ -147,7 +147,9 @@ export async function fillCandidateProfile(page: Page, phone: string) {
   await page.getByLabel("Heure de début").fill("07:00");
   await page.getByLabel("Heure de fin").fill("17:00");
   await page.getByLabel("Salaire souhaité").fill("90000");
-  await page.getByLabel("Compétences").fill("garde d'enfants, cuisine, repassage");
+  for (const skill of ["Garde d'enfants", "Cuisine congolaise", "Repassage"]) {
+    await chooseSkill(page, skill);
+  }
   await page.getByLabel("Langues parlées").fill("français, lingala");
 }
 
@@ -232,6 +234,21 @@ export async function chooseMetier(page: Page, metier: string) {
   const button = page.getByRole("button", { name: metier, exact: true });
   await expect(async () => {
     await button.click();
+    await expect(button).toHaveAttribute("aria-pressed", "true", { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
+}
+
+/**
+ * Coche une compétence. Ce sont des interrupteurs, pas un choix unique comme
+ * le métier : recliquer décocherait. On ne clique donc que tant qu'elle n'est
+ * pas cochée — avant que la page soit prête, le clic ne fait rien.
+ */
+export async function chooseSkill(page: Page, skill: string) {
+  const button = page
+    .getByRole("group", { name: "Compétences" })
+    .getByRole("button", { name: skill, exact: true });
+  await expect(async () => {
+    if ((await button.getAttribute("aria-pressed")) !== "true") await button.click();
     await expect(button).toHaveAttribute("aria-pressed", "true", { timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
 }

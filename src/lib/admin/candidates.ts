@@ -11,6 +11,7 @@ import {
   MAX_CHILDREN_OPTION,
   MAX_CHILD_AGE_OPTION,
 } from "@/lib/candidates/family";
+import { MAX_SKILL_LENGTH, SKILL_TOO_LONG } from "@/lib/candidates/skills";
 import { isMissingTable } from "@/lib/profile/completeness";
 import {
   SCHEDULE_ORDER_MESSAGE,
@@ -40,7 +41,12 @@ const schema = z.object({
   availability: z.enum(AVAILABILITY_VALUES).optional(),
   desiredSalary: z.coerce.number().int().min(0).max(100_000_000).optional(),
   languages: z.string().trim().max(200).optional(),
-  skills: z.string().trim().max(400).optional(),
+  skills: z
+    .string()
+    .trim()
+    .max(1000)
+    .refine((value) => toList(value).every((skill) => skill.length <= MAX_SKILL_LENGTH), SKILL_TOO_LONG)
+    .optional(),
   description: z.string().trim().max(2000).optional(),
   ...scheduleShape,
 }).refine(scheduleOrderValid, { message: SCHEDULE_ORDER_MESSAGE });
@@ -59,7 +65,8 @@ function toList(value: string | undefined) {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean)
-    .slice(0, 20);
+    // 30 : toute la liste des compétences (21) plus quelques « Autre ».
+    .slice(0, 30);
 }
 
 /**

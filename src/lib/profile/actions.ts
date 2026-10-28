@@ -11,6 +11,7 @@ import {
   MAX_CHILDREN_OPTION,
   MAX_CHILD_AGE_OPTION,
 } from "@/lib/candidates/family";
+import { MAX_SKILL_LENGTH, SKILL_TOO_LONG } from "@/lib/candidates/skills";
 import {
   SCHEDULE_ORDER_MESSAGE,
   readSchedule,
@@ -76,7 +77,8 @@ const candidateSchema = baseSchema.extend({
   availability: z.enum(["full_time", "part_time", "internal", "external", ""]).optional(),
   description: z.string().trim().max(2000, "Description trop longue.").optional(),
   languages: z.array(z.string()).max(12),
-  skills: z.array(z.string()).max(20),
+  // Une phrase dans la case finissait découpée à chaque virgule sur la fiche.
+  skills: z.array(z.string().max(MAX_SKILL_LENGTH, SKILL_TOO_LONG)).max(30),
   ...scheduleShape,
 }).refine(scheduleOrderValid, { message: SCHEDULE_ORDER_MESSAGE });
 
@@ -112,7 +114,8 @@ function list(formData: FormData, key: string) {
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean)
-    .slice(0, 20);
+    // 30 : toute la liste des compétences (21) plus quelques « Autre ».
+    .slice(0, 30);
 }
 
 /**
