@@ -1,6 +1,6 @@
 "use server";
 
-import { INCOMPLETE_PROFILE_MESSAGE } from "@/lib/profile/completeness";
+import { INCOMPLETE_PROFILE_MESSAGE, REJECTED_PROFILE_MESSAGE } from "@/lib/profile/completeness";
 import { containsPhoneNumber, PHONE_NUMBER_REFUSED } from "@/lib/contact/phone-filter";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
@@ -47,6 +47,7 @@ export async function applyToJob(
   if (user.missingProfileFields.length > 0) {
     return { error: INCOMPLETE_PROFILE_MESSAGE, incompleteProfile: true };
   }
+  if (user.rejection) return { error: REJECTED_PROFILE_MESSAGE };
 
   // The UNIQUE constraint stops a candidate applying twice to one posting, but
   // not to every posting in a loop.

@@ -1,6 +1,6 @@
 "use server";
 
-import { INCOMPLETE_PROFILE_MESSAGE } from "@/lib/profile/completeness";
+import { INCOMPLETE_PROFILE_MESSAGE, REJECTED_PROFILE_MESSAGE } from "@/lib/profile/completeness";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { requireUser } from "@/lib/auth/dal";
@@ -30,6 +30,7 @@ export async function requestContactUnlock(
   if (user.missingProfileFields.length > 0) {
     return { error: INCOMPLETE_PROFILE_MESSAGE, incompleteProfile: true };
   }
+  if (user.rejection) return { error: REJECTED_PROFILE_MESSAGE };
 
   const limit = rateLimit(`unlock:${user.id}`, { limit: 10, windowSeconds: 600 });
   if (!limit.ok) return { error: tooManyRequestsMessage(limit.retryAfterSeconds) };

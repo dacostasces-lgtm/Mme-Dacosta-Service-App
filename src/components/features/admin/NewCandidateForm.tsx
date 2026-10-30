@@ -5,7 +5,13 @@ import { CheckCircle2, Loader2, UserPlus } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "@/i18n/routing";
-import { createCandidate, type NewCandidateState } from "@/lib/admin/candidates";
+import {
+  adminSetDocument,
+  adminSetIdentityType,
+  createCandidate,
+  type NewCandidateState,
+} from "@/lib/admin/candidates";
+import { IdentityDocuments } from "@/components/features/profile/IdentityDocuments";
 import { RHYTHM_OPTIONS } from "@/lib/candidates/availability";
 import { ScheduleFields } from "@/components/features/jobs/ScheduleFields";
 import { MetierPicker } from "@/components/features/jobs/MetierPicker";
@@ -53,6 +59,21 @@ export function NewCandidateForm({ cities }: { cities: CityRef[] }) {
           pourra la reprendre en main depuis « mot de passe oublié » : il recevra un code
           par SMS sur le numéro que vous avez saisi.
         </p>
+        {/* Ses pièces, si vous les avez sous la main : envoyées depuis le
+            navigateur, directement dans son dossier. */}
+        {state.userId && (
+          <div className="text-left border-t border-border pt-6 mb-6">
+            <IdentityDocuments
+              audience="admin"
+              userId={state.userId}
+              profileId={state.profileId}
+              documents={null}
+              jobTitle={state.jobTitle ?? null}
+              saveDocument={(kind, path) => adminSetDocument(state.profileId!, kind, path)}
+              saveType={(identityType) => adminSetIdentityType(state.profileId!, identityType)}
+            />
+          </div>
+        )}
         <div className="flex flex-wrap justify-center gap-3">
           <Link
             href={`/candidats/${state.profileId}`}

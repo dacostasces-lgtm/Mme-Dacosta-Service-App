@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyProfileValidated } from "@/lib/email/send";
 import { absoluteUrl, DEFAULT_LOCALE } from "@/lib/site";
+import { isMissingFunction } from "@/lib/profile/completeness";
 
 /** Réponse des boutons de la file de modération (ProfileDecision.tsx). */
 export type ProfileDecisionState = { error?: string; ok?: boolean };
@@ -92,6 +93,59 @@ export async function confirmPhoneByCall(
 
   if (error) return { error: `Impossible de confirmer le numéro : ${error.message}` };
   if (!data?.length) return { error: "Ce profil n'a pas de numéro à confirmer." };
+  return { ok: true };
+}
+
+const reasonSchema = z.string().trim().max(300, "Motif trop long (300 caractères au plus).");
+
+const NOT_YET =
+  "Le refus n'est pas encore activé sur cette base (migration 20261028100000_pieces_et_refus.sql).";
+
+/**
+ * Écarte un profil de la file avant publication, avec un motif facultatif
+ * que le candidat lira sur son tableau de bord. Rien n'est supprimé :
+ * restoreProfile le remet en attente. Pas de `revalidatePath`, pour la même
+ * raison que setProfileValidation.
+ */
+export async function rejectProfile(
+  _previous: ProfileDecisionState,
+  formData: FormData
+): Promise<ProfileDecisionState> {
+  await requireUser({ role: "admin" });
+
+  const profileId = profileIdSchema.safeParse(formData.get("profileId"));
+  if (!profileId.success) return { error: "Profil introuvable." };
+  const reason = reasonSchema.safeParse(String(formData.get("reason") ?? ""));
+  if (!reason.success) return { error: reason.error.issues[0]?.message ?? "Motif invalide." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("reject_profile", {
+    p_profile_id: profileId.data,
+    p_reason: reason.data,
+  });
+  if (error) {
+    return { error: isMissingFunction(error) ? NOT_YET : `Refus impossible : ${error.message}` };
+  }
+  return { ok: true };
+}
+
+/** Annule un refus : le profil revient dans la file. */
+export async function restoreProfile(
+  _previous: ProfileDecisionState,
+  formData: FormData
+): Promise<ProfileDecisionState> {
+  await requireUser({ role: "admin" });
+
+  const profileId = profileIdSchema.safeParse(formData.get("profileId"));
+  if (!profileId.success) return { error: "Profil introuvable." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("restore_profile", { p_profile_id: profileId.data });
+  if (error) {
+    return {
+      error: isMissingFunction(error) ? NOT_YET : `Remise en attente impossible : ${error.message}`,
+    };
+  }
   return { ok: true };
 }
 

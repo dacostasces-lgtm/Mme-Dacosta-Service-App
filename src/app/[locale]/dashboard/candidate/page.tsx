@@ -1,10 +1,11 @@
-import { MessageSquare, Send, Star, ShieldCheck, Clock, Briefcase, UserPen } from "lucide-react";
+import { MessageSquare, Send, Star, ShieldCheck, Clock, Briefcase, UserPen, Ban } from "lucide-react";
 import { MyApplications, type MyApplicationRow } from "@/components/features/jobs/MyApplications";
 import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { isOtpConfigured } from "@/lib/otp/infobip";
+import { COMPANY } from "@/lib/legal/company";
 import {
   BookingList,
   type BookingRow,
@@ -119,53 +120,86 @@ export default async function CandidateDashboard() {
 
         {/* Profile status replaces the old "profile views" tile: nothing in the
             schema records views, and inventing a number would be misleading. */}
-        <div
-          className={`rounded-2xl border p-6 mb-6 flex items-start gap-4 ${
-            published ? "bg-card border-border" : "bg-secondary/10 border-secondary/40"
-          }`}
-        >
-          {published ? (
-            <ShieldCheck className="h-6 w-6 text-green-500 shrink-0" />
-          ) : (
-            <Clock className="h-6 w-6 text-secondary shrink-0" />
-          )}
-          <div>
-            <p className="font-semibold">
-              {published
-                ? "Votre profil est en ligne"
-                : readyForReview
-                  ? "Votre profil est en cours de vérification"
-                  : "Votre profil n'est pas encore envoyé à notre équipe"}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {published
-                ? "Les employeurs peuvent vous trouver dans la recherche par proximité."
-                : readyForReview
-                  ? "Il n'apparaîtra dans la recherche qu'une fois vérifié par notre équipe. Vous n'avez rien à faire, nous vous préviendrons."
-                  : "Notre équipe ne l'examinera qu'une fois ces étapes terminées :"}
-            </p>
-            {!published && !readyForReview && (
-              <ul className="mt-2 space-y-1 text-sm">
-                {!profileComplete && (
-                  <li>
-                    •{" "}
-                    <Link href="/profil" className="font-medium text-primary hover:underline">
-                      Remplir toutes les cases de mon profil
-                    </Link>
-                  </li>
-                )}
-                {phoneUnconfirmed && (
-                  <li>
-                    •{" "}
-                    <Link href="/verification" className="font-medium text-primary hover:underline">
-                      Confirmer mon numéro par SMS
-                    </Link>
-                  </li>
-                )}
-              </ul>
-            )}
+        {user.rejection ? (
+          // Refusé par la modération : le dire, avec le motif s'il y en a un,
+          // plutôt que de laisser croire à une vérification en cours.
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 mb-6 flex items-start gap-4">
+            <Ban className="h-6 w-6 text-destructive shrink-0" />
+            <div>
+              <p className="font-semibold">Votre profil n&apos;a pas été retenu par notre équipe</p>
+              {user.rejection.reason && (
+                <p className="text-sm mt-1">
+                  Motif : <span className="font-medium">{user.rejection.reason}</span>
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground mt-1">
+                Il n&apos;apparaît pas dans la recherche, et vous ne pouvez pas postuler pour le
+                moment. Corrigez ce qui est indiqué dans{" "}
+                <Link href="/profil" className="font-medium text-primary hover:underline">
+                  votre profil
+                </Link>
+                , puis écrivez-nous :{" "}
+                <a
+                  href={`https://wa.me/${COMPANY.whatsapp}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-primary hover:underline"
+                >
+                  WhatsApp {COMPANY.phone}
+                </a>
+                .
+              </p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div
+            className={`rounded-2xl border p-6 mb-6 flex items-start gap-4 ${
+              published ? "bg-card border-border" : "bg-secondary/10 border-secondary/40"
+            }`}
+          >
+            {published ? (
+              <ShieldCheck className="h-6 w-6 text-green-500 shrink-0" />
+            ) : (
+              <Clock className="h-6 w-6 text-secondary shrink-0" />
+            )}
+            <div>
+              <p className="font-semibold">
+                {published
+                  ? "Votre profil est en ligne"
+                  : readyForReview
+                    ? "Votre profil est en cours de vérification"
+                    : "Votre profil n'est pas encore envoyé à notre équipe"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {published
+                  ? "Les employeurs peuvent vous trouver dans la recherche par proximité."
+                  : readyForReview
+                    ? "Il n'apparaîtra dans la recherche qu'une fois vérifié par notre équipe. Vous n'avez rien à faire, nous vous préviendrons."
+                    : "Notre équipe ne l'examinera qu'une fois ces étapes terminées :"}
+              </p>
+              {!published && !readyForReview && (
+                <ul className="mt-2 space-y-1 text-sm">
+                  {!profileComplete && (
+                    <li>
+                      •{" "}
+                      <Link href="/profil" className="font-medium text-primary hover:underline">
+                        Remplir toutes les cases de mon profil
+                      </Link>
+                    </li>
+                  )}
+                  {phoneUnconfirmed && (
+                    <li>
+                      •{" "}
+                      <Link href="/verification" className="font-medium text-primary hover:underline">
+                        Confirmer mon numéro par SMS
+                      </Link>
+                    </li>
+                  )}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatCard icon={<Send className="h-6 w-6" />} value={applications.count ?? 0} label="Candidatures envoyées" />

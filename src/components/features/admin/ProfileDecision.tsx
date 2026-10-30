@@ -1,11 +1,15 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
-import { Loader2, PhoneCall, ShieldCheck, Undo2, type LucideIcon } from "lucide-react";
+import { useActionState, useEffect, useState } from "react";
+import { Ban, Loader2, PhoneCall, RotateCcw, ShieldCheck, Undo2, type LucideIcon } from "lucide-react";
 import { useRouter } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { submitWithoutReset } from "@/lib/forms";
 import {
   confirmPhoneByCall,
+  rejectProfile,
+  restoreProfile,
   setProfileValidation,
   type ProfileDecisionState,
 } from "@/lib/admin/actions";
@@ -84,5 +88,83 @@ export function ConfirmPhoneButton({ profileId }: { profileId: string }) {
       label="Numéro confirmé par appel"
       variant="outline"
     />
+  );
+}
+
+/** Un profil refusé revient dans la file. */
+export function RestoreButton({ profileId }: { profileId: string }) {
+  return (
+    <DecisionButton
+      action={restoreProfile}
+      fields={{ profileId }}
+      icon={RotateCcw}
+      label="Remettre en attente"
+      variant="outline"
+    />
+  );
+}
+
+/**
+ * Écarter un profil avant de le publier. Le motif est facultatif ; le candidat
+ * le lira sur son tableau de bord, d'où la demande de confirmation : un refus
+ * ne part pas sur un seul toucher.
+ */
+export function RejectButton({ profileId }: { profileId: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [state, action, pending] = useActionState<ProfileDecisionState, FormData>(
+    rejectProfile,
+    {}
+  );
+
+  useEffect(() => {
+    if (state.ok) router.refresh();
+  }, [state, router]);
+
+  if (!open) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        className="h-10 rounded-full px-4 gap-2 text-destructive"
+        onClick={() => setOpen(true)}
+      >
+        <Ban className="h-4 w-4" />
+        Refuser
+      </Button>
+    );
+  }
+
+  return (
+    <form action={action} onSubmit={submitWithoutReset(action)} className="w-full sm:w-72 space-y-2">
+      <input type="hidden" name="profileId" value={profileId} />
+      <label htmlFor={`motif-${profileId}`} className="block text-xs font-medium">
+        Motif, facultatif — le candidat le lira
+      </label>
+      <Input
+        id={`motif-${profileId}`}
+        name="reason"
+        maxLength={300}
+        placeholder="Ex : pièce d'identité illisible"
+        autoFocus
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" variant="destructive" size="sm" className="rounded-full gap-1.5" disabled={pending}>
+          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+          Confirmer le refus
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="rounded-full"
+          onClick={() => setOpen(false)}
+          disabled={pending}
+        >
+          Annuler
+        </Button>
+      </div>
+      {state.error && <p className="text-xs text-destructive">{state.error}</p>}
+    </form>
   );
 }

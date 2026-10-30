@@ -50,6 +50,10 @@ export default function PrivacyPage() {
             <strong>Situation personnelle</strong> (Candidats) : âge, sexe, situation
             matrimoniale, nombre d&apos;enfants et âge du dernier enfant, adresse précise.
           </li>
+          <li>
+            <strong>Pièces justificatives</strong> (Candidats) : pièce d&apos;identité (recto et
+            verso, ou page du passeport) et, pour les chauffeurs, permis de conduire.
+          </li>
           <li><strong>Échanges</strong> : le contenu des messages envoyés via la messagerie.</li>
           <li>
             <strong>Réservations et paiements</strong> : mission concernée, montant, moyen de
@@ -100,6 +104,12 @@ export default function PrivacyPage() {
           Employeurs inscrits, sur sa fiche, et à nos administrateurs : jamais aux visiteurs sans
           compte ni aux moteurs de recherche. Son sexe et son adresse précise ne sont visibles
           que de lui et de nos administrateurs.
+        </p>
+        <p>
+          Les <strong>pièces justificatives</strong> (pièce d&apos;identité, permis de conduire)
+          servent à vérifier l&apos;identité d&apos;un Candidat avant la publication de son profil.
+          Elles sont conservées dans un espace privé, accessibles au seul Candidat et à nos
+          administrateurs, et ne sont jamais montrées aux Employeurs ni au public.
         </p>
         <p>
           <strong>Votre numéro de téléphone</strong> (et WhatsApp) est communiqué, en plus de nos

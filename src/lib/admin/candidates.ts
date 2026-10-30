@@ -4,6 +4,8 @@ import { randomBytes } from "node:crypto";
 import * as z from "zod";
 import { requireUser } from "@/lib/auth/dal";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+import { IDENTITY_TYPE_VALUES, isDocumentKind } from "@/lib/candidates/documents";
 import { normalisePhone } from "@/lib/phone";
 import { AVAILABILITY_VALUES } from "@/lib/candidates/availability";
 import {
@@ -56,6 +58,9 @@ export type NewCandidateState = {
   /** Renseigné au succès, pour proposer le lien vers la fiche publique. */
   profileId?: string;
   fullName?: string;
+  /** Le compte créé et son métier : pour déposer ses pièces dans la foulée. */
+  userId?: string;
+  jobTitle?: string;
 };
 
 /** « Français, lingala » -> ["Français", "lingala"]. Les vides disparaissent. */
@@ -256,5 +261,59 @@ export async function createCandidate(
   // client — l'action aboutit côté serveur, mais le bouton reste figé sur
   // « en cours ». La recherche et la file de modération lisent la session,
   // donc se rendent à la demande et verront la fiche à la visite suivante.
-  return { profileId: profile.id, fullName: parsed.data.fullName };
+  return {
+    profileId: profile.id,
+    fullName: parsed.data.fullName,
+    userId,
+    jobTitle: parsed.data.jobTitle,
+  };
+}
+
+const PIECES_NOT_YET =
+  "L'envoi des pièces n'est pas encore activé sur cette base (migration 20261028100000_pieces_et_refus.sql).";
+
+/**
+ * Les pièces d'un candidat saisi par la modération, déposées depuis l'écran
+ * qui suit « Publier le profil » : le fichier part du navigateur vers le
+ * dossier du candidat (le seau l'autorise à l'administration), et l'on retient
+ * ici son chemin. Le déclencheur de candidate_documents refuse un fichier hors
+ * de ce dossier.
+ */
+export async function adminSetDocument(
+  profileId: string,
+  kind: string,
+  objectPath: string
+): Promise<{ error?: string; ok?: boolean }> {
+  await requireUser({ role: "admin" });
+  if (!isDocumentKind(kind)) return { error: "Pièce inconnue." };
+  if (!z.string().uuid().safeParse(profileId).success) return { error: "Profil introuvable." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("candidate_documents")
+    .upsert({ profile_id: profileId, [kind]: objectPath }, { onConflict: "profile_id" });
+  if (error) {
+    return { error: isMissingTable(error) ? PIECES_NOT_YET : `Enregistrement impossible : ${error.message}` };
+  }
+  return { ok: true };
+}
+
+export async function adminSetIdentityType(
+  profileId: string,
+  identityType: string
+): Promise<{ error?: string; ok?: boolean }> {
+  await requireUser({ role: "admin" });
+  if (!(IDENTITY_TYPE_VALUES as readonly string[]).includes(identityType)) {
+    return { error: "Type de pièce inconnu." };
+  }
+  if (!z.string().uuid().safeParse(profileId).success) return { error: "Profil introuvable." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("candidate_documents")
+    .upsert({ profile_id: profileId, identity_type: identityType }, { onConflict: "profile_id" });
+  if (error) {
+    return { error: isMissingTable(error) ? PIECES_NOT_YET : `Enregistrement impossible : ${error.message}` };
+  }
+  return { ok: true };
 }
