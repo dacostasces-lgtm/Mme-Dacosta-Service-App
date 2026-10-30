@@ -105,9 +105,9 @@ export function RestoreButton({ profileId }: { profileId: string }) {
 }
 
 /**
- * Écarter un profil avant de le publier. Le motif est facultatif ; le candidat
- * le lira sur son tableau de bord, d'où la demande de confirmation : un refus
- * ne part pas sur un seul toucher.
+ * Écarter un profil avant de le publier — candidat comme employeur. Le motif
+ * est facultatif ; la personne le lira sur son tableau de bord, d'où la demande
+ * de confirmation : un refus ne part pas sur un seul toucher.
  */
 export function RejectButton({ profileId }: { profileId: string }) {
   const router = useRouter();
@@ -139,7 +139,7 @@ export function RejectButton({ profileId }: { profileId: string }) {
     <form action={action} onSubmit={submitWithoutReset(action)} className="w-full sm:w-72 space-y-2">
       <input type="hidden" name="profileId" value={profileId} />
       <label htmlFor={`motif-${profileId}`} className="block text-xs font-medium">
-        Motif, facultatif — le candidat le lira
+        Motif, facultatif — la personne le lira
       </label>
       <Input
         id={`motif-${profileId}`}

@@ -71,6 +71,31 @@ const RULES: [keyof CandidateFields, string][] = [
 ];
 
 /** Les libellés des cases encore vides, dans l'ordre du formulaire. */
+/**
+ * Les cases obligatoires d'un employeur.
+ *
+ * Le numéro, parce que c'est par là que la mise en relation aboutit, et le
+ * quartier, parce qu'il dit où la mission se situera : un compte créé au hasard
+ * n'en porte pas, et une candidate qu'on envoie quelque part a le droit de
+ * savoir où. Deux cases, pas davantage — c'est le côté qui paie, et chaque case
+ * de plus est un frein à l'inscription.
+ *
+ * Ici plutôt que dans chaque écran : la file de modération et le tableau de
+ * bord de l'employeur doivent dire la même chose, sans quoi on lui réclame une
+ * case que la modération ne regarde pas, ou l'inverse.
+ */
+export function missingEmployerFields(fields: {
+  phonePresent: boolean;
+  neighborhoodId: string | null | undefined;
+}): string[] {
+  const missing: string[] = [];
+  if (!fields.phonePresent) missing.push("Téléphone");
+  // `undefined` : colonne illisible, donc inconnue — on ne la retient pas
+  // contre quelqu'un.
+  if (fields.neighborhoodId === null) missing.push("Quartier");
+  return missing;
+}
+
 export function missingCandidateFields(fields: CandidateFields): string[] {
   return RULES.filter(([key]) => {
     if (key === "phonePresent") return !fields.phonePresent;

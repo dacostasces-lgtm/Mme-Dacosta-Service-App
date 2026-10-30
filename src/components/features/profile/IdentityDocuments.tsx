@@ -5,11 +5,13 @@ import { useRouter } from "@/i18n/routing";
 import { Check, IdCard, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { compresserImage } from "@/lib/images/compresser";
 import { setDocument, setIdentityType } from "@/lib/profile/documents";
 import {
   DOCUMENT_KINDS,
   DOCUMENT_MAX,
   DOCUMENT_TYPES,
+  DOCUMENTS_CHOISIR,
   DOCUMENTS_BUCKET,
   IDENTITY_TYPES,
   documentHref,
@@ -90,13 +92,23 @@ export function IdentityDocuments({
 
   async function upload(file: File, kind: DocumentKind) {
     setError("");
-    if (!DOCUMENT_TYPES.includes(file.type)) {
+
+    // Réduite d'abord : une carte d'identité photographiée au téléphone pèse
+    // plusieurs méga-octets, et un iPhone la rend volontiers en HEIC, que le
+    // seau refuse. Le canevas la réencode en JPEG de 2000 pixels de côté —
+    // assez pour qu'elle reste lisible à la modération. Les deux contrôles
+    // ci-dessous restent en dernier filet.
+    setBusy(kind);
+    const fichier = await compresserImage(file, DOCUMENT_MAX);
+    setBusy(null);
+
+    if (!DOCUMENT_TYPES.includes(fichier.type)) {
       setError("Format non accepté. Envoyez une photo (JPG, PNG, WEBP) ou un PDF.");
       return;
     }
-    if (file.size > DOCUMENT_MAX) {
+    if (fichier.size > DOCUMENT_MAX) {
       setError(
-        `Fichier trop lourd (${(file.size / 1024 / 1024).toFixed(1)} Mo). Maximum ${
+        `Fichier trop lourd (${(fichier.size / 1024 / 1024).toFixed(1)} Mo). Maximum ${
           DOCUMENT_MAX / 1024 / 1024
         } Mo.`
       );
@@ -105,12 +117,12 @@ export function IdentityDocuments({
 
     setBusy(kind);
     // Un nom stable par pièce : la remplacer écrase l'ancienne.
-    const extension = file.name.split(".").pop()?.toLowerCase().slice(0, 5) || "jpg";
+    const extension = fichier.name.split(".").pop()?.toLowerCase().slice(0, 5) || "jpg";
     const path = `${userId}/${DOCUMENT_KINDS[kind].file}.${extension}`;
 
     const { error: uploadError } = await createClient()
       .storage.from(DOCUMENTS_BUCKET)
-      .upload(path, file, { upsert: true, contentType: file.type });
+      .upload(path, fichier, { upsert: true, contentType: fichier.type });
 
     if (uploadError) {
       setBusy(null);
@@ -141,7 +153,7 @@ export function IdentityDocuments({
         <input
           ref={inputs[kind]}
           type="file"
-          accept={DOCUMENT_TYPES.join(",")}
+          accept={DOCUMENTS_CHOISIR}
           className="sr-only"
           onChange={(event) => {
             const file = event.target.files?.[0];

@@ -193,13 +193,19 @@ export function ProfileForm({
           hint={
             neighborhoods.length === 0
               ? "Aucun quartier enregistré pour l'instant."
-              : "C'est ce qui permet aux employeurs de vous trouver par proximité."
+              : isEmployer
+                ? "Où la mission se situera. Une candidate a le droit de savoir où on l'envoie."
+                : "C'est ce qui permet aux employeurs de vous trouver par proximité."
           }
         >
           <select
             id="neighborhoodId"
             name="neighborhoodId"
-            required={candidateRequired}
+            // Obligatoire des deux côtés : le quartier est devenu une case
+            // retenue par la modération pour un employeur aussi, et réclamer
+            // dans la file ce que le formulaire laisse facultatif enfermerait
+            // la personne sans lui dire quoi corriger.
+            required={candidateRequired || isEmployer}
             defaultValue={neighborhoodId ?? ""}
             className={SELECT}
           >

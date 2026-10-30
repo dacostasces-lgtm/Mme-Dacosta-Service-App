@@ -1,5 +1,10 @@
 import { Clock, MapPin, Mail, Check, X, UserPlus, Phone, Database, Users, Home, IdCard, Ban } from "lucide-react";
-import { documentsFromRow, missingCandidateFields, situationFromRow } from "@/lib/profile/completeness";
+import {
+  documentsFromRow,
+  missingCandidateFields,
+  missingEmployerFields,
+  situationFromRow,
+} from "@/lib/profile/completeness";
 import {
   documentHref,
   identityTypeLabel,
@@ -157,9 +162,10 @@ function readiness(profile: ModerationProfile) {
   const missing =
     profile.role === "candidate"
       ? candidateMissing(profile)
-      : profile.phone_present
-        ? []
-        : ["Téléphone"];
+      : missingEmployerFields({
+          phonePresent: Boolean(profile.phone_present),
+          neighborhoodId: profile.neighborhood_id,
+        });
   // `undefined` quand admin_profile_contacts() n'a pas répondu : inconnu, donc
   // pas retenu contre l'inscription. Sans envoi de SMS configuré, personne ne
   // pourrait confirmer : la condition tombe d'elle-même.
@@ -250,11 +256,17 @@ function MissingFields({ profile }: { profile: ModerationProfile }) {
             Profil incomplet — manque : {missing.join(", ")}
           </p>
         ))}
-      {profile.role !== "candidate" && missing.length > 0 && (
-        <p className="text-xs text-amber-700 dark:text-amber-500">
-          Incomplet — manque : {missing.join(", ")}
-        </p>
-      )}
+      {/* Un employeur aussi : la carte ne disait rien quand tout était là, et
+          la modération se trouvait devant un compte dont rien n'indiquait
+          l'état — ni complet, ni incomplet. Le silence ne se lit pas. */}
+      {profile.role !== "candidate" &&
+        (missing.length === 0 ? (
+          <p className="text-xs text-green-700 dark:text-green-400">Compte complet</p>
+        ) : (
+          <p className="text-xs text-amber-700 dark:text-amber-500">
+            Compte incomplet — manque : {missing.join(", ")}
+          </p>
+        ))}
       {phoneUnconfirmed && (
         <p className="text-xs text-amber-700 dark:text-amber-500">
           Numéro pas encore confirmé par SMS
@@ -309,7 +321,9 @@ function ProfileRow({
             </span>
           </div>
 
-          {(isCandidate || unfinished) && <MissingFields profile={profile} />}
+          {/* Pour tous : un employeur publié sans qu'on ait vu son état est
+              exactement ce qu'on cherchait à éviter. */}
+          <MissingFields profile={profile} />
 
           {isCandidate && <Situation details={profile.candidate_details} />}
 
@@ -392,8 +406,13 @@ function ProfileRow({
           ) : (
             <PublishButton profileId={profile.id} validated={validated} />
           )}
-          {/* Avant publication seulement : un profil en ligne se retire. */}
-          {isCandidate && !validated && !rejected && <RejectButton profileId={profile.id} />}
+          {/* Avant publication seulement : un profil en ligne se retire.
+              Employeurs compris : un compte employeur peut être fantaisiste
+              autant qu'un profil candidat, et `reject_profile` accepte depuis
+              toujours n'importe quel profil non administrateur. Seule
+              l'interface le réservait aux candidats, ce qui ne laissait qu'un
+              bouton — publier — devant un compte dont on ne voulait pas. */}
+          {!validated && !rejected && <RejectButton profileId={profile.id} />}
         </div>
       </div>
 

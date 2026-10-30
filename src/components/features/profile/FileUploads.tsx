@@ -6,12 +6,23 @@ import { Camera, FileText, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { setAvatar, setCv } from "@/lib/profile/files";
+import { compresserImage } from "@/lib/images/compresser";
 
 const AVATAR_MAX = 2 * 1024 * 1024;
 const CV_MAX = 5 * 1024 * 1024;
 
 const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const CV_TYPES = ["application/pdf", "image/jpeg", "image/png"];
+
+/**
+ * Ce que le sélecteur de fichiers laisse choisir, plus large que ce que le seau
+ * accepte. Un iPhone range ses photos en HEIC : sans ces entrées, elles
+ * apparaissent grisées et la personne croit son téléphone en cause. Elles sont
+ * réencodées en JPEG avant l'envoi ; la validation, elle, reste sur les formats
+ * du seau.
+ */
+const AVATAR_CHOISIR = [...AVATAR_TYPES, "image/heic", "image/heif"].join(",");
+const CV_CHOISIR = [...CV_TYPES, "image/webp", "image/heic", "image/heif"].join(",");
 
 type Props = {
   userId: string;
@@ -53,7 +64,16 @@ export function FileUploads({ userId, isCandidate, avatarUrl, fullName, hasCv }:
     setError("");
     setDone(null);
 
-    if (!accepted.includes(file.type)) {
+    // Avant tout contrôle : une photo de téléphone pèse 3 à 6 Mo et dépasse
+    // les plafonds. Réduite ici, elle passe — et le HEIC d'un iPhone ressort
+    // en JPEG, format que le seau accepte. Les deux contrôles ci-dessous
+    // restent, en dernier filet, pour ce que la compression n'a pas pu
+    // reprendre (un PDF trop lourd, une image indécodable).
+    setBusy(kind);
+    const fichier = await compresserImage(file, maxBytes);
+    setBusy(null);
+
+    if (!accepted.includes(fichier.type)) {
       setError(
         kind === "avatar"
           ? "Format non accepté. Utilisez une photo JPG, PNG ou WEBP."
@@ -61,9 +81,9 @@ export function FileUploads({ userId, isCandidate, avatarUrl, fullName, hasCv }:
       );
       return;
     }
-    if (file.size > maxBytes) {
+    if (fichier.size > maxBytes) {
       setError(
-        `Fichier trop lourd (${(file.size / 1024 / 1024).toFixed(1)} Mo). Maximum ${
+        `Fichier trop lourd (${(fichier.size / 1024 / 1024).toFixed(1)} Mo). Maximum ${
           maxBytes / 1024 / 1024
         } Mo.`
       );
@@ -74,13 +94,13 @@ export function FileUploads({ userId, isCandidate, avatarUrl, fullName, hasCv }:
 
     // Stable name per user and bucket, so replacing overwrites rather than
     // piling up files nobody will ever clean out.
-    const extension = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+    const extension = fichier.name.split(".").pop()?.toLowerCase() ?? "bin";
     const path = `${userId}/${kind}.${extension}`;
 
     const supabase = createClient();
     const { error: uploadError } = await supabase.storage
       .from(bucket)
-      .upload(path, file, { upsert: true, contentType: file.type });
+      .upload(path, fichier, { upsert: true, contentType: fichier.type });
 
     if (uploadError) {
       setBusy(null);
@@ -92,7 +112,7 @@ export function FileUploads({ userId, isCandidate, avatarUrl, fullName, hasCv }:
       return;
     }
 
-    if (kind === "avatar") setPreview(URL.createObjectURL(file));
+    if (kind === "avatar") setPreview(URL.createObjectURL(fichier));
 
     startTransition(async () => {
       const result = kind === "avatar" ? await setAvatar(path) : await setCv(path);
@@ -133,7 +153,7 @@ export function FileUploads({ userId, isCandidate, avatarUrl, fullName, hasCv }:
           <input
             ref={avatarInput}
             type="file"
-            accept={AVATAR_TYPES.join(",")}
+            accept={AVATAR_CHOISIR}
             className="sr-only"
             onChange={(event) => {
               const file = event.target.files?.[0];
@@ -171,7 +191,7 @@ export function FileUploads({ userId, isCandidate, avatarUrl, fullName, hasCv }:
           <input
             ref={cvInput}
             type="file"
-            accept={CV_TYPES.join(",")}
+            accept={CV_CHOISIR}
             className="sr-only"
             onChange={(event) => {
               const file = event.target.files?.[0];

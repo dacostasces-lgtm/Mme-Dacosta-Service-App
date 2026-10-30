@@ -1,4 +1,4 @@
-import { Briefcase, MessageSquare, Users, Plus, Search, UserPen } from "lucide-react";
+import { Ban, Briefcase, MessageSquare, Users, Plus, Search, UserPen } from "lucide-react";
 
 type ReceivedApplication = {
   id: string;
@@ -33,6 +33,7 @@ import {
 } from "@/components/features/jobs/ApplicantContact";
 import { JobReminders, MyJobs, type MyJobRow } from "@/components/features/jobs/MyJobs";
 import { jobState } from "@/lib/jobs/expiry";
+import { COMPANY } from "@/lib/legal/company";
 
 function StatCard({
   icon,
@@ -158,6 +159,40 @@ export default async function EmployerDashboard() {
             </Link>
           </div>
         </div>
+
+        {/* Écarté par la modération : le dire, avec le motif s'il y en a un.
+            Le refus s'ouvre maintenant aux comptes employeurs comme aux
+            candidats ; sans ce bloc, une personne écartée n'en saurait rien et
+            continuerait de se demander pourquoi ses offres ne partent pas. */}
+        {user.rejection && (
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 mb-6 flex items-start gap-4">
+            <Ban className="h-6 w-6 text-destructive shrink-0" aria-hidden />
+            <div>
+              <p className="font-semibold">Votre compte n&apos;a pas été retenu par notre équipe</p>
+              {user.rejection.reason && (
+                <p className="text-sm mt-1">
+                  Motif : <span className="font-medium">{user.rejection.reason}</span>
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground mt-1">
+                Corrigez ce qui est indiqué dans{" "}
+                <Link href="/profil" className="font-medium text-primary hover:underline">
+                  votre profil
+                </Link>
+                , puis écrivez-nous :{" "}
+                <a
+                  href={`https://wa.me/${COMPANY.whatsapp}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-primary hover:underline"
+                >
+                  WhatsApp {COMPANY.phone}
+                </a>
+                .
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Le numéro est obligatoire pour publier une offre. */}
         {user.missingProfileFields.length > 0 && (

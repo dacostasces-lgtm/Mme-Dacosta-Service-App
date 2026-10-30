@@ -1,3 +1,4 @@
+import { deflateSync } from "node:zlib";
 import { expect, type Page } from "@playwright/test";
 
 /** Fresh address per run: the local stack is reset between runs, but a retry
@@ -48,6 +49,20 @@ export async function register(
   // posée dans requireUser ne s'applique qu'aux comptes qui en ont un.
   // Un candidat arrive sur son profil, qu'il doit compléter avant de postuler.
   const landing = role === "employer" ? "/dashboard/employer" : "/profil";
+
+  // Un seul nouvel essai, et seulement devant l'envoi d'email : le service de
+  // courrier de la pile locale rend parfois un 504, et l'inscription échoue
+  // alors sur un incident d'environnement qui ressemble à un défaut du code.
+  // Rien d'autre n'est retenté — un vrai refus doit rester un échec.
+  const envoiRate = page.getByText(/n'a pas pu envoyer l'email de confirmation/i);
+  await Promise.race([
+    page.waitForURL(new RegExp(`/fr${landing}`), { timeout: 30_000 }).catch(() => {}),
+    envoiRate.waitFor({ timeout: 30_000 }).catch(() => {}),
+  ]);
+  if (await envoiRate.isVisible().catch(() => false)) {
+    await page.getByRole("button", { name: "Créer mon compte" }).click();
+  }
+
   await page.waitForURL(new RegExp(`/fr${landing}`), { timeout: 30_000 });
 
   return { email, password: PASSWORD };
@@ -284,4 +299,60 @@ export async function chooseSkill(page: Page, skill: string) {
 export async function chooseOtherMetier(page: Page, text: string) {
   await chooseMetier(page, "Autre…");
   await page.getByLabel("Autre métier").fill(text);
+}
+
+/**
+ * Une vraie image PNG, assez lourde pour dépasser les plafonds d'envoi.
+ *
+ * PNG_1x1 ne prouve rien ici : ce qu'il faut éprouver, c'est le chemin d'une
+ * photo prise au téléphone, qui pèse 3 à 6 Mo et que l'application refusait.
+ * Le contenu est aléatoire, donc incompressible : une image unie se réduirait à
+ * quelques octets et le test passerait sans rien montrer.
+ *
+ * Écrit à la main plutôt qu'avec une bibliothèque : un PNG, c'est une signature,
+ * trois morceaux et un CRC par morceau. Ajouter une dépendance d'image à la
+ * suite de tests coûterait plus que ces vingt lignes.
+ */
+export function bigPng(side = 1400) {
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc32 = (buf: Buffer) => {
+    let c = 0xffffffff;
+    for (const byte of buf) c = crcTable[(c ^ byte) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type: string, data: Buffer) => {
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(body));
+    return Buffer.concat([length, body, crc]);
+  };
+
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(side, 0);
+  ihdr.writeUInt32BE(side, 4);
+  ihdr[8] = 8; // 8 bits par canal
+  ihdr[9] = 2; // couleur vraie, RVB
+  // Une ligne porte un octet de filtre puis trois octets par pixel.
+  const raw = Buffer.alloc(side * (1 + side * 3));
+  for (let y = 0; y < side; y++) {
+    const start = y * (1 + side * 3);
+    raw[start] = 0; // filtre « aucun »
+    for (let i = start + 1; i < start + 1 + side * 3; i++) {
+      raw[i] = Math.floor(Math.random() * 256);
+    }
+  }
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", ihdr),
+    // Niveau 1 : compresser du bruit ne gagne rien, et le niveau par défaut
+    // ferait perdre plusieurs secondes à chaque test pour le même résultat.
+    chunk("IDAT", deflateSync(raw, { level: 1 })),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
 }

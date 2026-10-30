@@ -10,6 +10,7 @@ import { dashboardPathFor, type UserRole } from "@/lib/auth/roles";
 import {
   documentsFromRow,
   missingCandidateFields,
+  missingEmployerFields,
   situationFromRow,
 } from "@/lib/profile/completeness";
 
@@ -97,9 +98,13 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   // (colonne absente le temps d'une migration) ne doit enfermer personne :
   // on considère alors le profil complet.
   let missingProfileFields: string[] = [];
-  // Un employeur n'a qu'une case obligatoire : son numéro.
-  if (profile?.role === "employer" && !profile.phone_present) {
-    missingProfileFields = ["Téléphone"];
+  // Le numéro et le quartier : la même règle que celle que lit la file de
+  // modération, tenue dans completeness.ts.
+  if (profile?.role === "employer") {
+    missingProfileFields = missingEmployerFields({
+      phonePresent: Boolean(profile.phone_present),
+      neighborhoodId: profile.neighborhood_id as string | null,
+    });
   }
   if (profile?.role === "candidate") {
     // Par la fonction, pas par la table : `age` et `gender` n'y sont plus

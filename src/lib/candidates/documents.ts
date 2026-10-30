@@ -49,6 +49,15 @@ export function isDocumentKind(value: string): value is DocumentKind {
 
 export const DOCUMENTS_BUCKET = "pieces";
 export const DOCUMENT_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+
+/**
+ * Ce que le sélecteur de fichiers laisse choisir, plus large que ce que le
+ * seau accepte. Un iPhone range ses photos en HEIC : sans ces entrées, elles
+ * apparaissent grisées et la personne croit son téléphone en cause. Elles
+ * sont réencodées en JPEG avant l'envoi (src/lib/images/compresser.ts) ; la
+ * validation, elle, reste sur les formats du seau.
+ */
+export const DOCUMENTS_CHOISIR = [...DOCUMENT_TYPES, "image/heic", "image/heif"].join(",");
 export const DOCUMENT_MAX = 10 * 1024 * 1024;
 
 /** Ce que lit la modération et le candidat : la ligne de candidate_documents. */
