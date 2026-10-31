@@ -12,7 +12,19 @@ import { cn } from "@/lib/utils";
 /** Une ligne de candidate_contact() (20261011090000_candidate_contact.sql). */
 export type CandidateContactRow = {
   has_number: boolean;
-  access: "self" | "admin" | "unlocked" | "applied" | "premium" | "pending" | "declared" | "none";
+  access:
+    | "self"
+    | "admin"
+    | "unlocked"
+    | "applied"
+    // L'abonnement de celui qui regarde.
+    | "premium"
+    // Celui du candidat regardé, qui rend son numéro gratuit pour tous les
+    // recruteurs. Les deux montrent le numéro, pour des raisons opposées.
+    | "candidat_premium"
+    | "pending"
+    | "declared"
+    | "none";
   unlock_id: string | null;
   phone: string | null;
   whatsapp: string | null;
@@ -24,6 +36,7 @@ const REASON: Partial<Record<CandidateContactRow["access"], string>> = {
   unlocked: "Numéro débloqué.",
   applied: "Ce candidat a postulé à votre offre payée.",
   premium: "Inclus dans votre abonnement Premium.",
+  candidat_premium: "Ce candidat est abonné Premium : son numéro est gratuit.",
 };
 
 const NOTE = "order-last basis-full text-xs text-muted-foreground";
