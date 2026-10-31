@@ -50,6 +50,7 @@ export function JobPayment({
 
   return (
     <MomoPayment
+      achat="job_payment"
       action={declareJobPayment}
       idField="paymentId"
       id={paymentId}

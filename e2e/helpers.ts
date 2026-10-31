@@ -200,7 +200,13 @@ export async function signIn(page: Page, email: string) {
   await page.getByPlaceholder("email@exemple.com").fill(email);
   await page.getByPlaceholder("••••••••").fill(PASSWORD);
   await page.getByRole("button", { name: "Se connecter" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  // Trente secondes, comme les autres attentes de ce fichier, et non les dix
+  // par défaut : le tableau de bord est rendu côté serveur et interroge la base
+  // sept fois. Isolé il paraît en quatre secondes ; en fin de suite, sur une
+  // machine chargée, il dépassait les dix et l'échec ressemblait à une panne
+  // alors que la capture montrait quelqu'un de bien connecté devant un
+  // squelette de chargement.
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 30_000 });
 }
 
 /** Smallest valid PNG, so the avatar upload exercises the real storage path
@@ -355,4 +361,19 @@ export function bigPng(side = 1400) {
     chunk("IDAT", deflateSync(raw, { level: 1 })),
     chunk("IEND", Buffer.alloc(0)),
   ]);
+}
+
+/**
+ * Déplie « Payer autrement, par virement Mobile Money ».
+ *
+ * Depuis que PawaPay encaisse directement, le virement manuel est un repli,
+ * rangé dans un `<details>` replié. Ses éléments existent dans la page mais
+ * sont cachés, ce qui fait échouer `toBeVisible()` sans que rien ne soit cassé.
+ * Les tests qui éprouvent ce repli l'ouvrent donc d'abord, comme le ferait
+ * quelqu'un dont le paiement en ligne a échoué.
+ */
+export async function ouvrirVirementManuel(page: Page) {
+  const bloc = page.getByText("Payer autrement, par virement Mobile Money");
+  await bloc.click();
+  await expect(page.getByText(/^MD-[A-Z0-9]{6}$/).first()).toBeVisible({ timeout: 10_000 });
 }

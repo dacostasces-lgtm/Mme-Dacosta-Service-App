@@ -1,9 +1,57 @@
 # Encaissement Mobile Money
 
-Aucune API opérateur n'est branchée. L'encaissement repose sur deux mécanismes
-qui se complètent, du plus automatique au plus manuel.
+## 0. PawaPay (le chemin normal depuis le 31 octobre 2026)
 
-## 1. Relais SMS (automatique)
+L'acheteur saisit le numéro qui paie, reçoit une demande d'autorisation sur son
+téléphone, tape son code Mobile Money. L'achat se règle seul. Les quatre achats
+passent par là : déblocage d'un numéro d'employeur, déblocage d'un numéro de
+candidate, publication d'une offre, abonnement Premium.
+
+Ce que cela a remplacé : un virement que l'acheteur faisait lui-même vers le
+numéro de la plateforme en citant une référence, puis déclarait, et qu'une
+personne rapprochait du relevé dans l'une des quatre files. Et cela règle au
+passage l'absence de numéro marchand Airtel : il n'y a plus de numéro marchand
+du tout, l'opérateur se déduit du numéro de l'acheteur.
+
+### Variables
+
+| Variable | Rôle |
+| --- | --- |
+| `PAWAPAY_API_TOKEN` | Jeton du tableau de bord PawaPay. Celui du bac à sable et celui de la production diffèrent. |
+| `PAWAPAY_ENV` | `production` pour encaisser réellement. Toute autre valeur vise le bac à sable — une variable oubliée ne doit pas faire sonner de vrais téléphones. |
+
+L'adresse de rappel se déclare chez PawaPay, pas ici :
+`https://madamedacostaservices.com/api/pawapay/callback`
+
+### Les deux règles qui tiennent la sécurité
+
+**Le montant ne vient jamais du navigateur.** `start_pawapay_deposit` le lit sur
+la ligne achetée et le rend au serveur. La fonction n'a pas de paramètre de
+montant : un acheteur qui trafique sa requête ne peut pas se faire un Premium
+Employeur à 100 FCFA.
+
+**Le contenu d'un rappel n'est jamais cru.** PawaPay signe ses rappels en
+RFC 9421, mais la signature se désactive depuis leur tableau de bord, sa
+vérification est délicate à faire juste, et l'adresse est publique. Le serveur
+ne retient du rappel que l'identifiant du versement, puis redemande son état à
+PawaPay avec notre jeton. Un faux rappel disant « COMPLETED » ne déclenche au
+pire qu'une vérification qui répond la vérité.
+
+La page de l'acheteur interroge aussi l'état, toutes les trois secondes pendant
+qu'il tape son code. Les deux chemins mènent à `settle_pawapay_deposit`, qui est
+rejouable : un achat ne se règle qu'une fois.
+
+### Ce qu'un versement échoué laisse
+
+Rien n'est perdu : l'achat reste `pending_payment`, donc payable de nouveau. Le
+versement échoué sort de l'index « un seul en vol », ce qui autorise la reprise.
+
+## 1. Relais SMS (hérité, réservations seules)
+
+Ne règle que les réservations, qu'on ne peut plus créer depuis le retrait de
+« Réserver ce candidat ». Conservé pour les lignes antérieures.
+
+
 
 Le téléphone qui porte la SIM marchand reçoit un SMS de confirmation à chaque
 paiement. Une application de relais transfère ces SMS vers l'application, qui

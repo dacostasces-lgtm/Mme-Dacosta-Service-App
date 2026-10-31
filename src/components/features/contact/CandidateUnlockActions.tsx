@@ -67,6 +67,7 @@ export function CandidateUnlockPayment({
 
   return (
     <MomoPayment
+      achat="candidate_unlock"
       action={declareCandidateUnlockPayment}
       idField="unlockId"
       id={unlockId}

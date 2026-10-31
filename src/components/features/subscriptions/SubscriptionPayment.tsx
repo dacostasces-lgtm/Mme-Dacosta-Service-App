@@ -14,6 +14,7 @@ type Props = {
 export function SubscriptionPayment({ subscriptionId, planName, amountLabel, declared }: Props) {
   return (
     <MomoPayment
+      achat="subscription"
       action={declareSubscriptionPayment}
       idField="subscriptionId"
       id={subscriptionId}

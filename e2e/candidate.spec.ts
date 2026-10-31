@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { fillCandidateProfile, PNG_1x1, register, uploadVia } from "./helpers";
+import {
+  fillCandidateProfile,
+  ouvrirVirementManuel,
+  PNG_1x1,
+  register,
+  uploadVia,
+} from "./helpers";
 
 test.describe("parcours candidate", () => {
   /**
@@ -53,7 +59,10 @@ test.describe("parcours candidate", () => {
     ).toBeVisible();
 
     // The reference the buyer must quote in the transfer.
-    await expect(page.getByText(/^MD-[A-Z0-9]{6}$/)).toBeVisible();
+    // Le paiement en ligne tient la première place ; c'est le repli qu'on
+    // éprouve ici, PawaPay n'étant pas joignable en test.
+    await ouvrirVirementManuel(page);
+    await expect(page.getByText(/^MD-[A-Z0-9]{6}$/).first()).toBeVisible();
 
     await page
       .getByLabel("Identifiant de transaction Mobile Money")

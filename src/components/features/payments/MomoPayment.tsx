@@ -10,10 +10,14 @@ import {
   paymentReference,
   whatsappReceiptLink,
 } from "@/lib/payments/manual";
+import { MobileMoneyPayment } from "@/components/features/payments/MobileMoneyPayment";
+import type { Achat } from "@/lib/payments/actions";
 
 type PaymentState = { error?: string; ok?: boolean };
 
 type Props = {
+  /** Lequel des quatre achats, pour que le paiement en ligne sache quoi régler. */
+  achat: Achat;
   /** Server action recording the transaction id. */
   action: (previous: PaymentState, formData: FormData) => Promise<PaymentState>;
   /** Hidden field identifying the row being paid, e.g. `subscriptionId`. */
@@ -39,6 +43,7 @@ type Props = {
  * charges for, so a buyer always sees the same steps.
  */
 export function MomoPayment({
+  achat,
   action,
   idField,
   id,
@@ -83,6 +88,21 @@ export function MomoPayment({
         <p className="text-sm text-muted-foreground">{summary}</p>
       </div>
 
+      {/* Le paiement en ligne d'abord : l'acheteur saisit son numéro, valide sur
+          son téléphone, et c'est réglé — sans virement à faire soi-même, sans
+          référence à recopier, sans attendre qu'une personne rapproche le
+          versement d'un relevé. */}
+      <MobileMoneyPayment achat={achat} targetId={id} amountLabel={amountLabel} />
+
+      {/* Le virement manuel reste là, replié. Il sert quand PawaPay n'est pas
+          encore activé sur le déploiement — l'action le dit alors clairement —
+          et quand un paiement en ligne échoue pour une raison qui lui est
+          propre. */}
+      <details className="border-t border-border pt-4">
+        <summary className="cursor-pointer text-sm font-medium text-muted-foreground">
+          Payer autrement, par virement Mobile Money
+        </summary>
+        <div className="mt-4 space-y-6">
       {hasConfiguredOperator() ? (
         <>
           <ol className="space-y-4 text-sm">
@@ -193,6 +213,8 @@ export function MomoPayment({
           </p>
         </div>
       )}
+        </div>
+      </details>
     </div>
   );
 }

@@ -1,6 +1,12 @@
 import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { PASSWORD, addEmployerPhone, register, uniqueEmail } from "./helpers";
+import {
+  PASSWORD,
+  addEmployerPhone,
+  ouvrirVirementManuel,
+  register,
+  uniqueEmail,
+} from "./helpers";
 
 /**
  * La fiche candidat vue par ceux qui paient, et par ceux qui ne doivent rien
@@ -116,6 +122,9 @@ test.describe("numéro d'un candidat sur sa fiche", () => {
     await expect(
       page.getByRole("heading", { name: "Régler le numéro du candidat" })
     ).toBeVisible({ timeout: 30_000 });
+    // PawaPay tient la première place depuis le 31 octobre ; en test il n'est
+    // pas joignable, donc c'est le repli manuel qu'on déplie et qu'on éprouve.
+    await ouvrirVirementManuel(page);
     await page
       .getByLabel("Identifiant de transaction Mobile Money")
       .fill("PP261011.1234.A56789");
