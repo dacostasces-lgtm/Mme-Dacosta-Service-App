@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,13 +18,7 @@ export function DeleteAccount({ isEmployer }: { isEmployer: boolean }) {
   const [typed, setTyped] = useState("");
   const [state, action, pending] = useActionState<DeleteAccountState, FormData>(deleteMyAccount, {});
 
-  // Rechargement complet, voulu : une navigation dans l'application garderait
-  // à l'écran la barre du compte qui vient d'être supprimé.
-  useEffect(() => {
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    if (state.ok) window.location.assign("/fr/compte-supprime");
-  }, [state]);
-
+  // Au succès, l'action redirige elle-même vers « Votre compte a été supprimé ».
   const confirmed = typed.trim().toUpperCase() === CONFIRMATION;
 
   return (

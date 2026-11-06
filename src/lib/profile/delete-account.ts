@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { redirect, routing } from "@/i18n/routing";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -70,5 +72,11 @@ export async function deleteMyAccount(
 
   // La session n'existe plus côté serveur : on efface seulement les cookies.
   await supabase.auth.signOut({ scope: "local" });
-  return { ok: true };
+
+  // Comme signOut (src/lib/auth/actions.ts), la suite part d'ici. Sans cette
+  // redirection, effacer les cookies fait redessiner la page du profil, dont
+  // requireUser renvoie aussitôt vers la connexion : la personne y atterrissait
+  // au lieu de lire que son compte est supprimé.
+  revalidatePath("/", "layout");
+  return redirect({ href: "/compte-supprime", locale: routing.defaultLocale });
 }
