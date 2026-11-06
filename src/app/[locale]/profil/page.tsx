@@ -8,6 +8,7 @@ import {
   type EmployerProfile,
 } from "@/components/features/profile/ProfileForm";
 import { FileUploads } from "@/components/features/profile/FileUploads";
+import { DeleteAccount } from "@/components/features/profile/DeleteAccount";
 import { IdentityDocuments } from "@/components/features/profile/IdentityDocuments";
 import type { DocumentsRow } from "@/lib/candidates/documents";
 import { PhoneVerification } from "@/components/features/profile/PhoneVerification";
@@ -184,6 +185,13 @@ export default async function ProfilePage() {
             missing={user.missingProfileFields}
           />
         </div>
+
+        {/* Pas pour l'administration : un compte admin se retire à la main. */}
+        {user.role !== "admin" && (
+          <div className="bg-card border border-destructive/20 rounded-3xl p-6 sm:p-8 shadow-soft mt-6">
+            <DeleteAccount isEmployer={isEmployer} />
+          </div>
+        )}
       </div>
     </div>
   );

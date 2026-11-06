@@ -531,8 +531,18 @@ export default async function AdminPage() {
 
   const solde = await soldePromise;
 
+  // Comptes supprimés par leur titulaire (20261106100000) : le profil reste,
+  // vidé, parce que des paiements y renvoient ; il n'a rien à faire dans la
+  // file. Colonne absente (migration pas encore passée) : personne n'est écarté.
+  const supprimes = await supabase.from("profiles").select("id").not("deleted_at", "is", null);
+  const deletedIds = new Set(
+    (supprimes.error ? [] : (supprimes.data ?? [])).map((row) => row.id as string)
+  );
+
   const error = pending.error ?? validated.error;
-  const pendingProfiles = (pending.data ?? []) as unknown as ModerationProfile[];
+  const pendingProfiles = ((pending.data ?? []) as unknown as ModerationProfile[]).filter(
+    (profile) => !deletedIds.has(profile.id)
+  );
   const validatedProfiles = (validated.data ?? []) as unknown as ModerationProfile[];
 
   // One guarded call for both lists rather than an embed per row. The function
