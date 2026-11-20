@@ -95,7 +95,7 @@ test.describe("file de modération et situation familiale", () => {
     // La porte de secours du SMS (l'envoi pointe vers le vide en test) laisse
     // entrer sans confirmer le numéro.
     await completeCandidateProfile(candidate, uniquePhone());
-    await expect(candidate.getByText("Votre profil n'est pas encore envoyé à notre équipe"))
+    await expect(candidate.getByText("Votre numéro reste à confirmer"))
       .toBeVisible();
     await expect(candidate.getByRole("link", { name: "Confirmer mon numéro par SMS" }))
       .toBeVisible();

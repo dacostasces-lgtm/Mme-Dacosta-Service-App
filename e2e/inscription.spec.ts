@@ -127,6 +127,8 @@ test.describe("inscription", () => {
     await expect(page.getByRole("button", { name: "Choisir le permis" })).toHaveCount(0);
 
     await finishWithoutCode(page, "/dashboard/candidate");
+    // Son espace dit ce que l'inscription a promis : l'équipe va l'appeler.
+    await expect(page.getByText("Votre numéro reste à confirmer")).toBeVisible({ timeout: 30_000 });
 
     // Le compte est né complet : profil, adresse, pièces. Numéro à confirmer
     // par appel, puisque le SMS n'est pas parti.
