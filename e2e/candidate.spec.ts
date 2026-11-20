@@ -80,17 +80,21 @@ test.describe("parcours candidate", () => {
     page,
   }) => {
     await page.goto("/fr/register");
-    await page.locator('select[name="role"]').selectOption("candidate");
-    await page.getByPlaceholder("Awa Dacosta").fill("Test Court");
-    // Le formulaire propose le numéro par défaut : il faut basculer sur email.
-    await page.getByRole("button", { name: "Mon email" }).click();
-    await page.getByPlaceholder("email@exemple.com").fill("court@example.test");
-    await page.getByPlaceholder("••••••••").fill("court");
+    // Le formulaire est React : avant qu'il soit prêt, le choix ne réagit pas.
+    const choix = page.getByRole("button", { name: "Je recrute" });
+    await expect(async () => {
+      await choix.click();
+      await expect(choix).toHaveAttribute("aria-pressed", "true", { timeout: 1_000 });
+    }).toPass({ timeout: 15_000 });
+    await page.getByLabel("Nom complet").fill("Test Court");
+    await page.getByLabel("Téléphone").fill("060000099");
+    await page.getByLabel("Mot de passe").fill("court");
     await page.getByLabel("Ville").selectOption({ label: "Brazzaville" });
     await page.getByLabel("Quartier").selectOption({ label: "Bacongo" });
-    await page.getByRole("button", { name: "Créer mon compte" }).click();
 
-    await expect(page.getByText("Au moins 8 caractères")).toBeVisible();
+    // Le bouton reste grisé, et dit ce qui ne va pas.
+    await expect(page.getByRole("button", { name: "Créer mon compte" })).toBeDisabled();
+    await expect(page.getByText(/Il manque encore : Mot de passe/)).toBeVisible();
     await expect(page).toHaveURL(/\/fr\/register/);
   });
 

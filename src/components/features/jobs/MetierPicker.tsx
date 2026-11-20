@@ -18,12 +18,16 @@ export function MetierPicker({
   defaultValue,
   required = false,
   otherPlaceholder = "Écrivez le métier",
+  onValueChange,
 }: {
   name: string;
   legend: string;
   defaultValue?: string | null;
   required?: boolean;
   otherPlaceholder?: string;
+  /** Prévient le formulaire du métier choisi (l'inscription demande le
+   *  permis à un chauffeur). */
+  onValueChange?: (value: string) => void;
 }) {
   const initial = defaultValue?.trim() ?? "";
   const known = (METIERS as readonly string[]).includes(initial);
@@ -40,6 +44,10 @@ export function MetierPicker({
   useEffect(() => {
     hidden.current?.setCustomValidity(required && value === "" ? "Choisissez un métier." : "");
   }, [required, value]);
+
+  useEffect(() => {
+    onValueChange?.(value);
+  }, [onValueChange, value]);
 
   return (
     <fieldset>
