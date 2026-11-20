@@ -94,18 +94,12 @@ test.describe("inscription", () => {
     const creer = page.getByRole("button", { name: "Créer mon compte" });
     await expect(creer).toBeDisabled();
 
-    // Chauffeur : le permis devient obligatoire.
-    await chooseMetier(page, "Chauffeur");
-    await expect(page.getByRole("button", { name: "Choisir le permis" })).toBeVisible();
-    await expect(page.getByText(/Il manque encore : .*Permis de conduire/)).toBeVisible();
-
     await page.getByLabel("Nom complet").fill("Awa Inscrite");
     await page.getByLabel("Mot de passe").fill(PASSWORD);
     await page.getByLabel("Ville").selectOption({ label: "Brazzaville" });
     await page.getByLabel("Quartier").selectOption({ label: "Bacongo" });
-    // Toutes les cases du profil, métier Nounou compris (le permis disparaît).
+    // Toutes les cases du profil, métier Nounou compris.
     await fillCandidateProfile(page, tel);
-    await expect(page.getByRole("button", { name: "Choisir le permis" })).toHaveCount(0);
 
     // Sans pièce d'identité, toujours grisé.
     await expect(creer).toBeDisabled();
@@ -122,6 +116,15 @@ test.describe("inscription", () => {
       mimeType: "image/png",
       buffer: PNG_1x1,
     });
+    await expect(creer).toBeEnabled();
+
+    // Chauffeur : le permis devient obligatoire, et le bouton se regrise.
+    await chooseMetier(page, "Chauffeur");
+    await expect(page.getByRole("button", { name: "Choisir le permis" })).toBeVisible();
+    await expect(page.getByText("Il manque encore : Permis de conduire.")).toBeVisible();
+    await expect(creer).toBeDisabled();
+    await chooseMetier(page, "Nounou");
+    await expect(page.getByRole("button", { name: "Choisir le permis" })).toHaveCount(0);
 
     await finishWithoutCode(page, "/dashboard/candidate");
 

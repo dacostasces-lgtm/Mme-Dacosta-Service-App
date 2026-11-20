@@ -65,17 +65,10 @@ async function createAccount(role: "admin" | "employer") {
 }
 
 /** La ligne d'un inscrit dans une section de la modération. */
-function rowIn(page: Page, section: "#profils" | "#inscriptions-non-terminees", name: string) {
+function rowIn(page: Page, section: "#profils" | "#numeros-a-confirmer", name: string) {
   return page.locator(`${section} > div > div`).filter({ hasText: name });
 }
 
-/** Déplie les inscriptions non terminées, repliées par défaut. */
-async function openUnfinished(page: Page) {
-  const section = page.locator("#inscriptions-non-terminees");
-  if (!(await section.evaluate((el) => (el as HTMLDetailsElement).open))) {
-    await section.locator("summary").click();
-  }
-}
 
 test.describe("file de modération et situation familiale", () => {
   test("seule une inscription terminée attend une décision, et la fiche montre la situation aux familles", async ({
@@ -93,14 +86,10 @@ test.describe("file de modération et situation familiale", () => {
     await signIn(admin, await createAccount("admin"));
     await admin.goto("/fr/admin");
 
-    await expect(rowIn(admin, "#profils", nom)).toHaveCount(0);
-    await openUnfinished(admin);
-    const incomplete = rowIn(admin, "#inscriptions-non-terminees", nom);
-    await expect(incomplete.getByText(/Profil incomplet — manque/)).toBeVisible();
-    // Ni « Publier », ni la confirmation par appel : il reste des cases vides.
-    await expect(incomplete.getByRole("button", { name: "Publier", exact: true })).toHaveCount(0);
-    await expect(incomplete.getByRole("button", { name: "Numéro confirmé par appel" }))
-      .toHaveCount(0);
+    // Une inscription où une case manque ne s'affiche nulle part (demandé le
+    // 20 novembre 2026) : ni en attente, ni parmi les numéros à confirmer.
+    await expect(admin.getByRole("heading", { name: /En attente/ })).toBeVisible();
+    await expect(admin.getByText(nom)).toHaveCount(0);
 
     // --- profil complet, numéro pas confirmé ------------------------------------
     // La porte de secours du SMS (l'envoi pointe vers le vide en test) laisse
@@ -113,8 +102,7 @@ test.describe("file de modération et situation familiale", () => {
 
     await admin.reload();
     await expect(rowIn(admin, "#profils", nom)).toHaveCount(0);
-    await openUnfinished(admin);
-    const unconfirmed = rowIn(admin, "#inscriptions-non-terminees", nom);
+    const unconfirmed = rowIn(admin, "#numeros-a-confirmer", nom);
     await expect(unconfirmed.getByText("Profil complet", { exact: true })).toBeVisible();
     await expect(unconfirmed.getByRole("button", { name: "Publier", exact: true })).toHaveCount(0);
     await expect(unconfirmed.getByText("Numéro pas encore confirmé par SMS")).toBeVisible();

@@ -156,7 +156,8 @@ function VerificationToggles({ profile }: { profile: ModerationProfile }) {
  * Ce qui manque encore à une inscription pour être examinée : les cases vides
  * d'un profil candidat (le numéro seul pour un employeur), et la confirmation
  * du numéro par SMS. Seules les inscriptions où rien ne manque arrivent dans
- * « En attente » ; les autres restent à part, sans bouton « Publier ».
+ * « En attente » ; celles dont seul le numéro attend vont dans « Numéro à
+ * confirmer par appel », les incomplètes ne s'affichent pas.
  */
 function readiness(profile: ModerationProfile) {
   const missing =
@@ -637,8 +638,8 @@ export default async function AdminPage() {
       : profile.candidate_details,
   });
   // Seules les inscriptions terminées — profil complet, numéro confirmé par
-  // SMS — attendent une décision. Les autres restent à part : elles arrivent
-  // d'elles-mêmes dans « En attente » une fois terminées.
+  // SMS — attendent une décision. Les autres arrivent d'elles-mêmes dans
+  // « En attente » une fois terminées.
   // Un profil refusé sort de la file, terminé ou non, jusqu'à sa remise en attente.
   const pendingEnriched = pendingProfiles.map(withEmail);
   const rejectedProfiles = pendingEnriched.filter((profile) => profile.rejection);
