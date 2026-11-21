@@ -160,7 +160,11 @@ export default function PrivacyPage() {
       <Article title="7. Durée de conservation">
         <ul className="list-disc pl-5 space-y-1">
           <li><strong>Compte actif</strong> : tant que votre compte existe.</li>
-          <li><strong>Après fermeture</strong> : suppression sous 30 jours, hors obligations légales.</li>
+          <li>
+            <strong>Après suppression de votre compte</strong> (bouton « Supprimer mon compte » en
+            bas de votre profil) : vos informations personnelles, vos fichiers, vos candidatures et
+            vos messages sont effacés aussitôt. Seuls les paiements sont conservés, sans votre nom.
+          </li>
           <li>
             <strong>Réservations et paiements</strong> : conservés le temps requis par les
             obligations comptables et fiscales applicables.
@@ -176,7 +180,8 @@ export default function PrivacyPage() {
         <p>
           Vous disposez d&apos;un droit d&apos;accès, de rectification, de suppression,
           d&apos;opposition et de retrait de votre consentement. Vous pouvez modifier
-          l&apos;essentiel de vos informations directement depuis votre profil.
+          l&apos;essentiel de vos informations directement depuis votre profil, et y supprimer
+          vous-même votre compte.
         </p>
         <p>
           Pour les autres demandes, écrivez à{" "}

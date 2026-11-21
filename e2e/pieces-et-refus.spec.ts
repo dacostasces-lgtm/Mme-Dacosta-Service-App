@@ -184,8 +184,9 @@ test.describe("refus d'un profil", () => {
     const admin = await ctxAdmin.newPage();
     await signIn(admin, await createAccount("admin"));
     await admin.goto("/fr/admin");
-    await openSection(admin, "#inscriptions-non-terminees");
-    const row = rowIn(admin, "#inscriptions-non-terminees", nom);
+    // Profil complet, numéro pas confirmé (le SMS pointe vers le vide en
+    // test) : il attend dans « Numéro à confirmer par appel ».
+    const row = rowIn(admin, "#numeros-a-confirmer", nom);
 
     // Les pièces s'ouvrent depuis la ligne, avant de décider.
     const recto = row.getByRole("link", { name: "Recto" });
@@ -206,7 +207,7 @@ test.describe("refus d'un profil", () => {
     await row.getByRole("button", { name: "Confirmer le refus" }).click();
 
     // Il quitte la file pour « Refusés », motif affiché.
-    await expect(rowIn(admin, "#inscriptions-non-terminees", nom)).toHaveCount(0, {
+    await expect(rowIn(admin, "#numeros-a-confirmer", nom)).toHaveCount(0, {
       timeout: 30_000,
     });
     await openSection(admin, "#refuses");

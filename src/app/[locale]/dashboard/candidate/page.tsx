@@ -168,14 +168,20 @@ export default async function CandidateDashboard() {
                   ? "Votre profil est en ligne"
                   : readyForReview
                     ? "Votre profil est en cours de vérification"
-                    : "Votre profil n'est pas encore envoyé à notre équipe"}
+                    : profileComplete
+                      ? "Votre numéro reste à confirmer"
+                      : "Votre profil n'est pas encore envoyé à notre équipe"}
               </p>
               <p className="text-sm text-muted-foreground">
                 {published
                   ? "Les employeurs peuvent vous trouver dans la recherche par proximité."
                   : readyForReview
                     ? "Il n'apparaîtra dans la recherche qu'une fois vérifié par notre équipe. Vous n'avez rien à faire, nous vous préviendrons."
-                    : "Notre équipe ne l'examinera qu'une fois ces étapes terminées :"}
+                    : profileComplete
+                      ? // Le SMS n'est pas passé : la modération voit ce profil dans
+                        // « Numéro à confirmer par appel », comme l'inscription l'a promis.
+                        "Notre équipe va vous appeler pour le confirmer, puis vérifiera votre profil. Si vous recevez nos SMS, vous pouvez aussi le confirmer tout de suite :"
+                      : "Notre équipe ne l'examinera qu'une fois ces étapes terminées :"}
               </p>
               {!published && !readyForReview && (
                 <ul className="mt-2 space-y-1 text-sm">

@@ -29,17 +29,10 @@ function serviceClient() {
 }
 
 /** La ligne d'un inscrit dans une section de la modération. */
-function rowIn(page: Page, section: "#profils" | "#inscriptions-non-terminees", name: string) {
+function rowIn(page: Page, section: "#profils", name: string) {
   return page.locator(`${section} > div > div`).filter({ hasText: name });
 }
 
-/** Déplie les inscriptions non terminées, repliées par défaut. */
-async function openUnfinished(page: Page) {
-  const section = page.locator("#inscriptions-non-terminees");
-  if (!(await section.evaluate((el) => (el as HTMLDetailsElement).open))) {
-    await section.locator("summary").click();
-  }
-}
 
 /** Un nom unique sans chiffres : treize chiffres passeraient pour un numéro,
  *  et `reject_phone_numbers` refuserait d'enregistrer le profil. */
@@ -98,13 +91,10 @@ test.describe("décision de l'administration sur un employeur", () => {
     await admin.goto("/fr/admin");
 
     // --- il n'attend pas de décision : il lui manque le quartier --------------
-    await expect(rowIn(admin, "#profils", nom)).toHaveCount(0);
-    await openUnfinished(admin);
-    const incomplet = rowIn(admin, "#inscriptions-non-terminees", nom);
-    await expect(incomplet.getByText(/Compte incomplet — manque : Quartier/)).toBeVisible();
-    await expect(incomplet.getByRole("button", { name: "Publier", exact: true })).toHaveCount(0);
-    // Mais il se refuse : c'est tout l'objet du signalement.
-    await expect(incomplet.getByRole("button", { name: "Refuser" })).toBeVisible();
+    // Une inscription incomplète ne s'affiche plus du tout (demandé le
+    // 20 novembre 2026).
+    await expect(admin.getByRole("heading", { name: /En attente/ })).toBeVisible();
+    await expect(admin.getByText(nom)).toHaveCount(0);
 
     // --- le quartier renseigné, il passe en attente avec les deux boutons -----
     const { data: quartier } = await service.from("neighborhoods").select("id").limit(1).single();

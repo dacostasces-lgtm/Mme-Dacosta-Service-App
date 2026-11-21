@@ -156,7 +156,8 @@ function VerificationToggles({ profile }: { profile: ModerationProfile }) {
  * Ce qui manque encore à une inscription pour être examinée : les cases vides
  * d'un profil candidat (le numéro seul pour un employeur), et la confirmation
  * du numéro par SMS. Seules les inscriptions où rien ne manque arrivent dans
- * « En attente » ; les autres restent à part, sans bouton « Publier ».
+ * « En attente » ; celles dont seul le numéro attend vont dans « Numéro à
+ * confirmer par appel », les incomplètes ne s'affichent pas.
  */
 function readiness(profile: ModerationProfile) {
   const missing =
@@ -531,8 +532,18 @@ export default async function AdminPage() {
 
   const solde = await soldePromise;
 
+  // Comptes supprimés par leur titulaire (20261106100000) : le profil reste,
+  // vidé, parce que des paiements y renvoient ; il n'a rien à faire dans la
+  // file. Colonne absente (migration pas encore passée) : personne n'est écarté.
+  const supprimes = await supabase.from("profiles").select("id").not("deleted_at", "is", null);
+  const deletedIds = new Set(
+    (supprimes.error ? [] : (supprimes.data ?? [])).map((row) => row.id as string)
+  );
+
   const error = pending.error ?? validated.error;
-  const pendingProfiles = (pending.data ?? []) as unknown as ModerationProfile[];
+  const pendingProfiles = ((pending.data ?? []) as unknown as ModerationProfile[]).filter(
+    (profile) => !deletedIds.has(profile.id)
+  );
   const validatedProfiles = (validated.data ?? []) as unknown as ModerationProfile[];
 
   // One guarded call for both lists rather than an embed per row. The function
@@ -627,14 +638,21 @@ export default async function AdminPage() {
       : profile.candidate_details,
   });
   // Seules les inscriptions terminées — profil complet, numéro confirmé par
-  // SMS — attendent une décision. Les autres restent à part : elles arrivent
-  // d'elles-mêmes dans « En attente » une fois terminées.
+  // SMS — attendent une décision. Les autres arrivent d'elles-mêmes dans
+  // « En attente » une fois terminées.
   // Un profil refusé sort de la file, terminé ou non, jusqu'à sa remise en attente.
   const pendingEnriched = pendingProfiles.map(withEmail);
   const rejectedProfiles = pendingEnriched.filter((profile) => profile.rejection);
   const inQueue = pendingEnriched.filter((profile) => !profile.rejection);
   const readyProfiles = inQueue.filter((profile) => readiness(profile).ready);
-  const unfinishedProfiles = inQueue.filter((profile) => !readiness(profile).ready);
+  // Complètes, mais le SMS n'est pas passé : l'équipe appelle et confirme.
+  // Les inscriptions où une case manque ne s'affichent plus du tout (demandé
+  // le 20 novembre 2026) : l'inscription exige désormais tout avant de créer
+  // le compte, et les anciennes reviendront d'elles-mêmes une fois complétées.
+  const phoneToConfirm = inQueue.filter((profile) => {
+    const { missing, phoneUnconfirmed } = readiness(profile);
+    return missing.length === 0 && phoneUnconfirmed;
+  });
 
   const declaredPayments = (declared.data ?? []) as unknown as DeclaredPayment[];
   // Kept apart from `error`: until 20260728000000_manual_mobile_money.sql is
@@ -778,27 +796,25 @@ export default async function AdminPage() {
           )}
         </section>
 
-        {/* Repliée : ce n'est pas du travail de modération, seulement de quoi
-            relancer quelqu'un qui n'a pas fini — ou confirmer son numéro par
-            appel quand le SMS n'arrive pas. */}
-        {unfinishedProfiles.length > 0 && (
-          <details id="inscriptions-non-terminees" className="mb-12 scroll-mt-24 group">
-            <summary className="cursor-pointer list-none rounded-2xl border border-dashed border-border bg-card/60 p-4">
-              <span className="font-semibold">
-                Inscriptions non terminées{" "}
-                <span className="text-muted-foreground font-normal">({unfinishedProfiles.length})</span>
-              </span>
-              <span className="block text-xs text-muted-foreground mt-1">
-                Profil incomplet ou numéro pas confirmé par SMS. Elles passent d&apos;elles-mêmes
-                dans « En attente » une fois terminées. Toucher pour les afficher.
-              </span>
-            </summary>
-            <div className="space-y-3 mt-3">
-              {unfinishedProfiles.map((profile) => (
+        {/* Le SMS n'a pas pu partir à l'inscription : le profil est complet,
+            seul le numéro attend. Un appel suffit, puis « Numéro confirmé par
+            appel » le fait passer dans « En attente ». */}
+        {phoneToConfirm.length > 0 && (
+          <section id="numeros-a-confirmer" className="mb-12 scroll-mt-24">
+            <h2 className="text-lg font-semibold mb-1">
+              Numéro à confirmer par appel{" "}
+              <span className="text-muted-foreground font-normal">({phoneToConfirm.length})</span>
+            </h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Profil complet, mais le code SMS n&apos;a pas pu être envoyé. Appelez la personne :
+              si c&apos;est bien elle, confirmez son numéro.
+            </p>
+            <div className="space-y-3">
+              {phoneToConfirm.map((profile) => (
                 <ProfileRow key={profile.id} profile={profile} validated={false} unfinished />
               ))}
             </div>
-          </details>
+          </section>
         )}
 
         {/* Repliée elle aussi : des profils écartés, gardés pour pouvoir

@@ -1,5 +1,6 @@
 import { deflateSync } from "node:zlib";
 import { expect, type Page } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
 
 /** Fresh address per run: the local stack is reset between runs, but a retry
  *  inside one run must not collide with the account the first attempt created. */
@@ -12,16 +13,16 @@ export const PASSWORD = "motdepasse2026";
 type Role = "candidate" | "employer";
 
 /**
- * Signs a new user up through the real form.
+ * Crée un compte de test au profil encore vide, puis s'y connecte par l'écran
+ * de connexion.
  *
- * The register form's labels are not tied to their inputs (no htmlFor/id), so
- * these go through placeholders rather than getByLabel — worth fixing in the
- * component, but the test should not pretend the markup is something it isn't.
+ * Plus par le formulaire d'inscription : il exige désormais tout le profil,
+ * les pièces et le code SMS avant de créer le compte, et il a ses propres
+ * tests (inscription.spec.ts). Les autres parcours partent, comme avant, d'un
+ * compte qu'ils complètent eux-mêmes — créé ici avec la clé de service, par
+ * email, pour pouvoir s'y reconnecter avec `signIn`.
  *
- * Local Supabase has `enable_confirmations = false`, so signup returns a
- * session immediately and the app redirects to the dashboard. With
- * confirmations on — the likely production setting — the form would instead
- * show "Vérifiez votre boîte mail" and this helper would need the mail step.
+ * Un candidat arrive sur son profil, comme le faisait l'ancien formulaire.
  */
 export async function register(
   page: Page,
@@ -29,41 +30,27 @@ export async function register(
   fullName: string,
   email = uniqueEmail(role)
 ) {
-  await page.goto("/fr/register");
+  const service = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
+  const { error } = await service.auth.admin.createUser({
+    email,
+    password: PASSWORD,
+    email_confirm: true,
+    // Lues par le déclencheur handle_new_user, comme celles du formulaire.
+    user_metadata: { role, full_name: fullName, city: "Brazzaville", neighborhood: "Bacongo" },
+  });
+  if (error) throw new Error(`Compte de test non créé : ${error.message}`);
 
-  await page.locator('select[name="role"]').selectOption(role);
-  await page.getByPlaceholder("Awa Dacosta").fill(fullName);
-
-  // L'inscription se fait avec un email OU un numéro. Le formulaire propose le
-  // numéro par défaut ; ce chemin-ci choisit l'email, l'autre est couvert par
-  // `registerByPhone`.
-  await page.getByRole("button", { name: "Mon email" }).click();
-  await page.getByPlaceholder("email@exemple.com").fill(email);
-  await page.getByPlaceholder("••••••••").fill(PASSWORD);
-  await page.getByLabel("Ville").selectOption({ label: "Brazzaville" });
-  await page.getByLabel("Quartier").selectOption({ label: "Bacongo" });
-
-  await page.getByRole("button", { name: "Créer mon compte" }).click();
-
-  // Pas de numéro sur ce compte, donc pas d'étape de vérification : la porte
-  // posée dans requireUser ne s'applique qu'aux comptes qui en ont un.
-  // Un candidat arrive sur son profil, qu'il doit compléter avant de postuler.
-  const landing = role === "employer" ? "/dashboard/employer" : "/profil";
-
-  // Un seul nouvel essai, et seulement devant l'envoi d'email : le service de
-  // courrier de la pile locale rend parfois un 504, et l'inscription échoue
-  // alors sur un incident d'environnement qui ressemble à un défaut du code.
-  // Rien d'autre n'est retenté — un vrai refus doit rester un échec.
-  const envoiRate = page.getByText(/n'a pas pu envoyer l'email de confirmation/i);
-  await Promise.race([
-    page.waitForURL(new RegExp(`/fr${landing}`), { timeout: 30_000 }).catch(() => {}),
-    envoiRate.waitFor({ timeout: 30_000 }).catch(() => {}),
-  ]);
-  if (await envoiRate.isVisible().catch(() => false)) {
-    await page.getByRole("button", { name: "Créer mon compte" }).click();
+  await signIn(page, email);
+  if (role === "candidate") {
+    await page.goto("/fr/profil");
+    await expect(page.getByRole("button", { name: "Enregistrer mon profil" })).toBeVisible({
+      timeout: 30_000,
+    });
   }
-
-  await page.waitForURL(new RegExp(`/fr${landing}`), { timeout: 30_000 });
 
   return { email, password: PASSWORD };
 }
@@ -242,35 +229,6 @@ export async function uploadVia(
   ]);
 
   await chooser.setFiles(file);
-}
-
-/**
- * Inscription avec un numéro au lieu d'une adresse email.
- *
- * Traverse la vérification par SMS : en test l'envoi pointe vers le vide, donc
- * la demande échoue et c'est la porte de secours qu'on emprunte — ce qui
- * vérifie au passage qu'un SMS qui n'arrive pas n'enferme personne dehors.
- */
-export async function registerByPhone(page: Page, role: Role, fullName: string, phone: string) {
-  await page.goto("/fr/register");
-
-  await page.locator('select[name="role"]').selectOption(role);
-  await page.getByPlaceholder("Awa Dacosta").fill(fullName);
-  await page.getByLabel("Téléphone").fill(phone);
-  await page.getByPlaceholder("••••••••").fill(PASSWORD);
-  await page.getByLabel("Ville").selectOption({ label: "Brazzaville" });
-  await page.getByLabel("Quartier").selectOption({ label: "Bacongo" });
-
-  await page.getByRole("button", { name: "Créer mon compte" }).click();
-
-  await page.waitForURL(/\/fr\/verification/, { timeout: 30_000 });
-  await page.getByRole("button", { name: /Recevoir mon code/ }).click();
-  await page.getByRole("button", { name: "Continuer sans vérifier" }).click({ timeout: 30_000 });
-
-  const dashboard = role === "employer" ? "/dashboard/employer" : "/dashboard/candidate";
-  await page.waitForURL(new RegExp(`/fr${dashboard}`), { timeout: 30_000 });
-
-  return { phone, password: PASSWORD };
 }
 
 /**
