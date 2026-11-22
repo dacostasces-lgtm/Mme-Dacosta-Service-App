@@ -1,6 +1,6 @@
 "use server";
 
-import { INCOMPLETE_PROFILE_MESSAGE, REJECTED_PROFILE_MESSAGE } from "@/lib/profile/completeness";
+import { candidateBlock } from "@/lib/profile/completeness";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { requireUser } from "@/lib/auth/dal";
@@ -27,10 +27,8 @@ export async function requestContactUnlock(
   const parsed = jobId.safeParse(formData.get("jobId"));
   if (!parsed.success) return { error: "Offre introuvable." };
 
-  if (user.missingProfileFields.length > 0) {
-    return { error: INCOMPLETE_PROFILE_MESSAGE, incompleteProfile: true };
-  }
-  if (user.rejection) return { error: REJECTED_PROFILE_MESSAGE };
+  const block = candidateBlock(user);
+  if (block) return { error: block.message, incompleteProfile: block.reason === "incomplete" };
 
   const limit = rateLimit(`unlock:${user.id}`, { limit: 10, windowSeconds: 600 });
   if (!limit.ok) return { error: tooManyRequestsMessage(limit.retryAfterSeconds) };
@@ -57,7 +55,11 @@ export async function declareContactUnlockPayment(
   _previous: UnlockState,
   formData: FormData
 ): Promise<UnlockState> {
-  await requireUser({ role: "candidate" });
+  const user = await requireUser({ role: "candidate" });
+  // Le virement manuel suit la règle du paiement en ligne : pas de numéro
+  // d'employeur avant un profil publié.
+  const block = candidateBlock(user);
+  if (block) return { error: block.message, incompleteProfile: block.reason === "incomplete" };
 
   const parsed = declareSchema.safeParse({
     unlockId: formData.get("unlockId"),

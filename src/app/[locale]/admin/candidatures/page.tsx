@@ -17,7 +17,7 @@ type Row = {
   status: string;
   applied_at: string;
   job_id: string;
-  candidate: { id: string; full_name: string } | null;
+  candidate: { id: string; full_name: string; is_validated: boolean } | null;
   jobs: { title: string; employer: { id: string; full_name: string } | null } | null;
 };
 
@@ -53,6 +53,23 @@ function Contact({
   );
 }
 
+/** Où en est le candidat, et donc si l'employeur voit sa candidature. */
+function CandidateState({ validated, refused }: { validated: boolean; refused: boolean }) {
+  if (refused) {
+    return (
+      <span className="block text-xs text-destructive mt-1">Refusé · invisible pour l&apos;employeur</span>
+    );
+  }
+  if (!validated) {
+    return (
+      <span className="block text-xs text-amber-700 dark:text-amber-500 mt-1">
+        Pas encore validé · invisible pour l&apos;employeur
+      </span>
+    );
+  }
+  return <span className="block text-xs text-green-700 dark:text-green-400 mt-1">Profil publié</span>;
+}
+
 /**
  * Toutes les candidatures du site, avec le numéro du candidat et celui de
  * l'employeur. L'administration lit toutes les candidatures (RLS is_admin) ;
@@ -66,7 +83,7 @@ export default async function AdminApplicationsPage() {
     .from("applications")
     .select(
       "id, status, applied_at, job_id, " +
-        "candidate:profiles!applications_candidate_id_fkey(id, full_name), " +
+        "candidate:profiles!applications_candidate_id_fkey(id, full_name, is_validated), " +
         "jobs(title, employer:profiles!jobs_employer_id_fkey(id, full_name))"
     )
     .order("applied_at", { ascending: false })
@@ -83,6 +100,18 @@ export default async function AdminApplicationsPage() {
     const result = await supabase.rpc("admin_profile_contacts", { p_ids: ids });
     for (const row of (result.data ?? []) as AdminContact[]) contacts.set(row.profile_id, row);
   }
+  // Les candidats refusés : leur candidature n'est plus montrée à l'employeur.
+  // Table absente (migration pas encore passée) : personne n'est marqué refusé.
+  const candidateIds = rows.map((row) => row.candidate?.id).filter(Boolean) as string[];
+  const refused = new Set<string>();
+  if (candidateIds.length > 0) {
+    const { data: refus } = await supabase
+      .from("profile_rejections")
+      .select("profile_id")
+      .in("profile_id", candidateIds);
+    for (const row of refus ?? []) refused.add(row.profile_id as string);
+  }
+
   const addresses = await loadCandidateAddresses(
     supabase,
     rows.map((row) => row.candidate?.id).filter(Boolean) as string[]
@@ -96,7 +125,10 @@ export default async function AdminApplicationsPage() {
         </Link>
         <h1 className="text-3xl font-bold mt-4 mb-1">Candidatures</h1>
         <p className="text-muted-foreground mb-6">
-          Les 200 plus récentes, avec le numéro du candidat et de l&apos;employeur.
+          Les 200 plus récentes, avec le numéro du candidat et de l&apos;employeur. Un employeur
+          ne voit que les candidatures des profils publiés : celles d&apos;un candidat pas encore
+          validé apparaissent chez lui dès sa publication, celles d&apos;un candidat refusé
+          jamais.
         </p>
 
         {error && (
@@ -128,6 +160,12 @@ export default async function AdminApplicationsPage() {
                       contact={row.candidate ? contacts.get(row.candidate.id) : undefined}
                       address={row.candidate ? addresses?.get(row.candidate.id) : undefined}
                     />
+                    {row.candidate && (
+                      <CandidateState
+                        validated={row.candidate.is_validated}
+                        refused={refused.has(row.candidate.id)}
+                      />
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <Link href={`/offres/${row.job_id}`} className="hover:text-primary">

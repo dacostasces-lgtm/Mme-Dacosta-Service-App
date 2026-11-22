@@ -4,6 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ApplyButton } from "@/components/features/jobs/ApplyButton";
+import { candidateBlock } from "@/lib/profile/completeness";
 import { EmployerContact } from "@/components/features/contact/EmployerContact";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { localisedUrl } from "@/lib/site";
@@ -300,6 +301,7 @@ export default async function JobsPage({
                       jobId={job.id}
                       jobTitle={job.title}
                       alreadyApplied={appliedTo.has(job.id)}
+                      blocked={candidateBlock(user)}
                     />
                   )}
 

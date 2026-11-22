@@ -8,6 +8,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyProfileValidated } from "@/lib/email/send";
 import { absoluteUrl, DEFAULT_LOCALE } from "@/lib/site";
 import { isMissingFunction } from "@/lib/profile/completeness";
+import { removePersonalFiles } from "@/lib/profile/erase-files";
+import { relireEtRegler } from "@/lib/payments/actions";
 
 /** Réponse des boutons de la file de modération (ProfileDecision.tsx). */
 export type ProfileDecisionState = { error?: string; ok?: boolean };
@@ -146,6 +148,95 @@ export async function restoreProfile(
       error: isMissingFunction(error) ? NOT_YET : `Remise en attente impossible : ${error.message}`,
     };
   }
+  return { ok: true };
+}
+
+const DELETE_NOT_YET =
+  "La suppression des profils refusés n'est pas encore activée sur cette base (migration 20261122100000_candidats_valides_et_refus.sql).";
+
+/**
+ * Supprime définitivement un profil refusé, depuis la section « Refusés ».
+ *
+ * Comme une suppression demandée par la personne (delete-account.ts) : le
+ * profil reste, vidé et marqué supprimé, parce que des paiements y renvoient ;
+ * ses fichiers sortent des seaux et son compte de connexion est fermé.
+ *
+ * L'ordre est choisi pour qu'une panne en route se rattrape. Le compte de
+ * connexion se ferme d'abord, puis les fichiers, puis la base efface le profil.
+ * Si cette dernière étape échoue, le profil reste dans « Refusés » avec son
+ * bouton, et un second toucher termine le travail ; dans l'ordre inverse, un
+ * profil déjà effacé disparaissait de la liste en laissant un compte ouvert.
+ */
+export async function deleteRefusedProfile(
+  _previous: ProfileDecisionState,
+  formData: FormData
+): Promise<ProfileDecisionState> {
+  await requireUser({ role: "admin" });
+
+  const profileId = profileIdSchema.safeParse(formData.get("profileId"));
+  if (!profileId.success) return { error: "Profil introuvable." };
+
+  const admin = createAdminClient();
+  if (!admin) {
+    return { error: "Suppression indisponible : SUPABASE_SERVICE_ROLE_KEY absente sur ce déploiement." };
+  }
+  const supabase = await createClient();
+
+  // La migration d'abord : ne rien fermer si la base ne sait pas encore effacer.
+  // candidate_is_published() vient du même fichier que delete_refused_profile().
+  const migration = await supabase.rpc("candidate_is_published", { p_profile_id: profileId.data });
+  if (migration.error && isMissingFunction(migration.error)) return { error: DELETE_NOT_YET };
+
+  const { data: target } = await admin
+    .from("profiles")
+    .select("user_id, role")
+    .eq("id", profileId.data)
+    .maybeSingle();
+  if (!target || target.role === "admin") return { error: "Profil introuvable." };
+
+  const { data: refus } = await admin
+    .from("profile_rejections")
+    .select("profile_id")
+    .eq("profile_id", profileId.data)
+    .maybeSingle();
+  if (!refus) return { error: "Seul un profil refusé peut être supprimé ici." };
+
+  const userId = target.user_id as string;
+
+  // « En douceur », comme pour soi-même : la ligne reste, l'e-mail et le numéro
+  // sont brouillés, les connexions fermées. Un second essai trouve le compte
+  // déjà fermé, ce qui n'est pas une erreur.
+  const { error: authError } = await admin.auth.admin.deleteUser(userId, true);
+  if (authError && !/not.?found/i.test(authError.message)) {
+    return { error: `Le compte de connexion n'a pas pu être fermé : ${authError.message}` };
+  }
+
+  await removePersonalFiles(admin, userId);
+
+  const { error } = await supabase.rpc("delete_refused_profile", { p_profile_id: profileId.data });
+  if (error) {
+    return {
+      error: isMissingFunction(error)
+        ? DELETE_NOT_YET
+        : `Suppression impossible : ${error.message}. Touchez de nouveau le bouton pour terminer.`,
+    };
+  }
+  return { ok: true };
+}
+
+/**
+ * Redemande à PawaPay l'état d'un paiement resté « en cours », depuis la page
+ * des paiements reçus, et règle l'achat s'il a abouti. Même chemin que la page
+ * de l'acheteur et le rappel de PawaPay : seule la réponse authentifiée de
+ * PawaPay fait foi.
+ */
+export async function recheckPawapayDeposit(depositId: string): Promise<ProfileDecisionState> {
+  await requireUser({ role: "admin" });
+  if (!profileIdSchema.safeParse(depositId).success) return { error: "Paiement introuvable." };
+
+  const result = await relireEtRegler(depositId);
+  // Un échec est une réponse, pas une panne : la page l'affiche à sa place.
+  if (result.error && result.status !== "FAILED") return { error: result.error };
   return { ok: true };
 }
 

@@ -7,6 +7,7 @@ import type { SessionUser } from "@/lib/auth/dal";
 import { PLANS, formatPrice } from "@/lib/subscriptions/plans";
 import { telLink, whatsappLink, UNLOCK_PRICE, UNVERIFIED_NUMBER } from "@/lib/contact/unlock";
 import { cn } from "@/lib/utils";
+import { candidateBlock, type CandidateBlock } from "@/lib/profile/completeness";
 
 type Contact = {
   has_number: boolean;
@@ -55,6 +56,9 @@ export async function EmployerContact({
 
   const visible = contact.phone || contact.whatsapp;
   const premiumPrice = formatPrice(PLANS.premium_candidate.price);
+  // Profil à finir, refusé ou pas encore vérifié : le numéro ne s'achète pas,
+  // et la page le dit au lieu de proposer un paiement qui serait refusé.
+  const blocked = user ? candidateBlock(user) : null;
 
   if (compact) {
     return (
@@ -64,6 +68,7 @@ export async function EmployerContact({
         jobTitle={jobTitle}
         isCandidate={user?.role === "candidate"}
         premiumPrice={premiumPrice}
+        blocked={blocked}
       />
     );
   }
@@ -111,6 +116,8 @@ export async function EmployerContact({
             )}
           </div>
         </>
+      ) : blocked ? (
+        <BlockedNotice blocked={blocked} />
       ) : contact.access === "pending" && contact.unlock_id ? (
         <div className="mt-3">
           <UnlockPayment unlockId={contact.unlock_id} price={UNLOCK_PRICE} declared={false} />
@@ -182,12 +189,14 @@ function CompactContact({
   jobTitle,
   isCandidate,
   premiumPrice,
+  blocked,
 }: {
   contact: Contact;
   jobId: string;
   jobTitle: string;
   isCandidate: boolean;
   premiumPrice: string;
+  blocked: CandidateBlock | null;
 }) {
   const number = contact.whatsapp || contact.phone;
 
@@ -225,6 +234,14 @@ function CompactContact({
     );
   }
 
+  if (blocked) {
+    return (
+      <div className="mt-5">
+        <BlockedNotice blocked={blocked} />
+      </div>
+    );
+  }
+
   if (contact.access === "pending" || contact.access === "declared") {
     return (
       <div className="mt-5 rounded-2xl bg-surface px-4 py-3 text-sm flex flex-wrap items-center gap-2">
@@ -258,5 +275,25 @@ function CompactContact({
         </Link>
       </div>
     </div>
+  );
+}
+
+/** À la place du paiement : pourquoi le numéro ne s'obtient pas encore. */
+function BlockedNotice({ blocked }: { blocked: CandidateBlock }) {
+  return (
+    <p className="text-sm text-muted-foreground bg-muted rounded-lg p-3 flex items-start gap-2">
+      <Lock className="h-4 w-4 mt-0.5 shrink-0" aria-hidden />
+      <span>
+        {blocked.message}
+        {blocked.reason === "incomplete" && (
+          <>
+            {" "}
+            <Link href="/profil" className="font-semibold text-primary underline">
+              Compléter mon profil
+            </Link>
+          </>
+        )}
+      </span>
+    </p>
   );
 }

@@ -6,14 +6,12 @@ import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isMissingFunction } from "@/lib/profile/completeness";
+import { removePersonalFiles } from "@/lib/profile/erase-files";
 
 export type DeleteAccountState = { error?: string; ok?: boolean };
 
 /** Le mot à écrire pour confirmer : une suppression ne part pas d'un toucher. */
 const CONFIRMATION = "SUPPRIMER";
-
-/** Les seaux où la personne a pu déposer des fichiers, tous sous `<auth.uid()>/`. */
-const BUCKETS = ["avatars", "cvs", "pieces"] as const;
 
 /**
  * Supprime le compte de la personne connectée, à sa demande.
@@ -57,11 +55,7 @@ export async function deleteMyAccount(
     };
   }
 
-  for (const bucket of BUCKETS) {
-    const { data: files } = await admin.storage.from(bucket).list(user.id, { limit: 100 });
-    const paths = (files ?? []).map((file) => `${user.id}/${file.name}`);
-    if (paths.length > 0) await admin.storage.from(bucket).remove(paths);
-  }
+  await removePersonalFiles(admin, user.id);
 
   const { error: authError } = await admin.auth.admin.deleteUser(user.id, true);
   if (authError) {

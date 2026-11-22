@@ -6,6 +6,7 @@ import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ApplyButton } from "@/components/features/jobs/ApplyButton";
+import { candidateBlock } from "@/lib/profile/completeness";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { EmployerContact } from "@/components/features/contact/EmployerContact";
 import { JobOwnerPayment } from "@/components/features/jobs/JobOwnerPayment";
@@ -318,6 +319,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
               jobId={job.id}
               jobTitle={job.title}
               alreadyApplied={alreadyApplied}
+              blocked={candidateBlock(user)}
             />
           )}
 

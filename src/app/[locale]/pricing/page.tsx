@@ -2,6 +2,7 @@ import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { ChoosePlanButton } from "@/components/features/subscriptions/ChoosePlanButton";
+import { candidateBlock } from "@/lib/profile/completeness";
 import { PLANS as PRICES, formatPrice, type PlanId } from "@/lib/subscriptions/plans";
 import { CANDIDATE_UNLOCK_PRICE, UNLOCK_PRICE, whatsappLink } from "@/lib/contact/unlock";
 import { JOB_PRICE } from "@/lib/jobs/payment";
@@ -91,6 +92,9 @@ const COTES: Cote[] = [
 
 export default async function PricingPage() {
   const user = await getCurrentUser();
+  // Le Premium Candidat ouvre tous les numéros d'employeur : il attend, comme
+  // postuler, un profil complet et publié.
+  const blocked = user ? candidateBlock(user) : null;
 
   // Sans numéro configuré, le lien n'est pas affiché plutôt que de pointer
   // dans le vide : même règle que pour les numéros Mobile Money.
@@ -150,9 +154,15 @@ export default async function PricingPage() {
 
                     {ligne.plan &&
                       (user ? (
-                        <div className="mt-4">
-                          <ChoosePlanButton planId={ligne.plan} />
-                        </div>
+                        ligne.plan === "premium_candidate" && blocked ? (
+                          <p className="mt-4 text-xs text-muted-foreground bg-muted rounded-lg p-3">
+                            {blocked.message}
+                          </p>
+                        ) : (
+                          <div className="mt-4">
+                            <ChoosePlanButton planId={ligne.plan} />
+                          </div>
+                        )
                       ) : (
                         <Link
                           // Un abonnement se rattache à un profil : sans compte,

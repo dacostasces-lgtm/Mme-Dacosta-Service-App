@@ -1,16 +1,17 @@
 import { expect, test } from "@playwright/test";
-import { register, completeCandidateProfile, addEmployerPhone, chooseOtherMetier } from "./helpers";
+import {
+  register,
+  completeCandidateProfile,
+  addEmployerPhone,
+  chooseOtherMetier,
+  publishProfile,
+} from "./helpers";
 
 test.describe("offre et candidature", () => {
   /**
-   * NON RÉSOLU — voir le rapport d'audit.
-   *
-   * Ce qui est prouvé : l'employeur publie, la fiche porte son JobPosting, la
-   * candidature s'enregistre (état « déjà postulé » persistant après
-   * rechargement) et l'employeur la reçoit — « Candidatures reçues (1) ». Ce qui
-   * ne l'est pas : l'identité affichée côté employeur. La politique de lecture
-   * de `profiles` masque un profil non validé, et postuler n'ouvre aucune
-   * visibilité, donc l'assertion sur le libellé de repli reste à caler.
+   * L'employeur publie, la fiche porte son JobPosting ; la candidate, une fois
+   * son profil publié par la modération, postule, et l'employeur la reçoit
+   * avec son nom — depuis le 22 novembre 2026, seul un profil publié postule.
    */
   test("un employeur publie, une candidate postule, l'employeur la voit", async ({ browser }) => {
     const employerContext = await browser.newContext();
@@ -61,10 +62,20 @@ test.describe("offre et candidature", () => {
     // --- la candidate postule -------------------------------------------------
     const candidateContext = await browser.newContext();
     const candidate = await candidateContext.newPage();
-    await register(candidate, "candidate", "Awa Postulante");
+    const { email } = await register(candidate, "candidate", "Awa Postulante");
     // Un profil incomplet ne peut pas postuler.
     await completeCandidateProfile(candidate, "060000002");
 
+    // Complet mais pas encore vérifié : ni « Postuler », ni numéro à payer,
+    // seulement la raison.
+    await candidate.goto(jobUrl);
+    await expect(
+      candidate.getByText(/doit d'abord être vérifié par notre équipe/).first()
+    ).toBeVisible();
+    await expect(candidate.getByRole("button", { name: "Postuler" })).toHaveCount(0);
+
+    // La modération publie le profil : elle peut postuler.
+    await publishProfile(email);
     await candidate.goto(jobUrl);
     await candidate.getByRole("button", { name: "Postuler" }).click();
     await candidate
@@ -91,12 +102,9 @@ test.describe("offre et candidature", () => {
       employer.getByText("Bonjour, six ans d'expérience auprès de jeunes enfants.")
     ).toBeVisible();
 
-    // Le nom n'est PAS attendu ici, et c'est une décision produit à trancher :
-    // la politique de lecture de `profiles` n'expose un profil qu'une fois
-    // validé, et postuler n'ouvre aucune visibilité (contrairement à un échange
-    // de messages). Un employeur voit donc « Candidat » et un message, sans
-    // savoir qui écrit, jusqu'à ce que la modération passe.
-    await expect(employer.getByText(`Candidat · ${title}`)).toBeVisible();
+    // Avec son nom : un profil publié est lisible, et seul un profil publié
+    // peut désormais postuler.
+    await expect(employer.getByText(`Awa Postulante · ${title}`)).toBeVisible();
 
     await employerContext.close();
     await candidateContext.close();

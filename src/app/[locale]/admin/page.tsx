@@ -1,4 +1,4 @@
-import { Clock, MapPin, Mail, Check, X, UserPlus, Phone, Database, Users, Home, IdCard, Ban } from "lucide-react";
+import { Clock, MapPin, Mail, Check, X, UserPlus, Phone, Database, Users, Home, IdCard, Ban, Wallet } from "lucide-react";
 import {
   documentsFromRow,
   missingCandidateFields,
@@ -35,6 +35,7 @@ import { createClient } from "@/lib/supabase/server";
 import { setCandidateCheck, type CandidateCheck } from "@/lib/admin/actions";
 import {
   ConfirmPhoneButton,
+  DeleteRefusedButton,
   PublishButton,
   RejectButton,
   RestoreButton,
@@ -398,7 +399,10 @@ function ProfileRow({
 
         <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
           {rejected ? (
-            <RestoreButton profileId={profile.id} />
+            <>
+              <RestoreButton profileId={profile.id} />
+              <DeleteRefusedButton profileId={profile.id} />
+            </>
           ) : unfinished ? (
             // Seul le SMS manque : l'équipe peut appeler la personne et valoir
             // confirmation. Une case vide, elle, ne se remplit qu'au profil.
@@ -686,6 +690,13 @@ export default async function AdminPage() {
               Candidatures
             </Link>
             <Link
+              href="/admin/paiements"
+              className={buttonVariants({ variant: "outline", className: "h-11 rounded-full px-5 gap-2" })}
+            >
+              <Wallet className="h-4 w-4" />
+              Paiements reçus
+            </Link>
+            <Link
               href="/admin/candidats/nouveau"
               className={buttonVariants({ className: "h-11 rounded-full px-5 gap-2" })}
             >
@@ -827,8 +838,9 @@ export default async function AdminPage() {
                 <span className="text-muted-foreground font-normal">({rejectedProfiles.length})</span>
               </span>
               <span className="block text-xs text-muted-foreground mt-1">
-                Ils n&apos;apparaissent nulle part et ne peuvent pas postuler. « Remettre en attente »
-                annule le refus. Toucher pour les afficher.
+                Ils n&apos;apparaissent nulle part, ne peuvent pas postuler, et leurs candidatures ne
+                sont plus montrées aux employeurs. « Remettre en attente » annule le refus ;
+                « Supprimer définitivement » efface le compte. Toucher pour les afficher.
               </span>
             </summary>
             <div className="space-y-3 mt-3">

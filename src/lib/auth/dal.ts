@@ -29,6 +29,9 @@ export type SessionUser = {
   role: UserRole;
   fullName: string;
   isPremium: boolean;
+  /** Profil publié par la modération. Un candidat ne postule, n'obtient de
+   *  numéro d'employeur et ne prend le Premium qu'une fois publié. */
+  isValidated: boolean;
   /** Null tant que le numéro n'a pas été confirmé par code SMS. */
   phoneVerifiedAt: string | null;
   /** Présence d'un numéro, sans sa valeur : la colonne `phone` est révoquée. */
@@ -75,7 +78,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, role, full_name, is_premium, phone_verified_at, phone_present, onboarding_completed_at, neighborhood_id"
+      "id, role, full_name, is_premium, is_validated, phone_verified_at, phone_present, onboarding_completed_at, neighborhood_id"
     )
     .eq("user_id", user.id)
     .maybeSingle();
@@ -174,6 +177,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
       user.email?.split("@")[0] ||
       "Utilisateur",
     isPremium: profile?.is_premium ?? false,
+    isValidated: Boolean(profile?.is_validated),
     phoneVerifiedAt: (profile?.phone_verified_at as string | null) ?? null,
     hasPhone: Boolean(profile?.phone_present),
     // Un profil pas encore écrit n'est pas un rôle à choisir : renvoyer null
