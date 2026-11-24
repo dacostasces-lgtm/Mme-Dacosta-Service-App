@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { Phone } from "lucide-react";
+import { FileText, Globe2, Mail, Phone } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { telLink } from "@/lib/contact/unlock";
 import { EMPLOYER_STATUS_LABELS, type ApplicationStatus } from "@/lib/applications/status";
 import { loadCandidateAddresses, type AdminContact } from "@/lib/admin/contacts";
+import { formatDestination } from "@/lib/jobs/international";
 
 export const metadata: Metadata = {
   title: "Candidatures",
@@ -18,8 +19,64 @@ type Row = {
   applied_at: string;
   job_id: string;
   candidate: { id: string; full_name: string; is_validated: boolean } | null;
-  jobs: { title: string; employer: { id: string; full_name: string } | null } | null;
+  jobs: {
+    title: string;
+    employer: { id: string; full_name: string } | null;
+    /** Absents tant que 20261124100000 n'est pas passée. */
+    is_international?: boolean;
+    destination_country?: string | null;
+    destination_city?: string | null;
+  } | null;
 };
+
+type Reference = {
+  application_id: string;
+  position: number;
+  full_name: string;
+  relation: string;
+  phone: string;
+  email: string;
+};
+
+/** Le dossier d'une candidature internationale : le CV, et les deux
+ *  personnes à joindre. */
+function Dossier({ candidateId, references }: { candidateId: string; references: Reference[] }) {
+  return (
+    <div className="mt-2 rounded-lg bg-muted/50 p-2 text-xs space-y-1.5">
+      <a
+        href={`/api/cv/${candidateId}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-1 font-medium text-primary hover:underline"
+      >
+        <FileText className="h-3 w-3" aria-hidden />
+        Voir le CV
+      </a>
+      {references.length === 0 ? (
+        <p className="text-amber-700 dark:text-amber-500">Références introuvables.</p>
+      ) : (
+        references.map((reference) => (
+          <div key={reference.position}>
+            <p className="font-medium">
+              Référence {reference.position} : {reference.full_name}
+              <span className="font-normal text-muted-foreground"> ({reference.relation})</span>
+            </p>
+            <p className="flex flex-wrap gap-x-3">
+              <a href={telLink(reference.phone)} className="flex items-center gap-1 hover:text-primary">
+                <Phone className="h-3 w-3" aria-hidden />
+                {reference.phone}
+              </a>
+              <a href={`mailto:${reference.email}`} className="flex items-center gap-1 hover:text-primary break-all">
+                <Mail className="h-3 w-3" aria-hidden />
+                {reference.email}
+              </a>
+            </p>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
 
 function Contact({
   name,
@@ -75,21 +132,59 @@ function CandidateState({ validated, refused }: { validated: boolean; refused: b
  * l'employeur. L'administration lit toutes les candidatures (RLS is_admin) ;
  * les numéros viennent d'admin_profile_contacts().
  */
-export default async function AdminApplicationsPage() {
+export default async function AdminApplicationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ international?: string }>;
+}) {
   await requireUser({ role: "admin" });
   const supabase = await createClient();
+  const onlyInternational = (await searchParams).international === "1";
 
-  const { data, error } = await supabase
-    .from("applications")
-    .select(
-      "id, status, applied_at, job_id, " +
-        "candidate:profiles!applications_candidate_id_fkey(id, full_name, is_validated), " +
-        "jobs(title, employer:profiles!jobs_employer_id_fkey(id, full_name))"
-    )
-    .order("applied_at", { ascending: false })
-    .limit(200);
+  const BASE =
+    "id, status, applied_at, job_id, " +
+    "candidate:profiles!applications_candidate_id_fkey(id, full_name, is_validated), ";
+  const JOB = "title, employer:profiles!jobs_employer_id_fkey(id, full_name)";
+  const fetchRows = (columns: string, international: boolean) => {
+    const query = supabase
+      .from("applications")
+      .select(columns)
+      .order("applied_at", { ascending: false })
+      .limit(200);
+    return international ? query.eq("jobs.is_international", true) : query;
+  };
+  // Les offres internationales (20261124100000) : sans la migration, la colonne
+  // n'existe pas (42703) et la page se lit comme avant.
+  const first = await fetchRows(
+    BASE +
+      (onlyInternational ? "jobs!inner(" : "jobs(") +
+      JOB +
+      ", is_international, destination_country, destination_city)",
+    onlyInternational
+  );
+  const { data, error } =
+    first.error?.code === "42703" ? await fetchRows(BASE + `jobs(${JOB})`, false) : first;
 
   const rows = (data ?? []) as unknown as Row[];
+
+  // Les dossiers des candidatures internationales : CV et références, que
+  // l'administration seule lit.
+  const internationalIds = rows
+    .filter((row) => row.jobs?.is_international)
+    .map((row) => row.id);
+  const referencesByApplication = new Map<string, Reference[]>();
+  if (internationalIds.length > 0) {
+    const { data: references } = await supabase
+      .from("application_references")
+      .select("application_id, position, full_name, relation, phone, email")
+      .in("application_id", internationalIds)
+      .order("position");
+    for (const reference of (references ?? []) as Reference[]) {
+      const list = referencesByApplication.get(reference.application_id) ?? [];
+      list.push(reference);
+      referencesByApplication.set(reference.application_id, list);
+    }
+  }
   const ids = [
     ...new Set(
       rows.flatMap((row) => [row.candidate?.id, row.jobs?.employer?.id]).filter(Boolean) as string[]
@@ -124,6 +219,25 @@ export default async function AdminApplicationsPage() {
           ← Espace de modération
         </Link>
         <h1 className="text-3xl font-bold mt-4 mb-1">Candidatures</h1>
+        <div className="flex flex-wrap gap-2 mb-4">
+          <Link
+            href="/admin/candidatures"
+            className={`rounded-full border px-4 py-1.5 text-sm ${
+              onlyInternational ? "border-border" : "border-primary bg-primary text-primary-foreground"
+            }`}
+          >
+            Toutes
+          </Link>
+          <Link
+            href="/admin/candidatures?international=1"
+            className={`rounded-full border px-4 py-1.5 text-sm inline-flex items-center gap-1.5 ${
+              onlyInternational ? "border-primary bg-primary text-primary-foreground" : "border-border"
+            }`}
+          >
+            <Globe2 className="h-3.5 w-3.5" aria-hidden />
+            Offres à l&apos;international
+          </Link>
+        </div>
         <p className="text-muted-foreground mb-6">
           Les 200 plus récentes, avec le numéro du candidat et de l&apos;employeur. Un employeur
           ne voit que les candidatures des profils publiés : celles d&apos;un candidat pas encore
@@ -166,11 +280,24 @@ export default async function AdminApplicationsPage() {
                         refused={refused.has(row.candidate.id)}
                       />
                     )}
+                    {row.candidate && row.jobs?.is_international && (
+                      <Dossier
+                        candidateId={row.candidate.id}
+                        references={referencesByApplication.get(row.id) ?? []}
+                      />
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <Link href={`/offres/${row.job_id}`} className="hover:text-primary">
                       {row.jobs?.title ?? "Offre"}
                     </Link>
+                    {row.jobs?.is_international && (
+                      <span className="flex items-center gap-1 text-xs text-primary mt-1">
+                        <Globe2 className="h-3 w-3" aria-hidden />
+                        International ·{" "}
+                        {formatDestination(row.jobs.destination_country, row.jobs.destination_city)}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <Contact

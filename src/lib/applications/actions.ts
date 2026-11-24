@@ -1,6 +1,7 @@
 "use server";
 
-import { candidateBlock } from "@/lib/profile/completeness";
+import { candidateBlock, isMissingFunction } from "@/lib/profile/completeness";
+import { REFERENCES_COUNT } from "@/lib/jobs/international";
 import { containsPhoneNumber, PHONE_NUMBER_REFUSED } from "@/lib/contact/phone-filter";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
@@ -103,6 +104,111 @@ export async function applyToJob(
   // pourquoi ApplyButton porte lui-même son état « déjà postulé » au lieu de
   // laisser la page choisir entre lui et un paragraphe.
   revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** Une personne à joindre, donnée avec une candidature internationale. Le
+ *  numéro s'écrit librement : une référence peut vivre à l'étranger. */
+const referenceSchema = z.object({
+  full_name: z
+    .string()
+    .trim()
+    .min(2, "Indiquez le nom complet de chaque référence.")
+    .max(120, "Nom de référence trop long."),
+  relation: z
+    .string()
+    .trim()
+    .min(2, "Dites qui est chaque référence pour vous (ancienne employeuse, pasteur…).")
+    .max(120, "Lien trop long."),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9 ().-]{6,32}$/, "Le numéro d'une référence n'est pas valide.")
+    .refine((value) => value.replace(/\D/g, "").length >= 8, "Le numéro d'une référence est trop court."),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("L'adresse e-mail d'une référence n'est pas valide.")
+    .max(254),
+});
+
+/**
+ * Postule à une offre à l'international (20261124100000) : le CV du profil et
+ * deux références, que seule l'administration lit.
+ *
+ * Mêmes verrous qu'une candidature ordinaire — profil complet, pas refusé,
+ * publié — puis le CV, et les deux références. La base vérifie à nouveau le
+ * tout à la validation de la transaction, quel que soit le chemin.
+ *
+ * Pas de `revalidatePath` : il retiendrait la réponse de l'action (voir
+ * src/lib/bookings/actions.ts). Le formulaire rafraîchit la page lui-même.
+ */
+export async function applyToInternationalJob(
+  _previous: ApplicationState,
+  formData: FormData
+): Promise<ApplicationState> {
+  const user = await requireUser({ role: "candidate" });
+  if (!user.profileId) {
+    return { error: "Votre profil est introuvable. Reconnectez-vous puis réessayez." };
+  }
+
+  const block = candidateBlock(user);
+  if (block) return { error: block.message, incompleteProfile: block.reason === "incomplete" };
+
+  const limit = rateLimit(`apply:${user.id}`, { limit: 15, windowSeconds: 300 });
+  if (!limit.ok) return { error: tooManyRequestsMessage(limit.retryAfterSeconds) };
+
+  const parsed = schema.safeParse({
+    jobId: formData.get("jobId"),
+    message: String(formData.get("message") ?? "").trim() || undefined,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Candidature invalide." };
+  }
+  if (containsPhoneNumber(parsed.data.message)) return { error: PHONE_NUMBER_REFUSED };
+
+  const references = [];
+  for (let position = 1; position <= REFERENCES_COUNT; position++) {
+    const reference = referenceSchema.safeParse({
+      full_name: String(formData.get(`ref${position}_name`) ?? ""),
+      relation: String(formData.get(`ref${position}_relation`) ?? ""),
+      phone: String(formData.get(`ref${position}_phone`) ?? ""),
+      email: String(formData.get(`ref${position}_email`) ?? ""),
+    });
+    if (!reference.success) {
+      return { error: `Référence ${position} : ${reference.error.issues[0]?.message ?? "incomplète."}` };
+    }
+    references.push(reference.data);
+  }
+  if (references[0].email === references[1].email || references[0].phone === references[1].phone) {
+    return { error: "Donnez deux personnes différentes comme références." };
+  }
+
+  const supabase = await createClient();
+
+  // Le CV du profil : déposé plus haut dans le même formulaire s'il manquait.
+  const { data: details } = await supabase.rpc("my_candidate_details");
+  const cv = ((details ?? [])[0] as { cv_url?: string | null } | undefined)?.cv_url;
+  if (!cv) return { error: "Ajoutez votre CV avant d'envoyer votre candidature." };
+
+  const { error } = await supabase.rpc("postuler_international", {
+    p_job_id: parsed.data.jobId,
+    p_message: parsed.data.message ?? null,
+    p_references: references,
+  });
+
+  if (error) {
+    if (error.code === "23505") return { error: "Vous avez déjà postulé à cette offre." };
+    if (isMissingFunction(error)) {
+      return {
+        error:
+          "Les offres à l'international ne sont pas encore activées sur cette base (migration 20261124100000_offres_internationales.sql).",
+      };
+    }
+    return { error: `Envoi impossible : ${error.message}` };
+  }
+
   return { ok: true };
 }
 

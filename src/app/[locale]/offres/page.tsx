@@ -1,10 +1,11 @@
-import { BedDouble, Briefcase, CalendarDays, MapPin, Clock, Plus, Timer, Wallet, Send } from "lucide-react";
+import { BedDouble, Briefcase, CalendarDays, Globe2, MapPin, Clock, Plus, Timer, Wallet, Send } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ApplyButton } from "@/components/features/jobs/ApplyButton";
 import { candidateBlock } from "@/lib/profile/completeness";
+import { formatDestination, type InternationalFields } from "@/lib/jobs/international";
 import { EmployerContact } from "@/components/features/contact/EmployerContact";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { localisedUrl } from "@/lib/site";
@@ -30,7 +31,7 @@ type Job = {
   employer_id: string;
   profiles: { full_name: string; is_premium: boolean } | null;
   neighborhoods: { name: string; cities: { name: string } | null } | null;
-};
+} & InternationalFields;
 
 /** Shown instead of a 500 when a deploy is missing its Supabase credentials. */
 const MISCONFIGURED =
@@ -67,23 +68,20 @@ export default async function JobsPage({
 
   // The "Active jobs are viewable by everyone" policy already restricts this to
   // active postings (plus an employer's own), so no status filter is needed here.
-  let query = isSupabaseConfigured()
-    ? (await createClient())
-        .from("jobs")
-        .select(
-          "id, title, description, salary_range_min, salary_range_max, created_at, " +
-            "work_days, start_time, end_time, live_in, expires_at, employer_id, " +
-            "profiles(full_name, is_premium), neighborhoods(name, cities(name))"
-        )
-        // La politique de lecture montre aussi à un employeur ses propres
-        // offres pourvues ou expirées. Elles se gèrent depuis son tableau de
-        // bord ; la liste publique ne montre que ce qui est disponible.
-        .eq("status", "active")
-        .gt("expires_at", new Date().toISOString())
-        .order("created_at", { ascending: false })
-    : null;
+  const supabase = isSupabaseConfigured() ? await createClient() : null;
 
-  if (query) {
+  const fetchJobs = async (columns: string) => {
+    if (!supabase) return { data: null, error: { message: MISCONFIGURED, code: undefined } };
+    let query = supabase
+      .from("jobs")
+      .select(columns)
+      // La politique de lecture montre aussi à un employeur ses propres
+      // offres pourvues ou expirées. Elles se gèrent depuis son tableau de
+      // bord ; la liste publique ne montre que ce qui est disponible.
+      .eq("status", "active")
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false });
+
     // Une offre convient si tous ses jours font partie de ceux cochés. Une offre
     // sans jour précisé reste visible : rien ne dit qu'elle ne convient pas.
     if (filters.jours.length) query = query.containedBy("work_days", filters.jours);
@@ -97,11 +95,20 @@ export default async function JobsPage({
     if (hours.length) query = query.or(`and(${hours.join(",")})`);
 
     if (filters.loge) query = query.eq("live_in", filters.loge === "oui");
-  }
 
-  const { data, error } = query
-    ? await query
-    : { data: null, error: { message: MISCONFIGURED } };
+    return await query;
+  };
+
+  const COLUMNS =
+    "id, title, description, salary_range_min, salary_range_max, created_at, " +
+    "work_days, start_time, end_time, live_in, expires_at, employer_id, " +
+    "profiles(full_name, is_premium), neighborhoods(name, cities(name))";
+  // Les offres internationales (20261124100000) : sans la migration, la colonne
+  // n'existe pas (42703) et la liste se lit sans elles plutôt que de tomber.
+  const first = await fetchJobs(
+    COLUMNS + ", is_international, destination_country, destination_city, salary_text"
+  );
+  const { data, error } = first.error?.code === "42703" ? await fetchJobs(COLUMNS) : first;
 
   const jobs = (data ?? []) as unknown as Job[];
   const canPost = user?.role === "employer" || user?.role === "admin";
@@ -171,9 +178,12 @@ export default async function JobsPage({
         ) : (
           <div className="space-y-4">
             {jobs.map((job) => {
-              const place = [job.neighborhoods?.name, job.neighborhoods?.cities?.name]
-                .filter(Boolean)
-                .join(", ");
+              const international = Boolean(job.is_international);
+              const place = international
+                ? formatDestination(job.destination_country, job.destination_city)
+                : [job.neighborhoods?.name, job.neighborhoods?.cities?.name]
+                    .filter(Boolean)
+                    .join(", ");
               const days = formatWorkDays(job.work_days);
               const hours = formatHours(job.start_time, job.end_time);
 
@@ -202,11 +212,19 @@ export default async function JobsPage({
                         {job.title}
                       </Link>
                     </h2>
-                    {job.profiles?.is_premium && (
-                      <Badge className="bg-secondary text-secondary-foreground font-semibold shrink-0">
-                        Premium
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {international && (
+                        <Badge className="gap-1 font-semibold">
+                          <Globe2 className="h-3.5 w-3.5" aria-hidden />
+                          International
+                        </Badge>
+                      )}
+                      {job.profiles?.is_premium && (
+                        <Badge className="bg-secondary text-secondary-foreground font-semibold">
+                          Premium
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   {/* Pas de description ici : elle se lit sur la page de
@@ -214,9 +232,18 @@ export default async function JobsPage({
                       d'un coup d'œil. */}
                   <div className="mb-5" />
 
+                  {international && place && (
+                    <p className="flex items-center gap-2 font-semibold mb-3">
+                      <Globe2 className="h-4 w-4 text-primary" aria-hidden />
+                      {place}
+                    </p>
+                  )}
+
                   <p className="inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-primary">
                     <Wallet className="h-4 w-4" aria-hidden />
-                    {formatSalary(job.salary_range_min, job.salary_range_max)}
+                    {international
+                      ? (job.salary_text ?? "Salaire communiqué par notre équipe")
+                      : formatSalary(job.salary_range_min, job.salary_range_max)}
                   </p>
 
                   {(days || hours || job.live_in) && (
@@ -277,7 +304,7 @@ export default async function JobsPage({
                     </span>
                   </div>
 
-                  {user?.profileId === job.employer_id && (
+                  {user?.profileId === job.employer_id && !international && (
                     <Link
                       href={`/offres/${job.id}/payer`}
                       className={buttonVariants({
@@ -292,11 +319,11 @@ export default async function JobsPage({
                   {/* Le numéro de l'employeur, ou comment l'obtenir — pour un
                       candidat. Rien pour les autres : l'employeur a son lien
                       « formule et paiement » ci-dessus. */}
-                  {canApply && (
+                  {canApply && !international && (
                     <EmployerContact jobId={job.id} jobTitle={job.title} user={user} compact />
                   )}
 
-                  {canApply && (
+                  {canApply && !international && (
                     <ApplyButton
                       jobId={job.id}
                       jobTitle={job.title}
@@ -304,6 +331,23 @@ export default async function JobsPage({
                       blocked={candidateBlock(user)}
                     />
                   )}
+
+                  {/* Le dossier (CV, deux références) se remplit sur la page de
+                      l'offre : trop long pour une carte de la liste. */}
+                  {canApply && international &&
+                    (appliedTo.has(job.id) ? (
+                      <p className="mt-5 text-sm font-medium text-muted-foreground">
+                        Vous avez déjà postulé à cette offre.
+                      </p>
+                    ) : (
+                      <Link
+                        href={`/offres/${job.id}#postuler`}
+                        className={buttonVariants({ className: "rounded-full gap-2 mt-5" })}
+                      >
+                        <Globe2 className="h-4 w-4" />
+                        Postuler avec mon CV et mes références
+                      </Link>
+                    ))}
 
                   {!user && (
                     <Link

@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { BedDouble, Briefcase, CalendarDays, Clock, MapPin, Send, Timer, Wallet } from "lucide-react";
+import { BedDouble, Briefcase, CalendarDays, Clock, Globe2, MapPin, Send, Timer, Wallet } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ApplyButton } from "@/components/features/jobs/ApplyButton";
+import { InternationalApplyForm } from "@/components/features/jobs/InternationalApplyForm";
+import { formatDestination, type InternationalFields } from "@/lib/jobs/international";
 import { candidateBlock } from "@/lib/profile/completeness";
 import { ShareButton } from "@/components/shared/ShareButton";
 import { EmployerContact } from "@/components/features/contact/EmployerContact";
@@ -33,7 +35,7 @@ type Job = {
   expires_at: string;
   profiles: { full_name: string; is_premium: boolean } | null;
   neighborhoods: { name: string; cities: { name: string; country: string } | null } | null;
-};
+} & InternationalFields;
 
 /**
  * schema.org wants an ISO 3166-1 alpha-2 code in `addressCountry`, but `cities`
@@ -62,10 +64,21 @@ function countryCode(name: string | null | undefined) {
   return COUNTRY_CODES[key] ?? "CG";
 }
 
+/** Le lieu affiché : le pays de destination pour une offre internationale,
+ *  le quartier sinon. */
+function jobPlace(job: Job) {
+  if (job.is_international) return formatDestination(job.destination_country, job.destination_city);
+  return [job.neighborhoods?.name, job.neighborhoods?.cities?.name].filter(Boolean).join(", ");
+}
+
 const SELECT =
   "id, title, description, salary_range_min, salary_range_max, created_at, status, employer_id, " +
   "work_days, start_time, end_time, live_in, expires_at, " +
   "profiles(full_name, is_premium), neighborhoods(name, cities(name, country))";
+
+/** Les colonnes des offres internationales (20261124100000), lues à part : la
+ *  page doit s'afficher même avant le passage de la migration. */
+const INTERNATIONAL = ", is_international, destination_country, destination_city, salary_text";
 
 async function getJob(id: string): Promise<Job | null> {
   if (!isSupabaseConfigured()) return null;
@@ -75,7 +88,12 @@ async function getJob(id: string): Promise<Job | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
 
   const supabase = await createClient();
-  const { data } = await supabase.from("jobs").select(SELECT).eq("id", id).maybeSingle();
+  const first = await supabase.from("jobs").select(SELECT + INTERNATIONAL).eq("id", id).maybeSingle();
+  // 42703 : colonne inconnue, la migration n'est pas encore passée.
+  const { data } =
+    first.error?.code === "42703"
+      ? await supabase.from("jobs").select(SELECT).eq("id", id).maybeSingle()
+      : first;
 
   return (data as unknown as Job) ?? null;
 }
@@ -90,9 +108,7 @@ export async function generateMetadata({
 
   if (!job) return { title: "Offre introuvable", robots: { index: false, follow: false } };
 
-  const place = [job.neighborhoods?.name, job.neighborhoods?.cities?.name]
-    .filter(Boolean)
-    .join(", ");
+  const place = jobPlace(job);
 
   return {
     title: place ? `${job.title} — ${place}` : job.title,
@@ -122,9 +138,8 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   // genuine 404 rather than a permission problem to explain.
   if (!job) notFound();
 
-  const place = [job.neighborhoods?.name, job.neighborhoods?.cities?.name]
-    .filter(Boolean)
-    .join(", ");
+  const international = Boolean(job.is_international);
+  const place = jobPlace(job);
 
   const days = formatWorkDays(job.work_days);
   const hours = formatHours(job.start_time, job.end_time);
@@ -137,6 +152,8 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   const canApply = user?.role === "candidate" && open;
 
   let alreadyApplied = false;
+  // Pour une offre internationale : le CV du profil est-il déjà là ?
+  let hasCv = false;
   if (canApply && user.profileId) {
     const supabase = await createClient();
     const { data } = await supabase
@@ -146,6 +163,10 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
       .eq("candidate_id", user.profileId)
       .maybeSingle();
     alreadyApplied = Boolean(data);
+    if (international) {
+      const { data: details } = await supabase.rpc("my_candidate_details");
+      hasCv = Boolean(((details ?? [])[0] as { cv_url?: string | null } | undefined)?.cv_url);
+    }
   }
 
   // Google Jobs reads this. `hiringOrganization` is the platform rather than
@@ -167,14 +188,21 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
     },
     jobLocation: {
       "@type": "Place",
-      address: {
-        "@type": "PostalAddress",
-        addressLocality: job.neighborhoods?.cities?.name ?? "Brazzaville",
-        addressRegion: job.neighborhoods?.name ?? undefined,
-        addressCountry: countryCode(job.neighborhoods?.cities?.country),
-      },
+      address: international
+        ? {
+            "@type": "PostalAddress",
+            addressLocality: job.destination_city ?? job.destination_country ?? undefined,
+            // schema.org accepte aussi le nom du pays.
+            addressCountry: job.destination_country ?? undefined,
+          }
+        : {
+            "@type": "PostalAddress",
+            addressLocality: job.neighborhoods?.cities?.name ?? "Brazzaville",
+            addressRegion: job.neighborhoods?.name ?? undefined,
+            addressCountry: countryCode(job.neighborhoods?.cities?.country),
+          },
     },
-    ...(job.salary_range_min || job.salary_range_max
+    ...(!international && (job.salary_range_min || job.salary_range_max)
       ? {
           baseSalary: {
             "@type": "MonetaryAmount",
@@ -219,6 +247,12 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           <div className="flex items-start justify-between gap-4 flex-wrap mb-3">
             <h1 className="text-3xl font-bold leading-tight">{job.title}</h1>
             <div className="flex items-center gap-2 shrink-0">
+              {international && (
+                <Badge className="gap-1 font-semibold">
+                  <Globe2 className="h-3.5 w-3.5" aria-hidden />
+                  International
+                </Badge>
+              )}
               {job.profiles?.is_premium && (
                 <Badge className="bg-secondary text-secondary-foreground font-semibold">
                   Premium
@@ -251,9 +285,20 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
             </p>
           )}
 
+          {international && place && (
+            <p className="flex items-center gap-2 text-base font-semibold mb-3">
+              <Globe2 className="h-5 w-5 text-primary" aria-hidden />
+              Poste à pourvoir : {place}
+            </p>
+          )}
+
           <p className="inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-primary mb-6">
             <Wallet className="h-4 w-4" aria-hidden />
-            {formatSalary(job.salary_range_min, job.salary_range_max)}
+            {international && job.salary_text
+              ? job.salary_text
+              : international
+                ? "Salaire communiqué par notre équipe"
+                : formatSalary(job.salary_range_min, job.salary_range_max)}
           </p>
 
           {(days || hours || job.live_in) && (
@@ -308,13 +353,39 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
 
           {/* Son employeur y voit sa formule et peut payer ; les autres
               visiteurs, le numéro de l'employeur ou comment l'obtenir. */}
-          {user?.profileId && user.profileId === job.employer_id ? (
+          {international ? (
+            // Pas de numéro d'employeur ni de formule : l'offre est gratuite, et
+            // c'est l'agence qui place.
+            <section className="mt-6 rounded-2xl border border-border bg-surface p-5 text-sm">
+              <h2 className="font-semibold flex items-center gap-2 mb-1">
+                <Globe2 className="h-4 w-4 text-primary" aria-hidden />
+                Offre à l&apos;international
+              </h2>
+              <p className="text-muted-foreground">
+                {user?.profileId && user.profileId === job.employer_id
+                  ? "Votre offre, gratuite. Les candidatures arrivent avec le CV et les deux références de chaque candidat dans « Candidatures », depuis votre espace de modération."
+                  : "Madame Dacosta Services organise ce placement. Postulez avec votre CV et deux références : notre équipe étudie chaque dossier et rappelle les candidats retenus."}
+              </p>
+            </section>
+          ) : user?.profileId && user.profileId === job.employer_id ? (
             <JobOwnerPayment jobId={job.id} />
           ) : (
             <EmployerContact jobId={job.id} jobTitle={job.title} user={user} />
           )}
 
-          {canApply && (
+          {canApply && international && (
+            <div id="postuler" className="scroll-mt-24">
+              <InternationalApplyForm
+                jobId={job.id}
+                userId={user.id}
+                hasCv={hasCv}
+                alreadyApplied={alreadyApplied}
+                blocked={candidateBlock(user)}
+              />
+            </div>
+          )}
+
+          {canApply && !international && (
             <ApplyButton
               jobId={job.id}
               jobTitle={job.title}

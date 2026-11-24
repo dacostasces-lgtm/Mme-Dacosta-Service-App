@@ -9,8 +9,15 @@ type NeighborhoodRow = {
   cities: { name: string } | null;
 };
 
-export default async function CreateJobPage() {
+export default async function CreateJobPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ international?: string }>;
+}) {
   const user = await requireUser({ role: "employer" });
+  const isAdmin = user.role === "admin";
+  // « Nouvelle offre internationale », depuis l'espace de modération.
+  const defaultInternational = isAdmin && (await searchParams).international === "1";
   const needsPhone = user.role !== "admin" && !user.hasPhone;
 
   const supabase = await createClient();
@@ -50,7 +57,11 @@ export default async function CreateJobPage() {
         )}
 
         <div className="bg-card border border-border rounded-3xl p-8 shadow-sm">
-          <JobForm neighborhoods={neighborhoods} />
+          <JobForm
+            neighborhoods={neighborhoods}
+            isAdmin={isAdmin}
+            defaultInternational={defaultInternational}
+          />
         </div>
       </div>
     </div>
