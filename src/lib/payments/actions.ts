@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { normalisePhone } from "@/lib/phone";
 import { consumeDurableLimit } from "@/lib/rate-limit-durable";
 import { tooManyRequestsMessage } from "@/lib/rate-limit";
+import { candidateBlock } from "@/lib/profile/completeness";
 import {
   checkDeposit,
   isPawapayConfigured,
@@ -52,6 +53,14 @@ export async function payerParMobileMoney(
   }
   if (!isPawapayConfigured()) {
     return { error: "Le paiement en ligne n'est pas encore activé sur ce déploiement." };
+  }
+
+  // Une demande ouverte avant la vérification du profil (ou avant un refus)
+  // ne se paie pas pour autant : le numéro de l'employeur et le Premium qui
+  // les ouvre tous attendent un profil publié.
+  if (achat === "contact_unlock" || achat === "subscription") {
+    const block = candidateBlock(user);
+    if (block) return { error: block.message };
   }
 
   // Durable : une limite en mémoire se remet à zéro à chaque démarrage, et une

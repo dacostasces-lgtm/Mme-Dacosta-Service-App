@@ -41,6 +41,19 @@ La page de l'acheteur interroge aussi l'état, toutes les trois secondes pendant
 qu'il tape son code. Les deux chemins mènent à `settle_pawapay_deposit`, qui est
 rejouable : un achat ne se règle qu'une fois.
 
+### Suivre les paiements
+
+`/admin/paiements` liste chaque versement PawaPay : qui a payé, quoi, le montant
+payé par le client, l'opérateur (MTN ou Airtel), l'état et les identifiants à
+chercher dans le tableau de bord PawaPay, avec les totaux par opérateur. Ces
+paiements se règlent seuls et n'apparaissent donc jamais dans les files de la
+modération. Le solde PawaPay est plus bas que ces totaux : PawaPay retire sa
+commission à chaque versement.
+
+Un versement resté « en cours » (l'acheteur a fermé la page, le rappel ne nous
+est pas parvenu) se revérifie depuis cette page ; s'il a abouti, l'achat se
+règle du même coup.
+
 ### Ce qu'un versement échoué laisse
 
 Rien n'est perdu : l'achat reste `pending_payment`, donc payable de nouveau. Le

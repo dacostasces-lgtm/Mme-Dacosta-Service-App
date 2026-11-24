@@ -8,6 +8,7 @@ import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, tooManyRequestsMessage } from "@/lib/rate-limit";
 import { planFor } from "@/lib/subscriptions/plans";
+import { candidateBlock } from "@/lib/profile/completeness";
 
 export type SubscriptionState = { error?: string; ok?: boolean };
 
@@ -43,6 +44,11 @@ export async function startSubscription(
     };
   }
 
+  // Le Premium Candidat ouvre le numéro de tous les employeurs : il attend la
+  // même vérification que postuler ou payer un numéro.
+  const block = candidateBlock(user);
+  if (block) return { error: block.message };
+
   const limit = rateLimit(`subscribe:${user.id}`, { limit: 5, windowSeconds: 600 });
   if (!limit.ok) return { error: tooManyRequestsMessage(limit.retryAfterSeconds) };
 
@@ -73,7 +79,9 @@ export async function declareSubscriptionPayment(
   _previous: SubscriptionState,
   formData: FormData
 ): Promise<SubscriptionState> {
-  await requireUser();
+  const user = await requireUser();
+  const block = candidateBlock(user);
+  if (block) return { error: block.message };
 
   const parsed = declareSchema.safeParse({
     subscriptionId: formData.get("subscriptionId"),

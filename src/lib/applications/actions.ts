@@ -1,6 +1,6 @@
 "use server";
 
-import { INCOMPLETE_PROFILE_MESSAGE, REJECTED_PROFILE_MESSAGE } from "@/lib/profile/completeness";
+import { candidateBlock } from "@/lib/profile/completeness";
 import { containsPhoneNumber, PHONE_NUMBER_REFUSED } from "@/lib/contact/phone-filter";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
@@ -43,11 +43,10 @@ export async function applyToJob(
   }
 
   // Un employeur reçoit le profil avec la candidature : incomplet, il ne lui
-  // dit ni l'expérience ni les disponibilités, et parfois pas de numéro.
-  if (user.missingProfileFields.length > 0) {
-    return { error: INCOMPLETE_PROFILE_MESSAGE, incompleteProfile: true };
-  }
-  if (user.rejection) return { error: REJECTED_PROFILE_MESSAGE };
+  // dit ni l'expérience ni les disponibilités, et parfois pas de numéro. Pas
+  // encore vérifié, il ne sait pas à qui il ouvre sa porte.
+  const block = candidateBlock(user);
+  if (block) return { error: block.message, incompleteProfile: block.reason === "incomplete" };
 
   // The UNIQUE constraint stops a candidate applying twice to one posting, but
   // not to every posting in a loop.

@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { Check, Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { applyToJob, type ApplicationState } from "@/lib/applications/actions";
+import type { CandidateBlock } from "@/lib/profile/completeness";
 
 /**
  * Collapsed to a button until clicked: the offers page is a list, and a message
@@ -22,10 +23,14 @@ export function ApplyButton({
   jobId,
   jobTitle,
   alreadyApplied = false,
+  blocked = null,
 }: {
   jobId: string;
   jobTitle: string;
   alreadyApplied?: boolean;
+  /** Ce qui empêche de postuler (profil à finir, refusé, pas encore vérifié) :
+   *  dit à la place du bouton, plutôt qu'après un essai. */
+  blocked?: CandidateBlock | null;
 }) {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState<ApplicationState, FormData>(applyToJob, {});
@@ -46,9 +51,34 @@ export function ApplyButton({
 
   if (alreadyApplied) {
     return (
-      <p className="mt-5 text-sm font-medium text-muted-foreground flex items-center gap-2">
-        <Check className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
-        Vous avez déjà postulé à cette offre.
+      <div className="mt-5 text-sm text-muted-foreground">
+        <p className="font-medium flex items-center gap-2">
+          <Check className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+          Vous avez déjà postulé à cette offre.
+        </p>
+        {/* Envoyée avant la vérification, ou avant un refus : l'employeur ne la
+            voit pas tant que le profil n'est pas publié. Autant le dire. */}
+        {blocked && blocked.reason !== "incomplete" && (
+          <p className="text-xs mt-1">
+            L&apos;employeur ne la verra qu&apos;une fois votre profil publié par notre équipe.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (blocked) {
+    return (
+      <p className="mt-5 text-sm text-muted-foreground bg-muted rounded-lg p-3">
+        {blocked.message}
+        {blocked.reason === "incomplete" && (
+          <>
+            {" "}
+            <Link href="/profil" className="font-semibold text-primary underline">
+              Compléter mon profil
+            </Link>
+          </>
+        )}
       </p>
     );
   }

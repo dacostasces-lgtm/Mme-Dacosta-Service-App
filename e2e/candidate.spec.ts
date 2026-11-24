@@ -3,7 +3,9 @@ import {
   fillCandidateProfile,
   ouvrirVirementManuel,
   PNG_1x1,
+  publishProfile,
   register,
+  uploadIdentityDocuments,
   uploadVia,
 } from "./helpers";
 
@@ -17,7 +19,7 @@ test.describe("parcours candidate", () => {
    */
   test("inscription, profil puis demande Premium", async ({ page }) => {
     // L'inscription mène droit au profil : il doit être complet pour postuler.
-    await register(page, "candidate", "Awa Mabiala");
+    const { email } = await register(page, "candidate", "Awa Mabiala");
     await expect(page.getByText("Complétez votre profil pour continuer")).toBeVisible();
 
     // --- profil ---------------------------------------------------------------
@@ -25,6 +27,8 @@ test.describe("parcours candidate", () => {
     await fillCandidateProfile(page, "060000001");
     await page.getByRole("button", { name: "Enregistrer mon profil" }).click();
     await expect(page.getByText("Profil enregistré.")).toBeVisible();
+    // La pièce d'identité aussi : sans elle, le profil n'est pas complet.
+    await uploadIdentityDocuments(page);
 
     // --- téléphone ------------------------------------------------------------
     // Readable back only through my_contact(): the column itself is revoked.
@@ -45,6 +49,15 @@ test.describe("parcours candidate", () => {
     await page.waitForURL(/\/fr\/dashboard\/candidate/, { timeout: 30_000 });
 
     // --- Premium --------------------------------------------------------------
+    // Pas avant la vérification : la carte le dit à la place du bouton.
+    await page.goto("/fr/pricing");
+    await expect(page.getByText(/doit d'abord être vérifié par notre équipe/)).toBeVisible();
+    await expect(
+      page.locator('form:has(input[value="premium_candidate"])')
+    ).toHaveCount(0);
+
+    // La modération publie le profil : le Premium s'ouvre.
+    await publishProfile(email);
     await page.goto("/fr/pricing");
     // Located through the hidden plan input rather than the card's text: the id
     // is what the server actually reads, so this cannot pick the wrong plan.

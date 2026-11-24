@@ -165,6 +165,42 @@ export const INCOMPLETE_PROFILE_MESSAGE =
 export const REJECTED_PROFILE_MESSAGE =
   "Votre profil n'a pas été retenu par notre équipe : vous ne pouvez pas postuler pour le moment. Votre tableau de bord vous dit pourquoi.";
 
+export const UNVALIDATED_PROFILE_MESSAGE =
+  "Votre profil doit d'abord être vérifié par notre équipe. Vous pourrez postuler et obtenir le numéro des employeurs dès qu'il sera publié.";
+
+export type CandidateBlock = {
+  reason: "incomplete" | "rejected" | "unvalidated";
+  message: string;
+};
+
+/**
+ * Ce qui empêche un candidat de se présenter à un employeur : postuler, payer
+ * son numéro, prendre le Premium qui les ouvre tous.
+ *
+ * Trois verrous, dans l'ordre où la personne peut agir : un profil à finir,
+ * un refus de la modération, puis la vérification qui n'a pas encore eu lieu.
+ * Le dernier a été ajouté le 22 novembre 2026 : des candidats au profil
+ * complet mais pas encore vérifiés écrivaient déjà aux familles, ce que la
+ * vérification de leur identité devait précéder.
+ *
+ * Les mêmes verrous tiennent en base (20261122100000) ; ceux-ci servent à
+ * le dire avant que la personne essaie. L'administration n'y est pas soumise.
+ */
+export function candidateBlock(user: {
+  role: string;
+  missingProfileFields: string[];
+  rejection: unknown;
+  isValidated: boolean;
+}): CandidateBlock | null {
+  if (user.role !== "candidate") return null;
+  if (user.missingProfileFields.length > 0) {
+    return { reason: "incomplete", message: INCOMPLETE_PROFILE_MESSAGE };
+  }
+  if (user.rejection) return { reason: "rejected", message: REJECTED_PROFILE_MESSAGE };
+  if (!user.isValidated) return { reason: "unvalidated", message: UNVALIDATED_PROFILE_MESSAGE };
+  return null;
+}
+
 /** Le choix proposé pour « Années d'expérience », en clair. */
 export const EXPERIENCE_OPTIONS = [
   "Moins d'un an",

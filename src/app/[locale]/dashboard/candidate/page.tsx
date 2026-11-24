@@ -176,7 +176,7 @@ export default async function CandidateDashboard() {
                 {published
                   ? "Les employeurs peuvent vous trouver dans la recherche par proximité."
                   : readyForReview
-                    ? "Il n'apparaîtra dans la recherche qu'une fois vérifié par notre équipe. Vous n'avez rien à faire, nous vous préviendrons."
+                    ? "Notre équipe le vérifie. Une fois publié, il apparaîtra dans la recherche, et vous pourrez postuler et obtenir le numéro des employeurs. Vous n'avez rien à faire, nous vous préviendrons."
                     : profileComplete
                       ? // Le SMS n'est pas passé : la modération voit ce profil dans
                         // « Numéro à confirmer par appel », comme l'inscription l'a promis.

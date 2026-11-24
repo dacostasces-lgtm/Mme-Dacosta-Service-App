@@ -56,6 +56,27 @@ export async function register(
 }
 
 /**
+ * Publie un profil comme le fait la modération (« Publier »), avec la clé de
+ * service. Depuis le 22 novembre 2026, un candidat ne postule, n'obtient de
+ * numéro d'employeur et ne prend le Premium qu'une fois publié.
+ */
+export async function publishProfile(email: string) {
+  const service = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
+  const { data, error } = await service
+    .from("profiles")
+    .update({ is_validated: true })
+    .eq("email", email)
+    .select("id");
+  if (error || !data?.length) {
+    throw new Error(`Profil non publié : ${error?.message ?? "introuvable"}`);
+  }
+}
+
+/**
  * Remplit toutes les cases obligatoires du profil candidat
  * (src/lib/profile/completeness.ts), l'enregistre, envoie la pièce d'identité,
  * puis franchit la vérification du numéro par la porte de secours : en test
