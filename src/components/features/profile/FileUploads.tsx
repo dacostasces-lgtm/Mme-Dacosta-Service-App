@@ -7,12 +7,11 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { setAvatar, setCv } from "@/lib/profile/files";
 import { compresserImage } from "@/lib/images/compresser";
+import { CV_CHOISIR, CV_MAX, CV_TYPES } from "@/lib/candidates/cv";
 
 const AVATAR_MAX = 2 * 1024 * 1024;
-const CV_MAX = 5 * 1024 * 1024;
 
 const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const CV_TYPES = ["application/pdf", "image/jpeg", "image/png"];
 
 /**
  * Ce que le sélecteur de fichiers laisse choisir, plus large que ce que le seau
@@ -22,7 +21,6 @@ const CV_TYPES = ["application/pdf", "image/jpeg", "image/png"];
  * du seau.
  */
 const AVATAR_CHOISIR = [...AVATAR_TYPES, "image/heic", "image/heif"].join(",");
-const CV_CHOISIR = [...CV_TYPES, "image/webp", "image/heic", "image/heif"].join(",");
 
 type Props = {
   userId: string;

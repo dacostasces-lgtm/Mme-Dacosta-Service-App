@@ -31,6 +31,17 @@ const schema = z
   })
   .refine(scheduleOrderValid, { message: SCHEDULE_ORDER_MESSAGE });
 
+/** Les champs d'une offre internationale, réservée à l'administration. */
+const internationalSchema = z.object({
+  destinationCountry: z
+    .string()
+    .trim()
+    .min(2, "Indiquez le pays de destination.")
+    .max(80, "Nom de pays trop long."),
+  destinationCity: z.string().trim().max(80, "Nom de ville trop long.").optional(),
+  salaryText: z.string().trim().max(160, "Salaire trop long (160 caractères maximum).").optional(),
+});
+
 export type JobFormState = {
   error?: string;
   /** Refus faute de numéro : le formulaire propose le lien vers le profil. */
@@ -95,18 +106,47 @@ export async function createJob(
     return { error: "Votre profil est introuvable. Reconnectez-vous puis réessayez." };
   }
 
+  // À l'international : l'administration seule, et sans paiement. Le pays de
+  // destination remplace le quartier, et le salaire s'écrit librement, dans
+  // la monnaie du pays. La base refuse de même une offre internationale qui
+  // ne viendrait pas de l'administration (20261124100000).
+  const international = formData.get("international") === "on";
+  if (international && user.role !== "admin") {
+    return { error: "Les offres à l'international sont réservées à l'administration." };
+  }
+  let destination: z.infer<typeof internationalSchema> | null = null;
+  if (international) {
+    const parsedDestination = internationalSchema.safeParse({
+      destinationCountry: String(formData.get("destinationCountry") ?? ""),
+      destinationCity: String(formData.get("destinationCity") ?? "").trim() || undefined,
+      salaryText: String(formData.get("salaryText") ?? "").trim() || undefined,
+    });
+    if (!parsedDestination.success) {
+      return { error: parsedDestination.error.issues[0]?.message ?? "Formulaire invalide." };
+    }
+    destination = parsedDestination.data;
+  }
+
   // « gratuite » ou « payante » : le prix, lui, est fixé en base.
-  const paid = formData.get("formule") === "payante";
+  const paid = !international && formData.get("formule") === "payante";
 
   const supabase = await createClient();
   const { data: created, error } = await supabase.from("jobs").insert({
     employer_id: user.profileId,
     title: parsed.data.title,
     description: parsed.data.description,
-    salary_range_min: parsed.data.salaryMin ?? null,
-    salary_range_max: parsed.data.salaryMax ?? null,
-    neighborhood_id: parsed.data.neighborhoodId ?? null,
+    salary_range_min: destination ? null : (parsed.data.salaryMin ?? null),
+    salary_range_max: destination ? null : (parsed.data.salaryMax ?? null),
+    neighborhood_id: destination ? null : (parsed.data.neighborhoodId ?? null),
     ...scheduleColumns(parsed.data),
+    ...(destination
+      ? {
+          is_international: true,
+          destination_country: destination.destinationCountry,
+          destination_city: destination.destinationCity ?? null,
+          salary_text: destination.salaryText ?? null,
+        }
+      : {}),
   }).select("id").single();
 
   if (error) {

@@ -1,4 +1,4 @@
-import { Clock, MapPin, Mail, Check, X, UserPlus, Phone, Database, Users, Home, IdCard, Ban, Wallet } from "lucide-react";
+import { Clock, MapPin, Mail, Check, X, UserPlus, Phone, Database, Users, Home, IdCard, Ban, Wallet, Globe2 } from "lucide-react";
 import {
   documentsFromRow,
   missingCandidateFields,
@@ -695,6 +695,13 @@ export default async function AdminPage() {
             >
               <Wallet className="h-4 w-4" />
               Paiements reçus
+            </Link>
+            <Link
+              href="/offres/creer?international=1"
+              className={buttonVariants({ variant: "outline", className: "h-11 rounded-full px-5 gap-2" })}
+            >
+              <Globe2 className="h-4 w-4" />
+              Offre à l&apos;international
             </Link>
             <Link
               href="/admin/candidats/nouveau"
