@@ -15,7 +15,9 @@ export async function BottomNav() {
   return (
     <BottomNavBar
       accountHref={user ? dashboardPathFor(user.role) : "/login"}
-      accountLabel={user ? "Mon compte" : "Connexion"}
+      // « Mon espace », comme l'espace s'appelle : « Mon compte » laissait
+      // croire à une page de réglages.
+      accountLabel={user ? "Mon espace" : "Connexion"}
       isSignedIn={Boolean(user)}
     />
   );

@@ -5,6 +5,8 @@ import { getLocale } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
 import { requireUser, dashboardPathFor, type UserRole } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { normalisePhone } from "@/lib/phone";
 
 export type OnboardingState = { error?: string };
 
@@ -39,7 +41,50 @@ export async function completeOnboarding(
     return { error: "Choisissez l'une des deux réponses pour continuer." };
   }
 
+  // Le numéro et le quartier, obligatoires comme au formulaire d'inscription
+  // (26 novembre 2026) : Google ne les donne pas, et des employeurs entraient
+  // ainsi sans numéro.
+  const phone = normalisePhone(String(formData.get("phone") ?? ""));
+  if (!phone.ok) return { error: phone.reason };
+  const neighborhoodId = String(formData.get("neighborhoodId") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(neighborhoodId)) {
+    return { error: "Choisissez votre quartier pour continuer." };
+  }
+  if (!user.profileId) {
+    return { error: "Votre profil est introuvable. Reconnectez-vous puis réessayez." };
+  }
+
+  // Un numéro déjà porté par un autre compte : c'est le plus souvent la même
+  // personne, inscrite deux fois. Le dire plutôt que de créer un doublon.
+  const admin = createAdminClient();
+  if (admin) {
+    const { data: existing } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("phone", phone.value)
+      .neq("id", user.profileId)
+      .limit(1);
+    if ((existing ?? []).length > 0) {
+      return {
+        error:
+          "Ce numéro est déjà utilisé par un autre compte. Connectez-vous avec ce compte, ou écrivez-nous.",
+      };
+    }
+  }
+
   const supabase = await createClient();
+
+  // Le numéro d'abord : si le rôle échoue ensuite, la personne revient ici et
+  // recommence ; dans l'autre ordre, un rôle enregistré sans numéro laissait
+  // passer exactement le compte qu'on voulait éviter.
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ phone: phone.value, neighborhood_id: neighborhoodId })
+    .eq("id", user.profileId);
+  if (profileError) {
+    return { error: `Enregistrement impossible : ${profileError.message}` };
+  }
+
   const { error } = await supabase.rpc("complete_onboarding", { p_role: role });
 
   if (error) {

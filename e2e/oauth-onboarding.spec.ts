@@ -24,6 +24,7 @@ test.describe("inscription par un fournisseur externe", () => {
     );
 
     const email = uniqueEmail("oauth");
+    const numero = `06${String(Math.floor(Math.random() * 1e7)).padStart(7, "0")}`;
     // Ni `role` ni quartier, et `name` au lieu de `full_name` : la forme des
     // métadonnées que Google renvoie.
     const { error } = await admin.auth.admin.createUser({
@@ -48,8 +49,27 @@ test.describe("inscription par un fournisseur externe", () => {
     // Le nom vient bien de `name`, pas du début de l'adresse email.
     await expect(page.getByRole("heading", { level: 1 })).not.toHaveText(/^Bienvenue, oauth-/);
 
+    const continuer = page.getByRole("button", { name: "Continuer" });
+    await expect(continuer).toBeDisabled();
     await page.getByText("Je recrute").click();
-    await page.getByRole("button", { name: "Continuer" }).click();
+
+    // Le numéro et le quartier, obligatoires depuis le 26 novembre 2026 :
+    // Google ne les donne pas, et des employeurs entraient sans numéro.
+    await expect(continuer).toBeDisabled();
+    await page.getByLabel("Téléphone").fill("0612");
+    await expect(page.getByText(/9 chiffres/)).toBeVisible();
+    await page.getByLabel("Téléphone").fill(numero);
+    await page.getByLabel("Ville").selectOption({ label: "Brazzaville" });
+    await expect(continuer).toBeDisabled();
+    await page.getByLabel("Quartier").selectOption({ label: "Bacongo" });
+    await expect(continuer).toBeEnabled();
+    await continuer.click();
+
+    // Le numéro n'est pas encore vérifié : l'étape du code SMS, franchie par
+    // la porte de secours (l'envoi pointe vers le vide en test).
+    await page.waitForURL(/\/fr\/verification/, { timeout: 30_000 });
+    await page.getByRole("button", { name: /Recevoir mon code/ }).click();
+    await page.getByRole("button", { name: "Continuer sans vérifier" }).click({ timeout: 30_000 });
 
     // Employeur, donc espace employeur — et non l'espace candidat où le rôle
     // par défaut l'aurait enfermé.
@@ -59,5 +79,16 @@ test.describe("inscription par un fournisseur externe", () => {
     // La question ne revient pas, et n'est plus une porte d'entrée.
     await page.goto("/fr/bienvenue");
     await expect(page).toHaveURL(/\/fr\/dashboard\/employer/);
+
+    // Le numéro et le quartier sont bien sur le profil.
+    const { data: profil } = await admin
+      .from("profiles")
+      .select("phone, neighborhood_id")
+      .eq("email", email)
+      .single();
+    expect(profil!.phone).toBe(
+      `+242 ${numero.slice(0, 2)} ${numero.slice(2, 5)} ${numero.slice(5, 7)} ${numero.slice(7)}`
+    );
+    expect(profil!.neighborhood_id).not.toBeNull();
   });
 });

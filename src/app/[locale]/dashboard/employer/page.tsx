@@ -1,4 +1,4 @@
-import { Ban, Briefcase, MessageSquare, Users, Plus, Search, UserPen } from "lucide-react";
+import { Ban, Briefcase, MessageSquare, Users, Plus, Search, UserPen, UserRound } from "lucide-react";
 
 type ReceivedApplication = {
   id: string;
@@ -270,7 +270,19 @@ export default async function EmployerDashboard() {
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="min-w-0">
                       <p className="font-medium">
-                        {application.profiles?.full_name ?? "Candidat"}
+                        {/* Vers la fiche complète : expérience, compétences,
+                            situation, et — l'accès payé — pièces et CV. Le nom
+                            seul ne permettait pas de juger une candidature. */}
+                        {application.profiles?.id ? (
+                          <Link
+                            href={`/candidats/${application.profiles.id}`}
+                            className="hover:text-primary hover:underline"
+                          >
+                            {application.profiles.full_name ?? "Candidat"}
+                          </Link>
+                        ) : (
+                          (application.profiles?.full_name ?? "Candidat")
+                        )}
                         <span className="text-muted-foreground font-normal">
                           {" · "}
                           {application.jobs?.title ?? "Offre supprimée"}
@@ -299,6 +311,18 @@ export default async function EmployerDashboard() {
                       applicationId={application.id}
                       status={application.status}
                     />
+                    {application.profiles?.id && (
+                      <Link
+                        href={`/candidats/${application.profiles.id}`}
+                        className={buttonVariants({
+                          size: "sm",
+                          className: "rounded-full gap-2 shrink-0",
+                        })}
+                      >
+                        <UserRound className="h-4 w-4" />
+                        Voir le profil complet
+                      </Link>
+                    )}
                     {application.profiles?.id && (
                       <Link
                         href={{

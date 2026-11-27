@@ -3,6 +3,7 @@ import { getLocale } from "next-intl/server";
 import { redirect } from "@/i18n/routing";
 import { requireUser, dashboardPathFor } from "@/lib/auth/dal";
 import { OnboardingRoleForm } from "@/components/features/auth/OnboardingRoleForm";
+import { getLocations } from "@/lib/geo/locations";
 
 export const metadata: Metadata = {
   title: "Bienvenue",
@@ -18,9 +19,10 @@ export const metadata: Metadata = {
  * dans requireUser renverrait cette page vers elle-même sans fin.
  */
 export default async function BienvenuePage() {
-  const [user, locale] = await Promise.all([
+  const [user, locale, cities] = await Promise.all([
     requireUser({ allowIncompleteOnboarding: true, allowUnverifiedPhone: true }),
     getLocale(),
+    getLocations(),
   ]);
 
   if (user.onboardingCompletedAt) {
@@ -33,12 +35,12 @@ export default async function BienvenuePage() {
         <p className="text-sm text-muted-foreground mb-2">Dernière étape</p>
         <h1 className="text-3xl font-bold mb-2">Bienvenue, {user.fullName}</h1>
         <p className="text-muted-foreground mb-8">
-          Une seule question avant d&apos;entrer : votre compte n&apos;est pas le même
-          selon que vous recrutez ou que vous cherchez un emploi.
+          Avant d&apos;entrer : votre compte n&apos;est pas le même selon que vous recrutez
+          ou que vous cherchez un emploi, et votre numéro est obligatoire.
         </p>
 
         <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-soft">
-          <OnboardingRoleForm />
+          <OnboardingRoleForm cities={cities} />
         </div>
       </div>
     </div>
