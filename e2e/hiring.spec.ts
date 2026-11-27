@@ -19,10 +19,14 @@ test.describe("offre et candidature", () => {
 
     // --- l'employeur publie ---------------------------------------------------
     await register(employer, "employer", "Famille Nkodia");
-    await expect(employer.getByRole("heading", { name: "Mon Espace Employeur" })).toBeVisible();
-
-    // Le numéro est obligatoire pour publier une offre.
+    // Sans numéro, il n'entre pas dans son espace : « Complétez votre compte »
+    // le lui demande d'abord (/coordonnees). Le profil reste ouvert, et c'est
+    // par lui que addEmployerPhone le donne.
+    await expect(employer.getByRole("heading", { name: "Complétez votre compte" })).toBeVisible({
+      timeout: 30_000,
+    });
     await addEmployerPhone(employer, "060000004");
+    await expect(employer.getByRole("heading", { name: "Mon Espace Employeur" })).toBeVisible();
 
     await employer.goto("/fr/offres/creer");
     // Unique, mais en base 36 : un horodatage brut aligne 13 chiffres, que le

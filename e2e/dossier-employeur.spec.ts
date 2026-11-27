@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { PASSWORD, PNG_1x1, signIn, uniqueEmail } from "./helpers";
+import { PASSWORD, PNG_1x1, completeEmployerAccount, signIn, uniqueEmail } from "./helpers";
 
 /**
  * Le dossier complet d'un candidat pour l'employeur qui a payé
@@ -40,6 +40,9 @@ async function createAccount(role: "candidate" | "employer", fullName: string) {
     .select("id")
     .eq("user_id", data.user!.id)
     .single();
+  // Un employeur sans numéro ni quartier serait arrêté à « Complétez votre
+  // compte » (/coordonnees).
+  if (role === "employer") await completeEmployerAccount(profil!.id);
   return { email, userId: data.user!.id, profileId: profil!.id as string };
 }
 

@@ -36,6 +36,9 @@ export type SessionUser = {
   phoneVerifiedAt: string | null;
   /** Présence d'un numéro, sans sa valeur : la colonne `phone` est révoquée. */
   hasPhone: boolean;
+  /** Présence d'un quartier. Avec le numéro, ce qu'un employeur doit avoir
+   *  renseigné pour entrer dans son espace (/coordonnees). */
+  hasNeighborhood: boolean;
   /**
    * Null tant que le rôle n'a pas été choisi. Ne concerne en pratique que les
    * comptes créés par un fournisseur externe : le formulaire impose le rôle,
@@ -180,6 +183,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     isValidated: Boolean(profile?.is_validated),
     phoneVerifiedAt: (profile?.phone_verified_at as string | null) ?? null,
     hasPhone: Boolean(profile?.phone_present),
+    hasNeighborhood: Boolean(profile?.neighborhood_id),
     // Un profil pas encore écrit n'est pas un rôle à choisir : renvoyer null
     // ici enverrait vers /bienvenue le temps que le déclencheur passe, et le
     // choix porterait sur une ligne qui n'existe pas.
@@ -208,6 +212,17 @@ export async function requireUser(options?: {
    * ci-dessus : la redirection renverrait la page vers elle-même.
    */
   allowIncompleteOnboarding?: boolean;
+  /**
+   * Laisse passer un employeur à qui il manque son numéro ou son quartier. À
+   * poser sur /coordonnees et son action, pour la même raison que ci-dessus,
+   * et sur ce qu'on peut faire depuis son profil (l'enregistrer, changer sa
+   * photo).
+   *
+   * Implicite avec `allowUnverifiedPhone` : les écrans qui le posent
+   * (vérification, profil, suppression du compte) sont ceux où l'on complète
+   * son compte, ou d'où l'on en sort.
+   */
+  allowIncompleteAccount?: boolean;
 }): Promise<SessionUser> {
   const locale = await getLocale();
   const user = await getCurrentUser();
@@ -226,6 +241,24 @@ export async function requireUser(options?: {
   // formulaire.
   if (!options?.allowIncompleteOnboarding && !user.onboardingCompletedAt) {
     return redirect({ href: "/bienvenue", locale });
+  }
+
+  // Un employeur sans numéro ou sans quartier les donne avant d'entrer
+  // (demandé le 27 novembre 2026). Le formulaire d'inscription les exige, mais
+  // les comptes plus anciens n'en avaient pas : un bandeau les leur demandait,
+  // sans rien empêcher. Or le numéro est le seul canal d'une mise en relation,
+  // et la modération ne valide pas un compte auquel il manque l'un des deux.
+  //
+  // Après le choix du rôle, sans lequel on ne sait pas encore qui recrute ; et
+  // avant la vérification du numéro, qui suppose qu'il y en ait un.
+  if (
+    !options?.allowIncompleteAccount &&
+    !options?.allowUnverifiedPhone &&
+    user.role === "employer" &&
+    user.onboardingCompletedAt &&
+    user.missingProfileFields.length > 0
+  ) {
+    return redirect({ href: "/coordonnees", locale });
   }
 
   // Le numéro se vérifie avant d'entrer dans son espace. C'est le seul canal

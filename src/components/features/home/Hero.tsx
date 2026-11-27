@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { BadgeCheck, MapPin, Star } from "lucide-react";
+import { BadgeCheck, Smartphone } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { buttonVariants } from "@/components/ui/button";
 import heroPortrait from "@/assets/images/hero-portrait.jpg";
@@ -122,17 +122,19 @@ export function Hero() {
               </span>
             </div>
 
-            <div className="absolute -right-3 sm:-right-6 bottom-10 bg-card/95 backdrop-blur-sm rounded-2xl shadow-lift px-4 py-3">
-              <div className="flex items-center gap-1 text-secondary">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="h-3.5 w-3.5 fill-current" />
-                ))}
-              </div>
-              <p className="mt-1 text-sm font-semibold leading-tight">4,8 / 5</p>
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                Bacongo, Brazzaville
-              </p>
+            {/* Une information vraie à la place de la note « 4,8 / 5 », qu'aucun
+                avis ne portait : retirée le 27 novembre 2026, comme les
+                témoignages avant elle. */}
+            <div className="absolute -right-3 sm:-right-6 bottom-10 bg-card/95 backdrop-blur-sm rounded-2xl shadow-lift px-4 py-3 flex items-center gap-3">
+              <span className="h-9 w-9 rounded-full bg-secondary/15 text-secondary grid place-items-center">
+                <Smartphone className="h-5 w-5" />
+              </span>
+              <span className="text-sm font-semibold leading-tight">
+                Paiement Mobile Money
+                <span className="block text-xs font-normal text-muted-foreground">
+                  MTN et Airtel Money
+                </span>
+              </span>
             </div>
           </div>
         </div>

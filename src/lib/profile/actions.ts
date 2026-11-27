@@ -36,7 +36,9 @@ export async function updateProfile(
   _previous: ProfileFormState,
   formData: FormData
 ): Promise<ProfileFormState> {
-  const user = await requireUser();
+  // Un employeur incomplet complète aussi son compte ici : la porte
+  // /coordonnees ne doit pas détourner son enregistrement.
+  const user = await requireUser({ allowIncompleteAccount: true });
 
   if (!user.profileId) {
     return { error: "Votre profil est introuvable. Reconnectez-vous puis réessayez." };

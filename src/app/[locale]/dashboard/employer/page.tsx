@@ -194,27 +194,9 @@ export default async function EmployerDashboard() {
           </div>
         )}
 
-        {/* Le numéro et le quartier : ce que la modération retient
-            (missingEmployerFields). Le message disait « numéro » même quand
-            seul le quartier manquait. */}
-        {user.missingProfileFields.length > 0 && (
-          <div className="rounded-3xl border-2 border-secondary bg-secondary/10 p-6 sm:p-7 mb-8">
-            <h2 className="font-semibold mb-1">Complétez votre compte</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Il manque : <strong>{user.missingProfileFields.join(", ")}</strong>. Notre équipe
-              ne valide votre compte qu&apos;une fois ces cases remplies, et votre numéro est
-              obligatoire pour publier une offre : c&apos;est par lui que les candidats et notre
-              équipe vous joignent.
-            </p>
-            <Link
-              href="/profil"
-              className={buttonVariants({ className: "rounded-full gap-2" })}
-            >
-              <UserPen className="h-4 w-4" />
-              Compléter mon compte
-            </Link>
-          </div>
-        )}
+        {/* Plus de bandeau « Complétez votre compte » ici : un employeur à qui il
+            manque son numéro ou son quartier n'entre plus sans les avoir donnés
+            (la porte /coordonnees de requireUser). */}
 
         <JobReminders jobs={myJobs} />
 

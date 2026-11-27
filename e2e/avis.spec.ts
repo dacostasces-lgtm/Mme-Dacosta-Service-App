@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { PASSWORD, signIn, uniqueEmail } from "./helpers";
+import { PASSWORD, completeEmployerAccount, signIn, uniqueEmail } from "./helpers";
 
 /**
  * Laisser un avis, par l'interface.
@@ -36,6 +36,9 @@ async function compte(role: "candidate" | "employer", nom: string, publie = fals
   if (publie) {
     await admin.from("profiles").update({ is_validated: true }).eq("id", profil!.id);
   }
+  // Un employeur sans numéro ni quartier serait arrêté à « Complétez votre
+  // compte » (/coordonnees).
+  if (role === "employer") await completeEmployerAccount(profil!.id);
 
   return { email, profileId: profil!.id as string };
 }
