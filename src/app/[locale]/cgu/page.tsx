@@ -57,7 +57,9 @@ export default function CguPage() {
       <Article title="4. Vérification et publication des profils">
         <p>
           Un profil de Candidat n&apos;apparaît pas automatiquement dans la recherche : il est
-          publié après examen par notre équipe. Nous pouvons enregistrer, pour chaque Candidat, la
+          publié après examen par notre équipe, qui vérifie notamment sa pièce d&apos;identité.
+          Tant que son profil n&apos;est pas publié, un Candidat ne peut ni postuler, ni obtenir le
+          numéro d&apos;un Employeur, ni souscrire l&apos;abonnement Premium. Nous pouvons enregistrer, pour chaque Candidat, la
           vérification de son identité, de son casier judiciaire et le passage d&apos;un entretien.
           Ces mentions n&apos;apparaissent sur un profil <strong>que lorsqu&apos;elles ont
           effectivement été constatées</strong>, avec la date du contrôle.
@@ -85,12 +87,12 @@ export default function CguPage() {
             <strong>le numéro d&apos;un Employeur</strong>, pour une offre donnée, par un Candidat ;
           </li>
           <li>
-            <strong>l&apos;offre payante</strong>, qui donne à l&apos;Employeur le numéro des
-            Candidats qui y postulent, pour toute la durée de l&apos;offre ;
+            <strong>le numéro d&apos;un Candidat</strong>, par un Employeur, avec son dossier
+            (pièce d&apos;identité, permis de conduire le cas échéant, CV) ;
           </li>
           <li>
-            <strong>la réservation</strong> d&apos;un Candidat, qui donne lieu à des frais de mise
-            en relation ;
+            <strong>l&apos;offre payante</strong>, qui donne à l&apos;Employeur le numéro et le
+            dossier des Candidats qui y postulent, pour toute la durée de l&apos;offre ;
           </li>
           <li>
             <strong>les abonnements Premium</strong> Candidat et Employeur, d&apos;une durée
@@ -104,10 +106,19 @@ export default function CguPage() {
           les offres ni les présentations.
         </p>
         <p>
-          Le règlement s&apos;effectue par transfert Mobile Money vers le numéro indiqué, en
-          rappelant la référence indiquée. Un achat n&apos;est considéré comme réglé
-          qu&apos;après vérification du paiement par notre équipe. Aucun prélèvement automatique n&apos;est
-          effectué : c&apos;est vous qui déclenchez le transfert.
+          Le règlement s&apos;effectue par Mobile Money (MTN ou Airtel), par l&apos;intermédiaire
+          de notre prestataire de paiement : vous validez la demande sur votre téléphone avec
+          votre code secret, et l&apos;achat est réglé dès que le paiement aboutit. À défaut, un
+          transfert Mobile Money vers le numéro indiqué, en rappelant la référence indiquée, reste
+          possible : il n&apos;est alors considéré comme réglé qu&apos;après vérification par notre
+          équipe. Aucun prélèvement automatique n&apos;est effectué : c&apos;est vous qui
+          validez chaque paiement.
+        </p>
+        <p>
+          Les <strong>offres à l&apos;international</strong> sont publiées par Madame Dacosta
+          Services, pour un placement dans un autre pays. Le Candidat y postule gratuitement, avec
+          son CV et deux références que seule notre équipe consulte ; aucun numéro n&apos;y est
+          vendu.
         </p>
         <p>
           Les abonnements Premium sont sans engagement et s&apos;interrompent à leur échéance en

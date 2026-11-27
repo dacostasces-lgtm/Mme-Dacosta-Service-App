@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "@/i18n/routing";
 import { PHONE_HINT } from "@/lib/phone";
+import { COMPANY } from "@/lib/legal/company";
 import {
   resetPasswordByPhone,
   startPhoneRecovery,
@@ -87,6 +88,22 @@ export function PhoneRecoveryForm() {
         <p className="text-sm text-muted-foreground">
           Si un compte existe avec ce numéro, un code à six chiffres vient d&apos;y être
           envoyé.
+        </p>
+        {/* Le code ne part que vers un numéro confirmé (recovery.ts) : un compte
+            inscrit pendant une panne de SMS, pas encore rappelé par l'équipe,
+            attendait un code qui n'arrive jamais, sans savoir quoi faire. */}
+        <p className="text-xs text-muted-foreground">
+          Rien après quelques minutes ? Votre numéro n&apos;est peut-être pas encore confirmé :
+          écrivez-nous sur{" "}
+          <a
+            href={`https://wa.me/${COMPANY.whatsapp}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary hover:underline"
+          >
+            WhatsApp au {COMPANY.phone}
+          </a>
+          , nous vous aidons à retrouver votre compte.
         </p>
         <div>
           <label htmlFor="code" className="text-sm font-medium mb-1 block">

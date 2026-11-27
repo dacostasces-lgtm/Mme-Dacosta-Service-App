@@ -347,7 +347,11 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
             <div className="flex items-center gap-2">
               <Briefcase className="h-4 w-4 shrink-0" aria-hidden />
               <dt className="sr-only">Employeur</dt>
-              <dd>{job.profiles?.full_name ?? "Employeur particulier"}</dd>
+              <dd>
+                {international
+                  ? "Madame Dacosta Services"
+                  : (job.profiles?.full_name ?? "Employeur particulier")}
+              </dd>
             </div>
           </dl>
 

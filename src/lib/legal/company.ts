@@ -53,12 +53,40 @@ export const HOSTING = [
   },
 ] as const;
 
+/**
+ * Les autres prestataires qui traitent des données pour le service. La loi
+ * demande de les nommer : chacun reçoit une partie des données décrites dans la
+ * politique de confidentialité, et rien d'autre.
+ */
+export const SERVICE_PROVIDERS = [
+  {
+    role: "Encaissement des paiements Mobile Money (MTN, Airtel)",
+    name: "PawaPay",
+    site: "pawapay.io",
+  },
+  {
+    role: "Envoi des codes de vérification par SMS",
+    name: "Infobip",
+    site: "infobip.com",
+  },
+  {
+    role: "Envoi des e-mails",
+    name: "Resend",
+    site: "resend.com",
+  },
+  {
+    role: "Connexion avec un compte Google, si vous la choisissez",
+    name: "Google",
+    site: "google.com",
+  },
+] as const;
+
 /** Loi congolaise applicable au traitement des données personnelles. */
 export const DATA_LAW =
   "loi n° 29-2019 du 10 octobre 2019 portant protection des données à caractère personnel";
 
 /** Last substantive revision, shown to readers so they can spot a stale text. */
-export const LAST_UPDATED = "11 octobre 2026";
+export const LAST_UPDATED = "27 novembre 2026";
 
 /** True when a field still needs the company's own information. */
 export function missing(value: string) {

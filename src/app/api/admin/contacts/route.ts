@@ -59,6 +59,8 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("profiles")
       .select(DIRECTORY_SELECT)
+      // Les comptes supprimés n'ont plus rien à exporter.
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .range(from, from + BATCH - 1);
     if (role) query = query.eq("role", role);

@@ -266,15 +266,18 @@ export default async function CandidateDashboard() {
 
         <UnlockedContacts contacts={(unlocked.data ?? []) as UnlockedContact[]} />
 
-        <section className="bg-card rounded-3xl border border-border shadow-soft p-6 sm:p-7 mt-6">
-          <h2 className="font-semibold mb-1">Familles qui vous ont réservé</h2>
-          <p className="text-sm text-muted-foreground mb-5">Les familles qui ont réservé vos services et réglé la mise en relation.</p>
-          <BookingList
-            bookings={(bookings.data ?? []) as unknown as BookingRow[]}
-            role="candidate"
-            reviews={mesAvis}
-          />
-        </section>
+        {/* Seulement s'il en reste : la réservation a été retirée. */}
+        {(bookings.data ?? []).length > 0 && (
+          <section className="bg-card rounded-3xl border border-border shadow-soft p-6 sm:p-7 mt-6">
+            <h2 className="font-semibold mb-1">Familles qui vous ont réservé</h2>
+            <p className="text-sm text-muted-foreground mb-5">Les familles qui ont réservé vos services et réglé la mise en relation.</p>
+            <BookingList
+              bookings={(bookings.data ?? []) as unknown as BookingRow[]}
+              role="candidate"
+              reviews={mesAvis}
+            />
+          </section>
+        )}
 
       </div>
     </div>

@@ -591,7 +591,8 @@ export function RegisterForm({ cities }: { cities: CityRef[] }) {
                     </h3>
                     <p className="text-xs text-muted-foreground mt-1">
                       Notre équipe vérifie votre identité avant de publier votre profil. Visible
-                      seulement de notre équipe, jamais des familles. Photo ou PDF.
+                      par notre équipe et par les employeurs qui ont payé l&apos;accès à votre
+                      profil, jamais par le public. Photo ou PDF.
                     </p>
                   </div>
 

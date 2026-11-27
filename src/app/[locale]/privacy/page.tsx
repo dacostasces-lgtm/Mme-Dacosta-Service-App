@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage, Article } from "@/components/shared/LegalPage";
-import { COMPANY, DATA_LAW, HOSTING } from "@/lib/legal/company";
+import { COMPANY, DATA_LAW, HOSTING, SERVICE_PROVIDERS } from "@/lib/legal/company";
 
 export const metadata: Metadata = {
   title: "Politique de confidentialité",
@@ -56,9 +56,15 @@ export default function PrivacyPage() {
           </li>
           <li><strong>Échanges</strong> : le contenu des messages envoyés via la messagerie.</li>
           <li>
-            <strong>Réservations et paiements</strong> : mission concernée, montant, moyen de
-            paiement, référence de transaction Mobile Money. Nous ne voyons jamais votre code
-            secret Mobile Money et ne conservons aucune donnée bancaire.
+            <strong>Références</strong> (Candidats qui postulent à une offre à
+            l&apos;international) : nom, lien avec le Candidat, téléphone et e-mail de deux
+            personnes à contacter, que le Candidat nous communique.
+          </li>
+          <li>
+            <strong>Paiements</strong> : achat concerné, montant, numéro Mobile Money qui a payé,
+            opérateur et référence de la transaction. Les paiements passent par notre prestataire
+            PawaPay : nous ne voyons jamais votre code secret Mobile Money et ne conservons
+            aucune donnée bancaire.
           </li>
           <li>
             <strong>Vérifications</strong> (Candidats) : le constat que votre identité, votre
@@ -86,7 +92,8 @@ export default function PrivacyPage() {
           <li>créer et gérer votre compte ;</li>
           <li>afficher les profils vérifiés et permettre la recherche par proximité ;</li>
           <li>permettre aux utilisateurs de se contacter ;</li>
-          <li>traiter les réservations et rapprocher les paiements Mobile Money ;</li>
+          <li>encaisser les paiements Mobile Money et ouvrir l&apos;accès acheté ;</li>
+          <li>étudier les candidatures aux offres à l&apos;international (CV et références) ;</li>
           <li>vérifier les profils avant publication, pour la sécurité des familles ;</li>
           <li>vous informer par email d&apos;un nouveau message ou d&apos;un événement sur votre compte.</li>
         </ul>
@@ -102,14 +109,21 @@ export default function PrivacyPage() {
           L&apos;<strong>âge et la situation familiale</strong> d&apos;un Candidat (situation
           matrimoniale, nombre d&apos;enfants, âge du dernier enfant) sont montrés aux seuls
           Employeurs inscrits, sur sa fiche, et à nos administrateurs : jamais aux visiteurs sans
-          compte ni aux moteurs de recherche. Son sexe et son adresse précise ne sont visibles
-          que de lui et de nos administrateurs.
+          compte ni aux moteurs de recherche. Son adresse précise n&apos;est visible que de lui et
+          de nos administrateurs.
         </p>
         <p>
           Les <strong>pièces justificatives</strong> (pièce d&apos;identité, permis de conduire)
-          servent à vérifier l&apos;identité d&apos;un Candidat avant la publication de son profil.
-          Elles sont conservées dans un espace privé, accessibles au seul Candidat et à nos
-          administrateurs, et ne sont jamais montrées aux Employeurs ni au public.
+          servent d&apos;abord à vérifier l&apos;identité d&apos;un Candidat avant la publication
+          de son profil. Elles sont conservées dans un espace privé. Avec son sexe et son CV,
+          elles sont montrées au Candidat, à nos administrateurs et aux seuls Employeurs qui ont
+          payé l&apos;accès à ce Candidat — numéro débloqué, candidature à une offre payante de
+          l&apos;Employeur, ou abonnement Premium Employeur —, par un lien valable une minute.
+          Elles ne sont jamais montrées au public.
+        </p>
+        <p>
+          Les <strong>références</strong> données pour une offre à l&apos;international ne sont
+          lues que par nos administrateurs, qui les contactent pour étudier la candidature.
         </p>
         <p>
           <strong>Votre numéro de téléphone</strong> (et WhatsApp) est communiqué, en plus de nos
@@ -134,24 +148,26 @@ export default function PrivacyPage() {
         </p>
         <p>Nous faisons appel aux prestataires techniques suivants :</p>
         <ul className="list-disc pl-5 space-y-1">
-          {HOSTING.map((host) => (
+          {[...HOSTING, ...SERVICE_PROVIDERS].map((host) => (
             <li key={host.name}>
-              <strong>{host.name}</strong> — {host.role.toLowerCase()} ({host.site}).
+              <strong>{host.name}</strong> — {host.role.charAt(0).toLowerCase() + host.role.slice(1)} ({host.site}).
             </li>
           ))}
         </ul>
         <p>
           Nous ne vendons ni ne louons vos données à des tiers extérieurs au service. Le paiement
           décrit ci-dessus donne accès, au sein de la Plateforme, au numéro de la personne avec
-          qui l&apos;on souhaite travailler — rien d&apos;autre. Vos données peuvent être
+          qui l&apos;on souhaite travailler et, pour un Employeur, au dossier du Candidat décrit
+          plus haut — rien d&apos;autre. Vos données peuvent être
           communiquées à une autorité si la loi nous y oblige.
         </p>
       </Article>
 
       <Article title="6. Transfert hors du Congo">
         <p>
-          Nos serveurs de base de données sont situés en <strong>Irlande</strong> et notre
-          hébergeur de site est une société américaine. Vos données sont donc traitées hors de
+          Nos serveurs de base de données sont situés en <strong>Irlande</strong>, notre
+          hébergeur de site est une société américaine, et nos prestataires de paiement, de SMS
+          et d&apos;e-mails sont des sociétés étrangères. Vos données sont donc traitées hors de
           République du Congo. En créant un compte, vous consentez à ce transfert, réalisé auprès
           de prestataires appliquant des mesures de sécurité reconnues.
         </p>
@@ -166,7 +182,11 @@ export default function PrivacyPage() {
             vos messages sont effacés aussitôt. Seuls les paiements sont conservés, sans votre nom.
           </li>
           <li>
-            <strong>Réservations et paiements</strong> : conservés le temps requis par les
+            <strong>Références</strong> données pour une offre à l&apos;international : conservées
+            avec la candidature, et effacées avec elle ou avec votre compte.
+          </li>
+          <li>
+            <strong>Paiements</strong> : conservés le temps requis par les
             obligations comptables et fiscales applicables.
           </li>
           <li>

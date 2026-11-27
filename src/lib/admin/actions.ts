@@ -53,7 +53,7 @@ export async function setProfileValidation(
   if (validated) {
     await notifyProfileValidated({
       profileId: profileId.data,
-      url: absoluteUrl(`/${DEFAULT_LOCALE}/dashboard/candidate`),
+      siteUrl: absoluteUrl(`/${DEFAULT_LOCALE}`),
     });
   }
 

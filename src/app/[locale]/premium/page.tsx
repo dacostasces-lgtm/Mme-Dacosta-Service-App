@@ -58,10 +58,12 @@ export default async function PremiumPage() {
               {subscription.end_date
                 ? `Votre abonnement est valable jusqu'au ${formatDate(subscription.end_date)}.`
                 : "Votre abonnement est actif."}{" "}
-              Votre profil est mis en avant dans les résultats de recherche
-              {subscription.plan_name === "Premium Candidat" &&
-                ", et le numéro de chaque employeur s'affiche sur ses offres"}
-              .
+              {/* Ce que chaque formule donne vraiment : un employeur n'apparaît pas
+                  dans la recherche, et lisait pourtant que son profil y était
+                  mis en avant. */}
+              {subscription.plan_name === "Premium Employeur"
+                ? "Le numéro et le dossier de chaque candidat s'affichent sur sa fiche, et toutes vos offres sont incluses, sans supplément."
+                : "Votre profil est mis en avant dans les résultats de recherche, votre numéro est visible gratuitement par les recruteurs, et le numéro de chaque employeur s'affiche sur ses offres."}
             </p>
           </div>
         ) : subscription?.status === "pending_payment" ? (
@@ -80,7 +82,9 @@ export default async function PremiumPage() {
             <p className="text-sm text-muted-foreground mb-5">
               {subscription?.status === "rejected"
                 ? "Votre dernier paiement n'a pas pu être vérifié. Vous pouvez relancer une demande depuis nos offres."
-                : "Passez Premium pour être mis en avant auprès des familles."}
+                : user.role === "employer"
+                  ? "Passez Premium pour obtenir le numéro et le dossier de tous les candidats."
+                  : "Passez Premium pour être mis en avant auprès des familles."}
             </p>
             <Link href="/pricing" className={buttonVariants({ className: "rounded-full" })}>
               Voir les offres

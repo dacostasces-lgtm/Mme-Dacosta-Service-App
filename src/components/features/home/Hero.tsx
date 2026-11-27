@@ -117,7 +117,7 @@ export function Hero() {
               <span className="text-sm font-semibold leading-tight">
                 Dossier vérifié
                 <span className="block text-xs font-normal text-muted-foreground">
-                  Pièce d&apos;identité et références
+                  Pièce d&apos;identité contrôlée
                 </span>
               </span>
             </div>

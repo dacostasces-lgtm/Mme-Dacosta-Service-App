@@ -6,7 +6,7 @@ const POINTS = [
   {
     icon: ShieldCheck,
     title: "Profils vérifiés",
-    text: "Pièce d'identité, références et casier : aucun profil n'est publié tant que le dossier n'est pas contrôlé par notre équipe.",
+    text: "Aucun profil n'est publié tant que notre équipe n'a pas contrôlé sa pièce d'identité. Casier judiciaire et entretien s'affichent quand ils ont été vérifiés.",
   },
   {
     icon: MapPin,
@@ -21,7 +21,7 @@ const POINTS = [
   {
     icon: HandCoins,
     title: "Sans commission cachée",
-    text: "Vous ne payez que la mise en relation que vous choisissez — numéro, offre, réservation ou abonnement —, jamais un pourcentage du salaire.",
+    text: "Vous ne payez que la mise en relation que vous choisissez — numéro, offre ou abonnement —, jamais un pourcentage du salaire.",
   },
 ];
 

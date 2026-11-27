@@ -1,4 +1,4 @@
-import { Search, MessagesSquare, CalendarCheck } from "lucide-react";
+import { Search, ShieldCheck, Phone } from "lucide-react";
 
 const STEPS = [
   {
@@ -7,14 +7,16 @@ const STEPS = [
     text: "Filtrez par métier, disponibilité et rayon autour de vous. Les profils les plus proches remontent en premier.",
   },
   {
-    icon: MessagesSquare,
-    title: "Échangez directement",
-    text: "Consultez le dossier vérifié, puis discutez avec le candidat via la messagerie de la plateforme.",
+    icon: ShieldCheck,
+    title: "Comparez des profils vérifiés",
+    text: "Expérience, disponibilités, avis : chaque profil est contrôlé par notre équipe avant d'être publié. Publiez aussi une offre, les candidats y postulent.",
   },
+  // « Réservez » a disparu avec la réservation : on obtient désormais le
+  // numéro et le dossier du candidat, ou l'on passe une offre en payante.
   {
-    icon: CalendarCheck,
-    title: "Réservez",
-    text: "Réservez le candidat pour une date de début et réglez la mise en relation par Mobile Money.",
+    icon: Phone,
+    title: "Appelez directement",
+    text: "Obtenez le numéro et le dossier du candidat, et réglez par Mobile Money, MTN ou Airtel : l'accès est immédiat.",
   },
 ];
 

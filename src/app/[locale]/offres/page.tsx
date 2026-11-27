@@ -286,7 +286,13 @@ export default async function JobsPage({
                     </span>
                     {/* Employers awaiting moderation are invisible under the
                         profiles policy, so the embed can legitimately be null. */}
-                    <span>{job.profiles?.full_name ?? "Employeur particulier"}</span>
+                    {/* À l'international, c'est l'agence qui place : son nom plutôt
+                        que celui du compte administrateur qui a publié l'offre. */}
+                    <span>
+                      {international
+                        ? "Madame Dacosta Services"
+                        : (job.profiles?.full_name ?? "Employeur particulier")}
+                    </span>
                     <span className="ml-auto flex items-center gap-3">
                       <ShareButton
                         url={localisedUrl(`/offres/${job.id}`)}
