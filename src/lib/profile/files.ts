@@ -16,7 +16,8 @@ export type FileState = { error?: string; ok?: boolean };
  * point their profile at somebody else's file.
  */
 export async function setAvatar(objectPath: string): Promise<FileState> {
-  const user = await requireUser();
+  // Depuis son profil, ouvert à l'employeur incomplet (requireUser).
+  const user = await requireUser({ allowIncompleteAccount: true });
   if (!user.profileId) return { error: "Profil introuvable." };
 
   const expectedPrefix = `${user.id}/`;

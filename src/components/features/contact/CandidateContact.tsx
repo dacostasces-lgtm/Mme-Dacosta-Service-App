@@ -128,7 +128,7 @@ export function CandidateNumber({
         <p className={NOTE}>
           <Link href="/pricing" className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline">
             <BadgeCheck className="h-4 w-4 text-secondary" aria-hidden />
-            Ou tous les numéros avec Premium Employeur · {formatPrice(PLANS.premium_employer.price)} / mois
+            Ou tous les numéros et dossiers avec Premium Employeur · {formatPrice(PLANS.premium_employer.price)} / mois
           </Link>
         </p>
       </>

@@ -188,7 +188,10 @@ export default async function ProfilePage() {
 
         {/* Pas pour l'administration : un compte admin se retire à la main. */}
         {user.role !== "admin" && (
-          <div className="bg-card border border-destructive/20 rounded-3xl p-6 sm:p-8 shadow-soft mt-6">
+          <div
+            id="supprimer-mon-compte"
+            className="bg-card border border-destructive/20 rounded-3xl p-6 sm:p-8 shadow-soft mt-6 scroll-mt-24"
+          >
             <DeleteAccount isEmployer={isEmployer} />
           </div>
         )}

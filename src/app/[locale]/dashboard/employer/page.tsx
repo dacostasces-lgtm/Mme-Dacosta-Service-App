@@ -194,23 +194,9 @@ export default async function EmployerDashboard() {
           </div>
         )}
 
-        {/* Le numéro est obligatoire pour publier une offre. */}
-        {user.missingProfileFields.length > 0 && (
-          <div className="rounded-3xl border-2 border-secondary bg-secondary/10 p-6 sm:p-7 mb-8">
-            <h2 className="font-semibold mb-1">Ajoutez votre numéro de téléphone</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Il est obligatoire pour publier une offre : c&apos;est par lui que les candidats et
-              notre équipe vous joignent.
-            </p>
-            <Link
-              href="/profil"
-              className={buttonVariants({ className: "rounded-full gap-2" })}
-            >
-              <UserPen className="h-4 w-4" />
-              Ajouter mon numéro
-            </Link>
-          </div>
-        )}
+        {/* Plus de bandeau « Complétez votre compte » ici : un employeur à qui il
+            manque son numéro ou son quartier n'entre plus sans les avoir donnés
+            (la porte /coordonnees de requireUser). */}
 
         <JobReminders jobs={myJobs} />
 
@@ -362,15 +348,19 @@ export default async function EmployerDashboard() {
           </Link>
         </div>
 
-        <section className="bg-card rounded-3xl border border-border shadow-soft p-6 sm:p-7 mt-6">
-          <h2 className="font-semibold mb-1">Mes réservations</h2>
-          <p className="text-sm text-muted-foreground mb-5">Les candidats que vous avez réservés, et où en est le règlement.</p>
-          <BookingList
-            bookings={(bookings.data ?? []) as unknown as BookingRow[]}
-            role="employer"
-            reviews={mesAvis}
-          />
-        </section>
+        {/* Seulement s'il en reste : « Réserver ce candidat » a été retiré, et
+            une section vide invitait à réserver sans qu'aucun bouton le permette. */}
+        {(bookings.data ?? []).length > 0 && (
+          <section className="bg-card rounded-3xl border border-border shadow-soft p-6 sm:p-7 mt-6">
+            <h2 className="font-semibold mb-1">Mes réservations</h2>
+            <p className="text-sm text-muted-foreground mb-5">Les candidats que vous avez réservés, et où en est le règlement.</p>
+            <BookingList
+              bookings={(bookings.data ?? []) as unknown as BookingRow[]}
+              role="employer"
+              reviews={mesAvis}
+            />
+          </section>
+        )}
 
       </div>
     </div>

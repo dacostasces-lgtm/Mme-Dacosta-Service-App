@@ -76,6 +76,44 @@ export async function publishProfile(email: string) {
   }
 }
 
+/** Un numéro libre, au format enregistré : `+242 06 123 45 67`. */
+export function randomStoredPhone() {
+  const chiffres = (n: number) =>
+    String(Math.floor(Math.random() * 10 ** n)).padStart(n, "0");
+  return `+242 06 ${chiffres(3)} ${chiffres(2)} ${chiffres(2)}`;
+}
+
+/**
+ * Donne à un employeur créé par la clé de service un numéro confirmé et un
+ * quartier. Sans eux, il est arrêté à « Complétez votre compte » dès sa
+ * connexion (/coordonnees, demandé le 27 novembre 2026), et le parcours testé
+ * n'irait pas plus loin.
+ */
+export async function completeEmployerAccount(profileId: string) {
+  const service = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
+  const { data: quartier, error: quartierError } = await service
+    .from("neighborhoods")
+    .select("id")
+    .limit(1)
+    .single();
+  if (quartierError || !quartier) {
+    throw new Error(`Aucun quartier : ${quartierError?.message ?? "liste vide"}`);
+  }
+  const { error } = await service
+    .from("profiles")
+    .update({
+      phone: randomStoredPhone(),
+      phone_verified_at: new Date().toISOString(),
+      neighborhood_id: quartier.id,
+    })
+    .eq("id", profileId);
+  if (error) throw new Error(`Employeur non complété : ${error.message}`);
+}
+
 /**
  * Remplit toutes les cases obligatoires du profil candidat
  * (src/lib/profile/completeness.ts), l'enregistre, envoie la pièce d'identité,

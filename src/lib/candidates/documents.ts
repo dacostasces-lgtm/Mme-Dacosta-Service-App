@@ -2,8 +2,9 @@
  * Pièces justificatives d'un candidat : pièce d'identité, et permis de conduire
  * pour les chauffeurs (20261028100000_pieces_et_refus.sql).
  *
- * Elles ne se montrent qu'au candidat et à l'administration, qui vérifie
- * l'identité avant de publier — jamais aux familles ni au public.
+ * Elles se montrent au candidat et à l'administration, qui vérifie l'identité
+ * avant de publier, et depuis le 26 novembre 2026 à l'employeur qui a payé
+ * l'accès à ce candidat (20261127100000) — jamais au public.
  */
 
 export const IDENTITY_TYPES = [

@@ -35,7 +35,7 @@ export function CandidateUnlockButton({ candidateId }: { candidateId: string }) 
       <input type="hidden" name="candidateId" value={candidateId} />
       <Button type="submit" className="h-12 rounded-full px-6 gap-2" disabled={pending}>
         {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <LockOpen className="h-4 w-4" />}
-        Payer pour avoir le numéro · {formatPrice(CANDIDATE_UNLOCK_PRICE)}
+        Payer pour avoir le numéro et le dossier · {formatPrice(CANDIDATE_UNLOCK_PRICE)}
       </Button>
       {state.error && (
         <p className="text-sm text-destructive mt-2">
@@ -74,7 +74,8 @@ export function CandidateUnlockPayment({
       title="Régler le numéro du candidat"
       summary={
         <>
-          Numéro de ce candidat · <strong>{amountLabel}</strong>, une seule fois.
+          Numéro et dossier de ce candidat (pièce d&apos;identité, CV) ·{" "}
+          <strong>{amountLabel}</strong>, une seule fois.
         </>
       }
       amountLabel={amountLabel}

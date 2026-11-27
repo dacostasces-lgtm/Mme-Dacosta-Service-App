@@ -42,6 +42,9 @@ export default async function DirectoryPage({
   let query = supabase
     .from("profiles")
     .select(DIRECTORY_SELECT, { count: "exact" })
+    // Sans les comptes supprimés (20261106100000) : une ligne « Compte
+    // supprimé », vidée de tout, n'est plus un contact.
+    .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   if (role) query = query.eq("role", role);

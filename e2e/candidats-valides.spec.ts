@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
-import { PASSWORD, signIn, uniqueEmail } from "./helpers";
+import { PASSWORD, completeEmployerAccount, signIn, uniqueEmail } from "./helpers";
 
 /**
  * Seul un candidat publié se présente aux employeurs ; un refusé se supprime ;
@@ -76,11 +76,10 @@ test("seuls les candidats publiés se présentent ; un refusé se supprime ; les
 
   // --- les comptes -----------------------------------------------------------
   const nomEmployeur = uniqueName("Famille Valides");
-  const employeur = await createAccount("employer", nomEmployeur, {
-    // Confirmé : la porte de vérification ne doit pas détourner le tableau de bord.
-    phone: "+242 06 444 55 66",
-    phone_verified_at: new Date().toISOString(),
-  });
+  const employeur = await createAccount("employer", nomEmployeur);
+  // Numéro confirmé et quartier : ni la vérification ni « Complétez votre
+  // compte » ne doivent détourner le tableau de bord.
+  await completeEmployerAccount(employeur.profileId);
   const publiee = await createAccount("candidate", uniqueName("Prisca Publiee"), { is_validated: true });
   const attente = await createAccount("candidate", uniqueName("Ines Attente"));
   const refusee = await createAccount("candidate", uniqueName("Rose Refusee"));

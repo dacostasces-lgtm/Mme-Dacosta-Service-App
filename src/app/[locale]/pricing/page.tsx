@@ -49,13 +49,14 @@ const COTES: Cote[] = [
       {
         titre: "Le numéro d'un candidat",
         prix: CANDIDATE_UNLOCK_PRICE,
-        detail: "Depuis sa fiche. Le numéro y reste affiché ensuite.",
+        detail:
+          "Depuis sa fiche : son numéro et son dossier (pièce d'identité, CV), qui y restent affichés ensuite.",
       },
       {
         titre: "Publier une offre",
         prix: JOB_PRICE,
         detail:
-          "Le numéro de tous les candidats qui y postulent, pendant toute la durée de l'offre.",
+          "Le numéro et le dossier (pièce d'identité, CV) de tous les candidats qui y postulent, pendant toute la durée de l'offre.",
       },
       {
         titre: "Premium Employeur",
@@ -63,7 +64,7 @@ const COTES: Cote[] = [
         parMois: true,
         plan: "premium_employer",
         detail:
-          "Le numéro de tous les candidats, et toutes vos offres incluses. Pour plusieurs postes à pourvoir.",
+          "Le numéro et le dossier de tous les candidats, et toutes vos offres incluses. Pour plusieurs postes à pourvoir.",
       },
     ],
   },
@@ -84,7 +85,7 @@ const COTES: Cote[] = [
         // depuis 20261031100000 : tout recruteur le voit sans payer. Avant
         // cette migration, la phrase aurait promis ce que personne n'obtenait.
         detail:
-          "Votre numéro visible gratuitement par tous les recruteurs, le numéro de tous les employeurs, et votre profil mis en avant.",
+          "Votre numéro visible gratuitement par tous les recruteurs, le numéro de tous les employeurs, et votre profil mis en avant. Une fois votre profil vérifié.",
       },
     ],
   },

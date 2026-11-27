@@ -84,10 +84,10 @@ export function ProfileForm({
     <form action={formAction} onSubmit={submitWithoutReset(formAction)} className="space-y-8">
       {isEmployer && missing.length > 0 && (
         <div className="rounded-2xl border-2 border-secondary bg-secondary/10 p-4 text-sm">
-          <p className="font-semibold mb-1">Ajoutez votre numéro de téléphone</p>
+          <p className="font-semibold mb-1">Complétez votre compte</p>
           <p className="text-muted-foreground">
-            Il est obligatoire pour publier une offre : c&apos;est par lui que les candidats et
-            notre équipe vous joignent.
+            Il manque : <strong>{missing.join(", ")}</strong>. Votre numéro est obligatoire pour
+            publier une offre : c&apos;est par lui que les candidats et notre équipe vous joignent.
           </p>
         </div>
       )}

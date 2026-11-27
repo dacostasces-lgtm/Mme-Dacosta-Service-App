@@ -46,7 +46,8 @@ type Props = {
  *
  * Même chemin que la photo et le CV (FileUploads) : le fichier part du
  * navigateur vers le seau privé `pieces`, sous le dossier du candidat, puis
- * le serveur retient son chemin. Rien ne se montre aux familles.
+ * le serveur retient son chemin. Seuls l'administration et l'employeur qui a
+ * payé l'accès au candidat les voient ensuite (candidate_file_path).
  */
 export function IdentityDocuments({
   userId,
@@ -201,7 +202,7 @@ export function IdentityDocuments({
         <p className="text-sm text-muted-foreground">
           {audience === "admin"
             ? "Facultatif ici, mais le candidat devra les fournir s'il se connecte. Visibles seulement de l'administration. Photo ou PDF, 10 Mo maximum."
-            : "Obligatoire. Notre équipe vérifie votre identité avant de publier votre profil. Visible seulement de notre équipe, jamais des familles. Photo ou PDF, 10 Mo maximum."}
+            : "Obligatoire. Notre équipe vérifie votre identité avant de publier votre profil. Vue par notre équipe et par les employeurs qui ont payé l'accès à votre profil, jamais par le public. Photo ou PDF, 10 Mo maximum."}
         </p>
       </div>
 

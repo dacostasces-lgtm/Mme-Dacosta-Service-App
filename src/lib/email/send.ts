@@ -60,11 +60,17 @@ async function recipient(profileId: string) {
 
   const { data } = await supabase
     .from("profiles")
-    .select("email, full_name")
+    .select("email, full_name, role")
     .eq("id", profileId)
     .maybeSingle();
 
-  return data?.email ? { email: data.email as string, name: (data.full_name as string) ?? "" } : null;
+  return data?.email
+    ? {
+        email: data.email as string,
+        name: (data.full_name as string) ?? "",
+        role: (data.role as string) ?? "candidate",
+      }
+    : null;
 }
 
 /** Minimal, deliberately plain markup: many recipients here read mail on a
@@ -125,23 +131,47 @@ export async function notifyNewMessage(options: {
   }
 }
 
-export async function notifyProfileValidated(options: { profileId: string; url: string }) {
+/**
+ * « Votre profil est en ligne », au moment de la publication. Le texte et le
+ * lien suivent le rôle : la modération publie aussi les employeurs (depuis le
+ * 30 octobre 2026), qui recevaient le message des candidats — « visible par
+ * les familles » — avec un lien vers l'espace candidat.
+ */
+export async function notifyProfileValidated(options: { profileId: string; siteUrl: string }) {
   try {
     if (!isEmailConfigured()) return;
 
     const to = await recipient(options.profileId);
     if (!to) return;
+    const bonjour = `Bonne nouvelle${to.name ? ` ${escape(to.name)}` : ""}`;
 
+    if (to.role === "employer") {
+      const url = `${options.siteUrl}/dashboard/employer`;
+      await deliver(
+        to.email,
+        "Votre compte est validé",
+        layout(
+          "Votre compte employeur vient d'être validé",
+          `<p style="margin:0 0 12px">${bonjour} : notre équipe a vérifié votre compte.</p>
+           <p style="margin:0">Publiez vos offres et retrouvez les candidatures depuis votre espace employeur.</p>`,
+          { href: url, label: "Mon espace employeur" }
+        ),
+        `Votre compte employeur vient d'être validé : publiez vos offres et retrouvez les candidatures depuis votre espace.\n\n${url}`
+      );
+      return;
+    }
+
+    const url = `${options.siteUrl}/dashboard/candidate`;
     await deliver(
       to.email,
       "Votre profil est en ligne",
       layout(
         "Votre profil vient d'être validé",
-        `<p style="margin:0 0 12px">Bonne nouvelle${to.name ? ` ${escape(to.name)}` : ""} : votre profil est vérifié et visible par les familles.</p>
-         <p style="margin:0">Elles peuvent désormais vous trouver dans la recherche par quartier et vous contacter directement.</p>`,
-        { href: options.url, label: "Voir mon espace" }
+        `<p style="margin:0 0 12px">${bonjour} : votre profil est vérifié et visible par les familles.</p>
+         <p style="margin:0">Elles peuvent désormais vous trouver dans la recherche par quartier, et vous pouvez postuler aux offres et obtenir le numéro des employeurs.</p>`,
+        { href: url, label: "Mon espace candidat" }
       ),
-      `Votre profil vient d'être validé : les familles peuvent désormais vous trouver.\n\n${options.url}`
+      `Votre profil vient d'être validé : les familles peuvent vous trouver, et vous pouvez postuler aux offres.\n\n${url}`
     );
   } catch (error) {
     console.error("Notification « profil validé » non envoyée :", error);
