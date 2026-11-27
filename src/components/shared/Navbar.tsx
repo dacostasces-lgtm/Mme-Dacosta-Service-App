@@ -6,6 +6,13 @@ import { getCurrentUser, dashboardPathFor } from '@/lib/auth/dal';
 import { signOut } from '@/lib/auth/actions';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
+/** Le nom de son espace, écrit sous son nom dans la barre du haut. */
+const ESPACE = {
+  employer: 'Mon espace employeur',
+  candidate: 'Mon espace candidat',
+  admin: 'Modération',
+} as const;
+
 export async function Navbar() {
   const [user, locale] = await Promise.all([getCurrentUser(), getLocale()]);
 
@@ -35,14 +42,25 @@ export async function Navbar() {
                 <span className="hidden sm:inline">Modération</span>
               </Link>
             )}
+            {/* « Mon espace employeur » écrit sous le nom, et non deviné : on ne
+                savait pas que le nom menait à son espace, et l'on n'y revenait
+                que par le lien de la page de paiement d'une offre (signalé le
+                26 novembre 2026). Sur téléphone, la barre du bas porte
+                « Mon espace ». */}
             <Link
               href={dashboardPathFor(user.role)}
-              className={buttonVariants({ variant: "ghost", className: "h-10 rounded-full gap-2 px-1 sm:px-3" })}
+              className={buttonVariants({ variant: "ghost", className: "h-11 rounded-full gap-2 px-1 sm:px-3" })}
+              aria-label={user.role === 'admin' ? user.fullName : `${ESPACE[user.role]} — ${user.fullName}`}
             >
               <span className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold uppercase">
                 {user.fullName.charAt(0)}
               </span>
-              <span className="hidden sm:inline max-w-32 truncate">{user.fullName}</span>
+              <span className="hidden sm:flex flex-col items-start leading-tight">
+                <span className="max-w-36 truncate">{user.fullName}</span>
+                {user.role !== 'admin' && (
+                  <span className="text-[11px] font-semibold text-primary">{ESPACE[user.role]}</span>
+                )}
+              </span>
             </Link>
             <form action={signOut.bind(null, locale)}>
               <Button

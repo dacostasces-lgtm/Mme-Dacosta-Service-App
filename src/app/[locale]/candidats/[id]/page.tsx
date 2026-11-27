@@ -23,6 +23,7 @@ import {
   CandidateNumberPayment,
   type CandidateContactRow,
 } from "@/components/features/contact/CandidateContact";
+import { CandidateDossier, type DossierRow } from "@/components/features/contact/CandidateDossier";
 import { localisedUrl } from "@/lib/site";
 import { availabilityLabel } from "@/lib/candidates/availability";
 import { childrenSummary, maritalStatusLabel } from "@/lib/candidates/family";
@@ -194,6 +195,19 @@ export default async function CandidateProfilePage({
         | undefined)
     : undefined;
 
+  // Le dossier complet (pièces, permis, CV) : pour l'employeur qui a payé
+  // l'accès à ce candidat, et pour l'administration — candidate_dossier() en
+  // décide (20261127100000). Fonction absente (migration pas encore passée) :
+  // rien n'est affiché, ni le dossier ni l'invitation.
+  const voitDossier =
+    !estSoiMeme && (visiteur?.role === "employer" || visiteur?.role === "admin");
+  const dossierResult = voitDossier
+    ? await supabase.rpc("candidate_dossier", { p_candidate_id: profile.id })
+    : null;
+  const dossier = dossierResult && !dossierResult.error
+    ? (((dossierResult.data ?? []) as DossierRow[])[0] ?? null)
+    : undefined;
+
   const initials = profile.full_name
     .split(/\s+/)
     .filter(Boolean)
@@ -339,6 +353,8 @@ export default async function CandidateProfilePage({
         </div>
 
         <CandidateNumberPayment contact={contact} />
+
+        {dossier !== undefined && <CandidateDossier candidateId={profile.id} dossier={dossier} />}
 
         {/* Details Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
